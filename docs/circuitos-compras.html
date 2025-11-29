@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuitos de Compras - UDESA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .toc {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+
+        .toc h2 {
+            color: #34495e;
+            margin-bottom: 15px;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        .toc li {
+            margin: 8px 0;
+        }
+
+        .toc a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .circuit-section {
+            margin: 50px 0;
+            page-break-inside: avoid;
+        }
+
+        .circuit-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .circuit-header h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .circuit-header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .flowchart {
+            background: #fafafa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .flow-step::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 50px;
+            bottom: -20px;
+            width: 2px;
+            background: #bdc3c7;
+        }
+
+        .flow-step:last-child::before {
+            display: none;
+        }
+
+        .step-number {
+            min-width: 40px;
+            height: 40px;
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-content {
+            flex: 1;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .step-actor {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .step-description {
+            color: #7f8c8d;
+            font-size: 0.95em;
+        }
+
+        .decision {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .decision .step-number {
+            background: #ffc107;
+        }
+
+        .parallel-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .parallel-step {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .notes {
+            background: #fff9e6;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .notes h4 {
+            color: #d68910;
+            margin-bottom: 10px;
+        }
+
+        .notes ul {
+            margin-left: 20px;
+        }
+
+        .notes li {
+            margin: 5px 0;
+            color: #7f8c8d;
+        }
+
+        .actors-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .actor-badge {
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .actor-solicitante { background: #e3f2fd; color: #1976d2; }
+        .actor-aprobador { background: #ffebee; color: #c62828; }
+        .actor-revisor { background: #e0f2f1; color: #00695c; }
+        .actor-compras { background: #f3e5f5; color: #6a1b9a; }
+        .actor-proveedor { background: #fff3e0; color: #e65100; }
+        .actor-pagos { background: #e8eaf6; color: #283593; }
+        .actor-sistema { background: #e0e0e0; color: #424242; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .summary-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .summary-number {
+            min-width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .summary-title {
+            flex: 1;
+            font-size: 1em;
+            font-weight: bold;
+            color: #2c3e50;
+            line-height: 1.3;
+        }
+
+        .summary-steps {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .summary-label {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-type {
+            display: inline-block;
+            background: #f39c12;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        .summary-type.base { background: #27ae60; }
+        .summary-type.transversal { background: #e74c3c; }
+
+        .summary-overview {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .summary-overview h2 {
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .summary-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .summary-stat {
+            text-align: center;
+        }
+
+        .summary-stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .summary-stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        @media print {
+            .circuit-section {
+                page-break-after: always;
+            }
+
+            body {
+                background: white;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .parallel-steps {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Circuitos de Compras</h1>
+        <p class="subtitle">Universidad de San Andrés - Reorganización por Tipo de Operación</p>
+
+        <div class="summary-overview">
+            <h2>Resumen Ejecutivo</h2>
+            <p style="font-size: 1.1em; opacity: 0.95; margin-bottom: 10px;">
+                El proceso de compras ha sido reorganizado en 6 circuitos diferenciados por tipo de operación
+            </p>
+            <div class="summary-stats">
+                <div class="summary-stat">
+                    <div class="summary-stat-number">6</div>
+                    <div class="summary-stat-label">Circuitos Totales</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="summary-stat-number">79</div>
+                    <div class="summary-stat-label">Pasos Totales</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="summary-stat-number">7</div>
+                    <div class="summary-stat-label">Actores Involucrados</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-number">1</div>
+                    <div class="summary-title">Pedidos y Requerimientos</div>
+                </div>
+                <div class="summary-steps">6</div>
+                <div class="summary-label">Pasos</div>
+                <div style="text-align: center;">
+                    <span class="summary-type base">Operación Base</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-number">2</div>
+                    <div class="summary-title">Compra con Cotización/Licitación</div>
+                </div>
+                <div class="summary-steps">18</div>
+                <div class="summary-label">Pasos</div>
+                <div style="text-align: center;">
+                    <span class="summary-type">Tipo de Compra</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-number">3</div>
+                    <div class="summary-title">Compra con Anticipo</div>
+                </div>
+                <div class="summary-steps">12</div>
+                <div class="summary-label">Pasos</div>
+                <div style="text-align: center;">
+                    <span class="summary-type">Tipo de Compra</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-number">4</div>
+                    <div class="summary-title">Orden de Compra Simple</div>
+                </div>
+                <div class="summary-steps">11</div>
+                <div class="summary-label">Pasos</div>
+                <div style="text-align: center;">
+                    <span class="summary-type">Tipo de Compra</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-number">5</div>
+                    <div class="summary-title">Factura Directa (Sin OC)</div>
+                </div>
+                <div class="summary-steps">11</div>
+                <div class="summary-label">Pasos</div>
+                <div style="text-align: center;">
+                    <span class="summary-type">Tipo de Compra</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-number">6</div>
+                    <div class="summary-title">Pago a Proveedores</div>
+                </div>
+                <div class="summary-steps">16</div>
+                <div class="summary-label">Pasos</div>
+                <div style="text-align: center;">
+                    <span class="summary-type transversal">Transversal</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="toc">
+            <h2>Índice de Circuitos</h2>
+            <ul>
+                <li><a href="#pedidos">1. Pedidos y Requerimientos (Operación Base) - 6 pasos</a></li>
+                <li><a href="#cotizacion">2. Compra con Cotización/Licitación - 18 pasos</a></li>
+                <li><a href="#anticipo">3. Compra con Anticipo - 12 pasos</a></li>
+                <li><a href="#oc-simple">4. Orden de Compra Simple - 11 pasos</a></li>
+                <li><a href="#factura-directa">5. Factura Directa (Sin OC) - 11 pasos</a></li>
+                <li><a href="#pagos">6. Pago a Proveedores (Proceso Transversal) - 16 pasos</a></li>
+            </ul>
+        </div>
+
+        <!-- CIRCUITO 1: PEDIDOS Y REQUERIMIENTOS -->
+        <div id="pedidos" class="circuit-section">
+            <div class="circuit-header">
+                <h2>1. Pedidos y Requerimientos</h2>
+                <p>Operación base que alimenta todos los tipos de compra</p>
+            </div>
+
+            <div class="actors-legend">
+                <span class="actor-badge actor-solicitante">Solicitante</span>
+                <span class="actor-badge actor-aprobador">Aprobador</span>
+                <span class="actor-badge actor-revisor">Revisor Técnico</span>
+                <span class="actor-badge actor-sistema">Sistema</span>
+            </div>
+
+            <div class="flowchart">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #1976d2;">SOLICITANTE</span>
+                        <div class="step-title">Creación del Requerimiento</div>
+                        <div class="step-description">
+                            El usuario crea un requerimiento de compra en el sistema especificando:
+                            <ul>
+                                <li>Descripción del bien o servicio</li>
+                                <li>Cantidad y especificaciones</li>
+                                <li>Centro de costos</li>
+                                <li>Urgencia/fecha necesaria</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #1976d2;">SOLICITANTE</span>
+                        <div class="step-title">¿Requiere Revisión Técnica?</div>
+                        <div class="step-description">
+                            Decisión según tipo de requerimiento:
+                            <ul>
+                                <li><strong>TI:</strong> Tecnología y Licencias</li>
+                                <li><strong>Obras y Proyectos:</strong> Proyectos grandes / Seguridad</li>
+                                <li><strong>No:</strong> Compras estándar</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #00695c;">REVISOR TÉCNICO</span>
+                        <div class="step-title">Revisión Técnica (si aplica)</div>
+                        <div class="step-description">
+                            El revisor técnico:
+                            <ul>
+                                <li>Analiza la especificación técnica</li>
+                                <li>Valida la necesidad y viabilidad</li>
+                                <li>Completa/ajusta especificaciones técnicas</li>
+                                <li>Aprueba o rechaza el requerimiento</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Aprobación del Requerimiento</div>
+                        <div class="step-description">
+                            Aprobación según niveles jerárquicos basados en:
+                            <ul>
+                                <li><strong>Monto:</strong> Umbrales de aprobación por nivel</li>
+                                <li><strong>Centro de costos:</strong> Responsable del área</li>
+                                <li><strong>Presupuesto:</strong> Disponibilidad presupuestaria</li>
+                            </ul>
+                            <strong>Responsables:</strong> Responsable de Sede (compras menores) / Gerencias / Dirección
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Decisión de Aprobación</div>
+                        <div class="step-description">
+                            <strong>SI APRUEBA:</strong> El requerimiento pasa al área de Compras<br>
+                            <strong>SI RECHAZA:</strong> Notificación al solicitante, fin del proceso
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #424242;">SISTEMA</span>
+                        <div class="step-title">Salida: Requerimiento Aprobado</div>
+                        <div class="step-description">
+                            El requerimiento aprobado está listo para ser procesado según el tipo de compra:
+                            <ul>
+                                <li>→ Compra con Cotización/Licitación</li>
+                                <li>→ Orden de Compra Simple</li>
+                                <li>→ Compra con Anticipo</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes">
+                <h4>Notas Importantes:</h4>
+                <ul>
+                    <li>Este proceso es independiente del tipo de compra que se realizará posteriormente</li>
+                    <li>Los niveles de aprobación varían según monto y política de la institución</li>
+                    <li>La revisión técnica es opcional según el tipo de compra</li>
+                    <li>El requerimiento puede ser rechazado en cualquier instancia de aprobación</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- CIRCUITO 2: COMPRA CON COTIZACIÓN/LICITACIÓN -->
+        <div id="cotizacion" class="circuit-section">
+            <div class="circuit-header">
+                <h2>2. Compra con Cotización/Licitación</h2>
+                <p>Para compras que requieren comparación de ofertas y proceso competitivo</p>
+            </div>
+
+            <div class="actors-legend">
+                <span class="actor-badge actor-compras">Compras</span>
+                <span class="actor-badge actor-proveedor">Proveedor</span>
+                <span class="actor-badge actor-revisor">Revisor Técnico</span>
+                <span class="actor-badge actor-aprobador">Aprobador</span>
+            </div>
+
+            <div class="flowchart">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Recepción de Requerimiento Aprobado</div>
+                        <div class="step-description">
+                            Compras recibe el requerimiento aprobado y determina que requiere cotización basado en:
+                            <ul>
+                                <li>Monto supera umbral establecido (ej: USD XX)</li>
+                                <li>Política de compras requiere licitación</li>
+                                <li>No hay proveedor predefinido</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">¿Requiere Licitación Formal?</div>
+                        <div class="step-description">
+                            <strong>SI:</strong> Proceso de licitación formal con pliego<br>
+                            <strong>NO:</strong> Solicitud de cotización estándar
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Preparación y Envío de Solicitud de Cotización</div>
+                        <div class="step-description">
+                            Compras crea y envía solicitud de cotización que incluye:
+                            <ul>
+                                <li>Especificación técnica detallada</li>
+                                <li>Cantidades y condiciones</li>
+                                <li>Plazo de entrega requerido</li>
+                                <li>Fecha límite para presentación de ofertas</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción y Cotización</div>
+                        <div class="step-description">
+                            Los proveedores:
+                            <ul>
+                                <li>Reciben notificación para cotizar</li>
+                                <li>Analizan los requerimientos</li>
+                                <li>Envían cotización con precio, plazo y condiciones</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Recepción de Cotizaciones</div>
+                        <div class="step-description">
+                            Compras registra y organiza todas las cotizaciones recibidas de diversos proveedores
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #00695c;">REVISOR TÉCNICO</span>
+                        <div class="step-title">Evaluación Técnica (si aplica)</div>
+                        <div class="step-description">
+                            El revisor técnico realiza comparativo técnico:
+                            <ul>
+                                <li>Verifica cumplimiento de especificaciones</li>
+                                <li>Evalúa calidad y características técnicas</li>
+                                <li>Emite OK técnico o rechaza ofertas no conformes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">7</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Comparación de Cotizaciones</div>
+                        <div class="step-description">
+                            Compras compara ofertas aprobadas técnicamente considerando:
+                            <ul>
+                                <li>Precio</li>
+                                <li>Plazo de entrega</li>
+                                <li>Condiciones de pago</li>
+                                <li>Garantías</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">8</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Selección de Proveedor</div>
+                        <div class="step-description">
+                            Compras selecciona el proveedor según criterios de evaluación y solicita aprobación final
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">9</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">¿Monto requiere aprobación adicional?</div>
+                        <div class="step-description">
+                            Según el monto final, puede requerir aprobación de nivel superior antes de emitir OC
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">10</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Aprobación Final de la Compra</div>
+                        <div class="step-description">
+                            El aprobador revisa la selección y el comparativo, aprueba o rechaza
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">11</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Generación de Orden de Compra</div>
+                        <div class="step-description">
+                            Compras genera la OC formal con todos los términos acordados
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">12</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">¿Requiere Anticipo?</div>
+                        <div class="step-description">
+                            <strong>SI:</strong> → Continúa con Circuito 3 (Compra con Anticipo)<br>
+                            <strong>NO:</strong> → Continúa con proceso de entrega estándar
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">13</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción de OC</div>
+                        <div class="step-description">
+                            El proveedor recibe la OC y notificación de compra aceptada
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">14</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Entrega de Mercadería o Servicio</div>
+                        <div class="step-description">
+                            El proveedor realiza la entrega según lo acordado en la OC
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">15</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #1976d2;">SOLICITANTE</span>
+                        <div class="step-title">Recepción y Conformidad</div>
+                        <div class="step-description">
+                            El solicitante:
+                            <ul>
+                                <li>Recibe la mercadería/servicio</li>
+                                <li>Verifica conformidad</li>
+                                <li>Completa el conforme de entrega en el sistema</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">16</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #424242;">SISTEMA</span>
+                        <div class="step-title">Registro de Stock (si aplica)</div>
+                        <div class="step-description">
+                            El sistema registra el ingreso de mercadería al stock en el ERP
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">17</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Emisión de Factura</div>
+                        <div class="step-description">
+                            El proveedor emite y envía la factura (Cta Cte) con referencia a la OC
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">18</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #424242;">SISTEMA</span>
+                        <div class="step-title">→ Continúa con Circuito 6: Pago a Proveedores</div>
+                        <div class="step-description">
+                            El proceso continúa con el circuito transversal de pagos
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes">
+                <h4>Notas Importantes:</h4>
+                <ul>
+                    <li>Este proceso se activa cuando el monto supera el umbral definido o por política de compras</li>
+                    <li>La licitación formal aplica para montos muy elevados o compras estratégicas</li>
+                    <li>Puede derivar al circuito de Compra con Anticipo si el proveedor lo requiere</li>
+                    <li>Los proveedores rechazados reciben notificación automática</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- CIRCUITO 3: COMPRA CON ANTICIPO -->
+        <div id="anticipo" class="circuit-section">
+            <div class="circuit-header">
+                <h2>3. Compra con Anticipo</h2>
+                <p>Para compras que requieren pago anticipado antes de la entrega</p>
+            </div>
+
+            <div class="actors-legend">
+                <span class="actor-badge actor-compras">Compras</span>
+                <span class="actor-badge actor-aprobador">Aprobador</span>
+                <span class="actor-badge actor-pagos">Pago a Proveedores</span>
+                <span class="actor-badge actor-proveedor">Proveedor</span>
+                <span class="actor-badge actor-solicitante">Solicitante</span>
+            </div>
+
+            <div class="flowchart">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Generación de OC con Anticipo</div>
+                        <div class="step-description">
+                            Compras genera una OC que especifica:
+                            <ul>
+                                <li>Monto del anticipo (porcentaje o monto fijo)</li>
+                                <li>Condiciones para el pago del anticipo</li>
+                                <li>Monto y condiciones del saldo restante</li>
+                                <li>Plazo de entrega post-anticipo</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Aprobación de Anticipo</div>
+                        <div class="step-description">
+                            El aprobador autoriza específicamente el pago anticipado, considerando:
+                            <ul>
+                                <li>Justificación del anticipo</li>
+                                <li>Confiabilidad del proveedor</li>
+                                <li>Disponibilidad presupuestaria</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción de OC con Anticipo</div>
+                        <div class="step-description">
+                            El proveedor recibe la OC que especifica el anticipo y acepta las condiciones
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Emisión de Factura de Anticipo</div>
+                        <div class="step-description">
+                            El proveedor emite factura por el monto del anticipo con referencia a la OC
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Procesamiento del Pago de Anticipo</div>
+                        <div class="step-description">
+                            El área de pagos:
+                            <ul>
+                                <li>Verifica factura contra OC</li>
+                                <li>Verifica aprobación del anticipo</li>
+                                <li>Procesa pago del anticipo</li>
+                                <li>Registra el anticipo en el sistema</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción de Pago de Anticipo</div>
+                        <div class="step-description">
+                            El proveedor recibe notificación y visualiza el pago en el portal
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">7</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Preparación y Entrega</div>
+                        <div class="step-description">
+                            Con el anticipo recibido, el proveedor:
+                            <ul>
+                                <li>Procede con la fabricación/preparación</li>
+                                <li>Entrega la mercadería o servicio según plazo acordado</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">8</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #1976d2;">SOLICITANTE</span>
+                        <div class="step-title">Recepción y Conformidad</div>
+                        <div class="step-description">
+                            El solicitante:
+                            <ul>
+                                <li>Recibe la mercadería/servicio</li>
+                                <li>Verifica conformidad y cumplimiento</li>
+                                <li>Completa el conforme de entrega</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">9</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #424242;">SISTEMA</span>
+                        <div class="step-title">Registro de Stock (si aplica)</div>
+                        <div class="step-description">
+                            El sistema registra el ingreso al inventario
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">10</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Emisión de Factura Final/Saldo</div>
+                        <div class="step-description">
+                            El proveedor emite la factura final por el saldo restante:
+                            <ul>
+                                <li>Monto total menos anticipo ya facturado</li>
+                                <li>Referencia a OC y factura de anticipo</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">11</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Procesamiento del Pago Final</div>
+                        <div class="step-description">
+                            El área de pagos:
+                            <ul>
+                                <li>Verifica factura final contra OC</li>
+                                <li>Verifica conformidad de entrega</li>
+                                <li>Descuenta anticipo ya pagado</li>
+                                <li>Procesa pago del saldo</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">12</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción de Pago Final</div>
+                        <div class="step-description">
+                            El proveedor recibe notificación y visualiza el pago final en el portal. Se cierra la OC.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes">
+                <h4>Notas Importantes:</h4>
+                <ul>
+                    <li>Este circuito puede ser iniciado desde el Circuito 2 (Cotización) o directamente</li>
+                    <li>Requiere aprobación especial del aprobador para autorizar el anticipo</li>
+                    <li>El sistema debe controlar que el anticipo + saldo = monto total de la OC</li>
+                    <li>Es crítico el seguimiento del plazo de entrega post-anticipo</li>
+                    <li>Debe existir seguimiento especial de OC con anticipo pendiente de entrega</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- CIRCUITO 4: ORDEN DE COMPRA SIMPLE -->
+        <div id="oc-simple" class="circuit-section">
+            <div class="circuit-header">
+                <h2>4. Orden de Compra Simple</h2>
+                <p>Para compras directas con proveedor seleccionado sin proceso de cotización</p>
+            </div>
+
+            <div class="actors-legend">
+                <span class="actor-badge actor-compras">Compras</span>
+                <span class="actor-badge actor-proveedor">Proveedor</span>
+                <span class="actor-badge actor-solicitante">Solicitante</span>
+                <span class="actor-badge actor-sistema">Sistema</span>
+            </div>
+
+            <div class="flowchart">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Recepción de Requerimiento Aprobado</div>
+                        <div class="step-description">
+                            Compras recibe el requerimiento aprobado que:
+                            <ul>
+                                <li>No requiere cotización (monto menor al umbral)</li>
+                                <li>Tiene proveedor predefinido o único</li>
+                                <li>Es una compra recurrente o estándar</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Selección/Confirmación de Proveedor</div>
+                        <div class="step-description">
+                            Compras:
+                            <ul>
+                                <li>Selecciona proveedor del catálogo/base de datos</li>
+                                <li>Verifica precio y condiciones previamente acordadas</li>
+                                <li>Puede solicitar cotización informal si es necesario</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Generación de Orden de Compra</div>
+                        <div class="step-description">
+                            Compras genera la OC especificando:
+                            <ul>
+                                <li>Proveedor seleccionado</li>
+                                <li>Descripción, cantidad y precio</li>
+                                <li>Condiciones de pago (cuenta corriente)</li>
+                                <li>Plazo de entrega</li>
+                                <li>Lugar de entrega</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción de OC</div>
+                        <div class="step-description">
+                            El proveedor recibe notificación de la OC a través del portal o email
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Aceptación de la OC</div>
+                        <div class="step-description">
+                            El proveedor revisa la OC y:
+                            <ul>
+                                <li>Acepta las condiciones</li>
+                                <li>Confirma plazo de entrega</li>
+                                <li>O solicita recotización si hay cambios en condiciones</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Preparación y Entrega</div>
+                        <div class="step-description">
+                            El proveedor prepara y entrega la mercadería o realiza el servicio según lo acordado
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">7</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #1976d2;">SOLICITANTE</span>
+                        <div class="step-title">Recepción de Mercadería/Servicio</div>
+                        <div class="step-description">
+                            El solicitante recibe y verifica:
+                            <ul>
+                                <li>Cantidad y calidad de lo recibido</li>
+                                <li>Conformidad con lo solicitado</li>
+                                <li>Documentación de entrega</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">8</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #1976d2;">SOLICITANTE</span>
+                        <div class="step-title">Conforme de Entrega</div>
+                        <div class="step-description">
+                            El solicitante completa el conforme de entrega en el sistema, indicando:
+                            <ul>
+                                <li>Fecha de recepción</li>
+                                <li>Conformidad o no conformidad</li>
+                                <li>Observaciones si las hubiera</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">9</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #424242;">SISTEMA</span>
+                        <div class="step-title">Registro de Stock en ERP</div>
+                        <div class="step-description">
+                            Si aplica, el sistema registra automáticamente el ingreso al inventario
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">10</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Emisión y Envío de Factura</div>
+                        <div class="step-description">
+                            El proveedor emite factura (Cuenta Corriente) con:
+                            <ul>
+                                <li>Referencia al número de OC</li>
+                                <li>Detalle de lo entregado</li>
+                                <li>Condiciones de pago según OC</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">11</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #424242;">SISTEMA</span>
+                        <div class="step-title">→ Continúa con Circuito 6: Pago a Proveedores</div>
+                        <div class="step-description">
+                            El proceso continúa con el circuito transversal de pagos
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes">
+                <h4>Notas Importantes:</h4>
+                <ul>
+                    <li>Este es el circuito más ágil y directo de compra</li>
+                    <li>Se utiliza para compras bajo umbral o con proveedor único/recurrente</li>
+                    <li>No requiere proceso de cotización ni comparación de ofertas</li>
+                    <li>El conforme de entrega es crítico para habilitar el pago</li>
+                    <li>Si hay no conformidad, debe existir proceso de devolución o reclamo</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- CIRCUITO 5: FACTURA DIRECTA -->
+        <div id="factura-directa" class="circuit-section">
+            <div class="circuit-header">
+                <h2>5. Factura Directa (Sin OC)</h2>
+                <p>Para gastos urgentes, menores o excepcionales que no tienen OC previa</p>
+            </div>
+
+            <div class="actors-legend">
+                <span class="actor-badge actor-compras">Compras</span>
+                <span class="actor-badge actor-proveedor">Proveedor</span>
+                <span class="actor-badge actor-aprobador">Aprobador</span>
+                <span class="actor-badge actor-pagos">Pago a Proveedores</span>
+            </div>
+
+            <div class="flowchart">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Entrega de Servicio/Mercadería</div>
+                        <div class="step-description">
+                            El proveedor realiza una entrega o servicio sin OC previa, típicamente en casos de:
+                            <ul>
+                                <li>Gastos menores urgentes</li>
+                                <li>Servicios recurrentes (luz, gas, telefonía, etc.)</li>
+                                <li>Reparaciones de emergencia</li>
+                                <li>Gastos de representación</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Emisión de Factura</div>
+                        <div class="step-description">
+                            El proveedor emite factura SIN número de OC asociado
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Recepción de Factura sin OC</div>
+                        <div class="step-description">
+                            El área de pagos recibe la factura y detecta que NO tiene OC asociada
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Carga de Factura en Sistema</div>
+                        <div class="step-description">
+                            Pagos carga la factura en el sistema indicando:
+                            <ul>
+                                <li>No tiene pedido/OC asociado</li>
+                                <li>Centro de costos que corresponde</li>
+                                <li>Tipo de gasto</li>
+                                <li>Justificación si es necesaria</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Solicitud de Autorización</div>
+                        <div class="step-description">
+                            El sistema envía notificación al Aprobador correspondiente (responsable del centro de costos) para autorizar la factura sin OC
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Revisión de Factura</div>
+                        <div class="step-description">
+                            El aprobador recibe notificación y revisa:
+                            <ul>
+                                <li>Factura y documentación adjunta</li>
+                                <li>Validez del gasto</li>
+                                <li>Monto y conformidad</li>
+                                <li>Disponibilidad presupuestaria</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">7</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Decisión de Aprobación</div>
+                        <div class="step-description">
+                            El aprobador decide:
+                            <ul>
+                                <li><strong>APRUEBA:</strong> Autoriza el pago de la factura</li>
+                                <li><strong>RECHAZA:</strong> Devuelve la factura con observaciones</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">8</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Notificación de Rechazo (si aplica)</div>
+                        <div class="step-description">
+                            Si la factura es rechazada, el proveedor recibe notificación con motivo del rechazo
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">9</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #6a1b9a;">COMPRAS</span>
+                        <div class="step-title">Definición de Forma de Pago</div>
+                        <div class="step-description">
+                            Si la factura es aprobada, se define forma de pago:
+                            <ul>
+                                <li><strong>Tarjeta de crédito:</strong> Para gastos menores/urgentes</li>
+                                <li><strong>Transferencia:</strong> Para montos mayores o cuenta corriente</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">10</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Procesamiento de Pago</div>
+                        <div class="step-description">
+                            El área de pagos procesa el pago según la forma definida:
+                            <ul>
+                                <li>Verifica factura aprobada</li>
+                                <li>Genera orden de pago</li>
+                                <li>Ejecuta pago (tarjeta o transferencia)</li>
+                                <li>Registra pago en el sistema</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">11</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción de Pago</div>
+                        <div class="step-description">
+                            El proveedor recibe notificación del pago y puede visualizar:
+                            <ul>
+                                <li>Orden de pago en el portal</li>
+                                <li>Retenciones aplicadas (si corresponde)</li>
+                                <li>Fecha de pago efectiva</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes">
+                <h4>Notas Importantes:</h4>
+                <ul>
+                    <li>Este proceso es EXCEPCIONAL y debe ser controlado estrictamente</li>
+                    <li>Solo debe usarse para casos justificados (urgencias, gastos menores, servicios regulares)</li>
+                    <li>Requiere SIEMPRE autorización del aprobador responsable del centro de costos</li>
+                    <li>El pago con tarjeta suele ser más rápido para gastos menores (contado)</li>
+                    <li>Es importante establecer límites de monto para este tipo de operación</li>
+                    <li>Debe existir auditoría periódica de facturas sin OC para evitar abusos</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- CIRCUITO 6: PAGO A PROVEEDORES -->
+        <div id="pagos" class="circuit-section">
+            <div class="circuit-header">
+                <h2>6. Pago a Proveedores</h2>
+                <p>Proceso transversal común a todos los tipos de compra</p>
+            </div>
+
+            <div class="actors-legend">
+                <span class="actor-badge actor-pagos">Pago a Proveedores</span>
+                <span class="actor-badge actor-compras">Compras</span>
+                <span class="actor-badge actor-aprobador">Aprobador</span>
+                <span class="actor-badge actor-proveedor">Proveedor</span>
+            </div>
+
+            <div class="flowchart">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Recepción de Factura</div>
+                        <div class="step-description">
+                            El área de pagos recibe la factura del proveedor (electrónica o física) con:
+                            <ul>
+                                <li>Número de OC (si corresponde)</li>
+                                <li>Detalle de lo facturado</li>
+                                <li>Condiciones de pago</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Carga y Registro en el Portal</div>
+                        <div class="step-description">
+                            Pagos carga la factura en el sistema/portal donde el proveedor puede visualizarla
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Verificación en Portal</div>
+                        <div class="step-description">
+                            El proveedor puede verificar que su factura fue recibida y está en proceso
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Verificación: ¿Factura con OC?</div>
+                        <div class="step-description">
+                            El sistema verifica si la factura tiene OC asociada:
+                            <ul>
+                                <li><strong>SI:</strong> Continúa con validación automática</li>
+                                <li><strong>NO:</strong> Requiere autorización del Aprobador (ver Circuito 5)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Validación Tripartita (OC - Factura - Conforme)</div>
+                        <div class="step-description">
+                            Para facturas con OC, se verifica coincidencia de:
+                            <ul>
+                                <li><strong>OC:</strong> Monto, proveedor, descripción</li>
+                                <li><strong>Factura:</strong> Datos coinciden con OC</li>
+                                <li><strong>Conforme de entrega:</strong> Existe y está completo</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content decision">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">¿Validación OK?</div>
+                        <div class="step-description">
+                            Si hay inconsistencias o falta conforme:
+                            <ul>
+                                <li><strong>NO:</strong> Rechaza factura y notifica al proveedor</li>
+                                <li><strong>SI:</strong> Continúa con proceso de aprobación</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">7</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Notificación de Rechazo (si aplica)</div>
+                        <div class="step-description">
+                            Si la factura es rechazada, el proveedor recibe notificación con:
+                            <ul>
+                                <li>Motivo del rechazo</li>
+                                <li>Acciones correctivas necesarias</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">8</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #c62828;">APROBADOR</span>
+                        <div class="step-title">Aprobación de Factura</div>
+                        <div class="step-description">
+                            El aprobador correspondiente recibe notificación para aprobar la factura:
+                            <ul>
+                                <li>Revisa monto y conformidad</li>
+                                <li>Verifica disponibilidad presupuestaria</li>
+                                <li>Aprueba o rechaza el pago</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">9</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Cálculo de Retenciones</div>
+                        <div class="step-description">
+                            El sistema calcula automáticamente retenciones aplicables:
+                            <ul>
+                                <li>Retención de Ganancias</li>
+                                <li>Retención de IVA</li>
+                                <li>Retención de Ingresos Brutos</li>
+                                <li>Otras retenciones según normativa</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">10</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Generación de Orden de Pago</div>
+                        <div class="step-description">
+                            Se genera la orden de pago con:
+                            <ul>
+                                <li>Monto bruto de la factura</li>
+                                <li>Retenciones calculadas</li>
+                                <li>Monto neto a pagar</li>
+                                <li>Fecha de pago según condiciones</li>
+                                <li>Forma de pago (transferencia/cheque)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">11</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Visualización en Portal</div>
+                        <div class="step-description">
+                            El proveedor puede ver en el portal:
+                            <ul>
+                                <li>Orden de pago generada</li>
+                                <li>Retenciones aplicadas</li>
+                                <li>Monto neto a recibir</li>
+                                <li>Fecha estimada de pago</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">12</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Ejecución del Pago</div>
+                        <div class="step-description">
+                            Según fecha de vencimiento o política de pagos:
+                            <ul>
+                                <li>Ejecuta transferencia bancaria</li>
+                                <li>Genera y emite cheque (si aplica)</li>
+                                <li>Registra pago en sistema contable</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">13</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #283593;">PAGO A PROVEEDORES</span>
+                        <div class="step-title">Emisión de Certificados de Retención</div>
+                        <div class="step-description">
+                            Se emiten certificados de retención correspondientes que el proveedor puede descargar del portal
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">14</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Recepción de Notificación de Pago</div>
+                        <div class="step-description">
+                            El proveedor recibe notificación del pago ejecutado
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">15</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #e65100;">PROVEEDOR</span>
+                        <div class="step-title">Descarga de Documentación</div>
+                        <div class="step-description">
+                            El proveedor accede al portal y descarga:
+                            <ul>
+                                <li>Comprobante de pago</li>
+                                <li>Certificados de retención</li>
+                                <li>Orden de pago detallada</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">16</div>
+                    <div class="step-content">
+                        <span class="step-actor" style="background: #424242;">SISTEMA</span>
+                        <div class="step-title">Cierre del Ciclo</div>
+                        <div class="step-description">
+                            El sistema registra el cierre del ciclo de compra:
+                            <ul>
+                                <li>Actualiza estado de la OC a "Pagada"</li>
+                                <li>Actualiza saldo con proveedor</li>
+                                <li>Registra en contabilidad</li>
+                                <li>Archiva documentación</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes">
+                <h4>Notas Importantes:</h4>
+                <ul>
+                    <li>Este proceso es transversal a TODOS los tipos de compra</li>
+                    <li>La validación tripartita (OC-Factura-Conforme) es crítica para prevenir fraudes</li>
+                    <li>Las retenciones deben calcularse según normativa vigente y categoría del proveedor</li>
+                    <li>El portal de proveedores brinda transparencia y reduce consultas</li>
+                    <li>Los certificados de retención deben estar disponibles inmediatamente después del pago</li>
+                    <li>Es importante establecer calendarios de pago claros y comunicarlos a los proveedores</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="margin-top: 60px; padding: 30px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+            <h3 style="color: #2c3e50; margin-bottom: 15px;">Resumen de Reorganización</h3>
+            <p style="color: #7f8c8d; line-height: 1.8;">
+                Los circuitos han sido reorganizados por <strong>tipo de operación de compra</strong>
+                en lugar de por sector/actor. Esto permite:<br>
+                ✓ Mayor claridad en los procesos<br>
+                ✓ Identificación rápida del circuito aplicable<br>
+                ✓ Separación del proceso de pedidos del tipo de compra<br>
+                ✓ Proceso de pagos transversal y estandarizado<br>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

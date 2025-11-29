@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo Purchase Requests - Resumen Completo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            line-height: 1.6;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            font-size: 2em;
+        }
+
+        h3 {
+            color: #2c3e50;
+            margin: 30px 0 15px 0;
+            font-size: 1.5em;
+        }
+
+        h4 {
+            color: #34495e;
+            margin: 20px 0 10px 0;
+            font-size: 1.2em;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h4 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        .feature-card p {
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+
+        .feature-card ul {
+            margin-top: 15px;
+            margin-left: 20px;
+        }
+
+        .feature-card li {
+            margin: 8px 0;
+            color: #555;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .highlight-box h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .states-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .states-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .states-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .states-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .state-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .state-draft { background: #95a5a6; color: white; }
+        .state-pending { background: #f39c12; color: white; }
+        .state-approval { background: #3498db; color: white; }
+        .state-approved { background: #2ecc71; color: white; }
+        .state-quotes { background: #9b59b6; color: white; }
+        .state-specs { background: #1abc9c; color: white; }
+        .state-ready { background: #16a085; color: white; }
+        .state-erp { background: #34495e; color: white; }
+        .state-received { background: #27ae60; color: white; }
+        .state-rejected { background: #e74c3c; color: white; }
+
+        .purchase-type-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            transition: all 0.3s;
+        }
+
+        .purchase-type-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .purchase-type-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .purchase-type-number {
+            min-width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-right: 15px;
+        }
+
+        .purchase-type-title {
+            flex: 1;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .code-block .comment {
+            color: #95a5a6;
+        }
+
+        .code-block .keyword {
+            color: #3498db;
+        }
+
+        .code-block .string {
+            color: #2ecc71;
+        }
+
+        .approval-dimension {
+            background: #fff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .approval-dimension h4 {
+            color: #667eea;
+            margin: 0 0 10px 0;
+        }
+
+        .flow-diagram {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .step {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .step::before {
+            content: "→";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        ul {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+
+        .toc h3 {
+            color: #34495e;
+            margin-top: 0;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .toc li {
+            margin: 10px 0;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .toc a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Módulo Purchase Requests</h1>
+        <p class="subtitle">
+            Sistema completo de gestión de requerimientos de compra con workflow configurable
+            <span class="status-badge">ACTUALIZADO 2025-11-29</span>
+        </p>
+
+        <div class="toc">
+            <h3>Índice de Contenidos</h3>
+            <ul>
+                <li><a href="#overview">Resumen Ejecutivo</a></li>
+                <li><a href="#purchase-types">Tipos de Compra (5 circuitos)</a></li>
+                <li><a href="#approval-system">Sistema de Aprobaciones Mejorado (6 dimensiones)</a></li>
+                <li><a href="#specs-approval">Paso de Aprobación de Especificaciones</a></li>
+                <li><a href="#states">Estados del Purchase Request (14 estados)</a></li>
+                <li><a href="#features">Características Principales</a></li>
+                <li><a href="#integrations">Integraciones (ERP + IA)</a></li>
+            </ul>
+        </div>
+
+        <h2 id="overview">Resumen Ejecutivo</h2>
+
+        <div class="highlight-box">
+            <h3>Objetivo del Módulo</h3>
+            <p>
+                Sistema completo de <strong>gestión de requerimientos de compra</strong> con:
+            </p>
+            <ul>
+                <li>5 tipos de compra configurables (DIRECT, WITH_QUOTE, WITH_BID, WITH_ADVANCE, DIRECT_INVOICE)</li>
+                <li>Workflow de aprobación multinivel con 6 dimensiones configurables</li>
+                <li>Proceso de cotizaciones y aprobación de especificaciones</li>
+                <li>Integración bidireccional con ERP Softland</li>
+                <li>Recepciones de mercadería (parcial/total)</li>
+                <li>Notificaciones en tiempo real</li>
+                <li>7 puntos de integración con IA</li>
+            </ul>
+        </div>
+
+        <h2 id="purchase-types">Tipos de Compra</h2>
+
+        <p>El sistema soporta <strong>5 circuitos de compra configurables</strong>, basados en el documento de referencia de UDESA (circuitos-compras.html):</p>
+
+        <div class="purchase-type-card">
+            <div class="purchase-type-header">
+                <div class="purchase-type-number">1</div>
+                <div class="purchase-type-title">DIRECT - Compra Directa/Simple</div>
+            </div>
+            <ul>
+                <li><strong>Sin cotización</strong> previa</li>
+                <li>Proveedor conocido o único</li>
+                <li>Flujo más rápido y directo</li>
+                <li>Ideal para: Compras recurrentes, proveedores habituales, montos bajos</li>
+            </ul>
+            <div class="code-block">
+DRAFT → PENDING → IN_APPROVAL → APPROVED → SENT_TO_ERP → PO_CREATED → RECEIVED
+            </div>
+        </div>
+
+        <div class="purchase-type-card">
+            <div class="purchase-type-header">
+                <div class="purchase-type-number">2</div>
+                <div class="purchase-type-title">WITH_QUOTE - Compra con Cotización Simple</div>
+            </div>
+            <ul>
+                <li>Comparar <strong>ofertas de múltiples proveedores</strong></li>
+                <li>Selección de mejor precio/calidad</li>
+                <li>Aprobación de especificaciones técnicas</li>
+                <li>Ideal para: Compras sin proveedor definido, buscar mejores precios</li>
+            </ul>
+            <div class="code-block">
+DRAFT → PENDING → IN_APPROVAL → AWAITING_QUOTES → QUOTES_RECEIVED →
+<span class="keyword">SPECS_APPROVED</span> → READY_FOR_PO → SENT_TO_ERP → PO_CREATED → RECEIVED
+            </div>
+        </div>
+
+        <div class="purchase-type-card">
+            <div class="purchase-type-header">
+                <div class="purchase-type-number">3</div>
+                <div class="purchase-type-title">WITH_BID - Licitación/Concurso</div>
+            </div>
+            <ul>
+                <li>Proceso <strong>formal competitivo</strong></li>
+                <li>Evaluación técnica <strong>obligatoria</strong></li>
+                <li>Publicación de pliego de licitación</li>
+                <li>Aprobación rigurosa de especificaciones</li>
+                <li>Ideal para: Compras estratégicas, montos elevados, regulaciones</li>
+            </ul>
+            <div class="code-block">
+DRAFT → PENDING → IN_APPROVAL → AWAITING_QUOTES → QUOTES_RECEIVED →
+(Evaluación Técnica) → <span class="keyword">SPECS_APPROVED</span> → READY_FOR_PO →
+SENT_TO_ERP → PO_CREATED → RECEIVED
+            </div>
+        </div>
+
+        <div class="purchase-type-card">
+            <div class="purchase-type-header">
+                <div class="purchase-type-number">4</div>
+                <div class="purchase-type-title">WITH_ADVANCE - Compra con Anticipo</div>
+            </div>
+            <ul>
+                <li><strong>Pago anticipado</strong> antes de entrega</li>
+                <li>Autorización especial de anticipo</li>
+                <li>Doble facturación (anticipo + saldo)</li>
+                <li>Seguimiento de pagos parciales</li>
+                <li>Ideal para: Fabricación especial, importaciones, proveedores que requieren anticipo</li>
+            </ul>
+            <div class="code-block">
+DRAFT → PENDING → IN_APPROVAL → APPROVED → READY_FOR_PO →
+SENT_TO_ERP → PO_CREATED → (Pago Anticipo) → Entrega → RECEIVED → (Pago Saldo)
+            </div>
+        </div>
+
+        <div class="purchase-type-card">
+            <div class="purchase-type-header">
+                <div class="purchase-type-number">5</div>
+                <div class="purchase-type-title">DIRECT_INVOICE - Factura Directa (Sin OC)</div>
+            </div>
+            <ul>
+                <li><strong>Sin OC previa</strong></li>
+                <li>Gastos menores o urgentes</li>
+                <li>Servicios recurrentes (luz, gas, etc.)</li>
+                <li>Aprobación post-facto</li>
+                <li>Ideal para: Emergencias, gastos de representación, servicios públicos</li>
+            </ul>
+            <div class="warning-box">
+                <strong>Nota:</strong> Este flujo es excepcional y debe controlarse estrictamente. La factura se recibe sin PR previo y requiere autorización del responsable del centro de costo.
+            </div>
+        </div>
+
+        <h2 id="approval-system">Sistema de Aprobaciones Mejorado</h2>
+
+        <div class="success-box">
+            <strong>Novedad:</strong> El sistema ahora evalúa <strong>6 dimensiones configurables</strong> para determinar automáticamente los niveles de aprobación requeridos para cada Purchase Request.
+        </div>
+
+        <div class="approval-dimension">
+            <h4>1. Por MONTO (mejorado)</h4>
+            <p>Configuración de umbrales de aprobación según el monto estimado:</p>
+            <div class="code-block">
+<span class="comment">// Ejemplo de configuración</span>
+$0 - $10,000:     Nivel 1 (Supervisor)
+$10,001 - $50,000: Nivel 1 + Nivel 2 (Gerente)
+$50,001+:         Nivel 1 + Nivel 2 + Nivel 3 (Director)
+            </div>
+        </div>
+
+        <div class="approval-dimension">
+            <h4>2. Por CATEGORÍA/TIPO DE ITEM (NUEVO)</h4>
+            <p>Aprobaciones específicas según la categoría de los items solicitados:</p>
+            <div class="code-block">
+Categoría <span class="string">"Tecnología"</span> → Requiere aprobación de Revisor Técnico IT
+Categoría <span class="string">"Obras"</span> → Requiere aprobación de Gerente de Infraestructura
+Categoría <span class="string">"Farmacia"</span> → Requiere aprobación de Responsable Farmacéutico
+            </div>
+        </div>
+
+        <div class="approval-dimension">
+            <h4>3. Por ITEM/CÓDIGO ESPECÍFICO (NUEVO)</h4>
+            <p>Aprobaciones para productos específicos que requieren validación especial:</p>
+            <div class="code-block">
+Items de seguridad (cámaras, alarmas) → Requiere aprobación de Seguridad
+Items controlados (medicamentos) → Requiere aprobación de Control
+Items de activos fijos → Requiere aprobación de Patrimonio
+            </div>
+        </div>
+
+        <div class="approval-dimension">
+            <h4>4. Por PUESTO/ROL del SOLICITANTE (NUEVO)</h4>
+            <p>Niveles adicionales según el rol jerárquico del solicitante:</p>
+            <div class="code-block">
+Solicitante con rol <span class="string">"Auxiliar"</span> → Requiere aprobación adicional del Supervisor
+Solicitante con rol <span class="string">"Gerente"</span> → Aprobación simplificada (auto-aprobación hasta cierto monto)
+Solicitante con rol <span class="string">"Junior"</span> → Doble aprobación obligatoria
+            </div>
+        </div>
+
+        <div class="approval-dimension">
+            <h4>5. Por DEPARTAMENTO/CENTRO DE COSTO (NUEVO)</h4>
+            <p>Aprobaciones según la estructura organizacional:</p>
+            <div class="code-block">
+Departamento <span class="string">"SEDE-PILAR"</span> → Requiere aprobación de Gerente de Sede Pilar
+Centro de costo <span class="string">"CC-100"</span> → Requiere aprobación especial de Contabilidad
+Departamento <span class="string">"INVESTIGACIÓN"</span> → Requiere aprobación de Director de Investigación
+            </div>
+        </div>
+
+        <div class="approval-dimension">
+            <h4>6. ATRIBUTOS PERSONALIZABLES (NUEVO)</h4>
+            <p>Reglas custom en formato JSON para casos especiales:</p>
+            <div class="code-block">
+{
+  <span class="string">"purchaseType"</span>: [<span class="string">"WITH_BID"</span>],      <span class="comment">// Solo licitaciones</span>
+  <span class="string">"priority"</span>: [<span class="string">"URGENT"</span>],             <span class="comment">// Solo urgentes</span>
+  <span class="string">"estimatedAmount"</span>: { <span class="string">"min"</span>: 50000 } <span class="comment">// Montos altos</span>
+}
+→ Requiere aprobación de Director Ejecutivo
+            </div>
+        </div>
+
+        <div class="info-box">
+            <strong>Funcionamiento:</strong> El sistema evalúa TODAS las 6 dimensiones simultáneamente y combina los niveles de aprobación requeridos. Si un PR cumple con múltiples criterios, se agregan todos los niveles necesarios sin duplicar.
+        </div>
+
+        <h2 id="specs-approval">Paso de Aprobación de Especificaciones/Cotización</h2>
+
+        <div class="highlight-box">
+            <h3>Estado Clave: SPECS_APPROVED</h3>
+            <p>
+                Este es el <strong>paso crítico</strong> que ocurre <strong>DESPUÉS</strong> de recibir las cotizaciones
+                y <strong>ANTES</strong> de emitir la Orden de Compra.
+            </p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>¿Cuándo aplica?</h4>
+                <p>Solo para tipos de compra:</p>
+                <ul>
+                    <li><strong>WITH_QUOTE</strong> (Cotización Simple)</li>
+                    <li><strong>WITH_BID</strong> (Licitación/Concurso)</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>¿Qué valida?</h4>
+                <ul>
+                    <li>Evaluación técnica completada</li>
+                    <li>Mejor oferta seleccionada</li>
+                    <li>Precio final aprobado</li>
+                    <li>Especificaciones correctas</li>
+                    <li>Listo para emitir OC</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Flujo Completo del Proceso de Cotizaciones</h3>
+
+        <div class="flow-diagram">
+┌────────────────────────────────────────────────────────────────┐
+│ AWAITING_QUOTES                                                │
+│ Compras envía solicitud a proveedores                         │
+└────────────────┬───────────────────────────────────────────────┘
+                 │
+                 ▼
+         ┌───────────────┐
+         │ ¿Licitación?  │
+         └───┬───────┬───┘
+             │       │
+     SI      │       │      NO
+             │       │
+             ▼       ▼
+      Pliego    Cotización
+      formal    simple
+             │       │
+             └───┬───┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────┐
+│ QUOTES_RECEIVED                                                │
+│ Proveedores presentan ofertas                                  │
+└────────────────┬───────────────────────────────────────────────┘
+                 │
+                 ▼
+         ┌─────────────────┐
+         │ ¿Evaluación     │
+         │ técnica?        │
+         └───┬─────────┬───┘
+             │         │
+     SI      │         │      NO
+             │         │
+             ▼         │
+      ┌──────────────┐ │
+      │ Revisor      │ │
+      │ Técnico      │ │
+      │ evalúa specs │ │
+      └──────┬───────┘ │
+             │         │
+             ▼         │
+      ┌──────────────┐ │
+      │ Tech Approved│ │
+      │ / Rejected   │ │
+      └──────┬───────┘ │
+             │         │
+             └────┬────┘
+                  │
+                  ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Compras compara cotizaciones                                   │
+│ (Precio, plazo, condiciones, garantía)                         │
+└────────────────┬───────────────────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Selección de mejor cotización                                  │
+└────────────────┬───────────────────────────────────────────────┘
+                 │
+                 ▼
+         ┌─────────────────┐
+         │ ¿Requiere       │
+         │ aprobación      │
+         │ adicional?      │
+         └───┬─────────┬───┘
+             │         │
+     SI      │         │      NO
+  (monto alto)│         │
+             ▼         │
+      ┌──────────────┐ │
+      │ Aprobador    │ │
+      │ revisa       │ │
+      │ selección    │ │
+      └──────┬───────┘ │
+             │         │
+        Aprueba        │
+             │         │
+             └────┬────┘
+                  │
+                  ▼
+┌────────────────────────────────────────────────────────────────┐
+│ ✓ SPECS_APPROVED (Estado Clave)                               │
+│ Cotización aprobada, especificaciones validadas               │
+└────────────────┬───────────────────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────┐
+│ READY_FOR_PO                                                   │
+│ Sistema marca cotización como SELECTED                         │
+└────────────────┬───────────────────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Emisión de OC en ERP                                           │
+└────────────────────────────────────────────────────────────────┘
+        </div>
+
+        <div class="success-box">
+            <h4>Ejemplo Real (basado en UDESA)</h4>
+            <p><strong>Caso:</strong> Compra de notebooks para equipo de desarrollo - $45,000</p>
+            <ol>
+                <li>PR aprobado por Supervisor y Gerente → <strong>AWAITING_QUOTES</strong></li>
+                <li>Compras solicita cotizaciones a 3 proveedores (Dell, HP, Lenovo)</li>
+                <li>Proveedores envían ofertas → <strong>QUOTES_RECEIVED</strong></li>
+                <li>Revisor Técnico IT evalúa especificaciones:
+                    <ul>
+                        <li>Dell: TECH_APPROVED (cumple todos los requisitos)</li>
+                        <li>HP: TECH_APPROVED (cumple requisitos)</li>
+                        <li>Lenovo: TECH_REJECTED (RAM insuficiente)</li>
+                    </ul>
+                </li>
+                <li>Compras compara Dell vs HP (precio, garantía, plazo)</li>
+                <li>Selecciona HP (mejor relación precio/calidad, $43,500)</li>
+                <li>Como monto > $10k, requiere aprobación de Gerente</li>
+                <li>Gerente revisa y aprueba la selección → <strong>SPECS_APPROVED</strong></li>
+                <li>Sistema marca cotización de HP como SELECTED</li>
+                <li>Estado cambia a <strong>READY_FOR_PO</strong></li>
+                <li>Compras puede emitir OC con confianza en ERP</li>
+            </ol>
+        </div>
+
+        <h2 id="states">Estados del Purchase Request</h2>
+
+        <table class="states-table">
+            <thead>
+                <tr>
+                    <th>Estado</th>
+                    <th>Descripción</th>
+                    <th>Tipos de Compra</th>
+                    <th>Puede Editar</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="state-badge state-draft">DRAFT</span></td>
+                    <td>Borrador, no enviado aún</td>
+                    <td>Todos</td>
+                    <td>Solicitante</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-pending">PENDING</span></td>
+                    <td>Esperando primera aprobación</td>
+                    <td>Todos</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-approval">IN_APPROVAL</span></td>
+                    <td>En proceso de aprobación multinivel</td>
+                    <td>Todos</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-approved">APPROVED</span></td>
+                    <td>Aprobado, listo para compra directa</td>
+                    <td>DIRECT, DIRECT_INVOICE</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-quotes">AWAITING_QUOTES</span></td>
+                    <td>Esperando cotizaciones de proveedores</td>
+                    <td>WITH_QUOTE, WITH_BID</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-quotes">QUOTES_RECEIVED</span></td>
+                    <td>Cotizaciones recibidas, en evaluación</td>
+                    <td>WITH_QUOTE, WITH_BID</td>
+                    <td>No</td>
+                </tr>
+                <tr style="background: #e8f5e9;">
+                    <td><span class="state-badge state-specs">SPECS_APPROVED</span></td>
+                    <td><strong>Especificaciones/cotización aprobadas (CLAVE)</strong></td>
+                    <td>WITH_QUOTE, WITH_BID</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-ready">READY_FOR_PO</span></td>
+                    <td>Listo para emitir Orden de Compra</td>
+                    <td>WITH_QUOTE, WITH_BID, WITH_ADVANCE</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-erp">SENT_TO_ERP</span></td>
+                    <td>Enviado al ERP Softland</td>
+                    <td>Todos</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-erp">PO_CREATED</span></td>
+                    <td>OC creada en ERP</td>
+                    <td>Todos</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-received">PARTIALLY_RECEIVED</span></td>
+                    <td>Recepción parcial de mercadería</td>
+                    <td>Todos</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-received">RECEIVED</span></td>
+                    <td>Completamente recibido</td>
+                    <td>Todos</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-rejected">REJECTED</span></td>
+                    <td>Rechazado en algún nivel</td>
+                    <td>Todos</td>
+                    <td>Solicitante (reenvío)</td>
+                </tr>
+                <tr>
+                    <td><span class="state-badge state-rejected">CANCELLED</span></td>
+                    <td>Cancelado por solicitante/admin</td>
+                    <td>Todos</td>
+                    <td>No</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="features">Características Principales</h2>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>Workflow Configurable</h4>
+                <ul>
+                    <li>5 tipos de compra diferenciados</li>
+                    <li>14 estados posibles</li>
+                    <li>Flujos adaptables por cliente</li>
+                    <li>Reglas de aprobación flexibles</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>Aprobaciones Multinivel</h4>
+                <ul>
+                    <li>6 dimensiones de evaluación</li>
+                    <li>Aprobación paralela o secuencial</li>
+                    <li>Notificaciones automáticas</li>
+                    <li>Historial completo</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>Gestión de Cotizaciones</h4>
+                <ul>
+                    <li>Solicitud a múltiples proveedores</li>
+                    <li>Evaluación técnica</li>
+                    <li>Comparativo automático</li>
+                    <li>Aprobación de especificaciones</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>Integración ERP</h4>
+                <ul>
+                    <li>Sincronización bidireccional</li>
+                    <li>Softland SQL Server</li>
+                    <li>Sync automático cada 5 min</li>
+                    <li>Logs completos</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>Recepciones</h4>
+                <ul>
+                    <li>Recepción parcial/total</li>
+                    <li>OCR de remitos</li>
+                    <li>Control de calidad</li>
+                    <li>Actualización de inventario</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>Trazabilidad</h4>
+                <ul>
+                    <li>Timeline completo</li>
+                    <li>Auditoría de cambios</li>
+                    <li>Comentarios internos</li>
+                    <li>Documentos adjuntos</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2 id="integrations">Integraciones</h2>
+
+        <h3>Integración con ERP Softland</h3>
+
+        <div class="info-box">
+            <strong>Arquitectura:</strong> Sync-Client standalone + Parse + PostgreSQL
+            <br><br>
+            <strong>Flujo:</strong> Softland SQL ← Sync-Client.exe → Parse → PostgreSQL (sync tables) ← Hub
+            <br><br>
+            <strong>Frecuencia:</strong> Sincronización automática cada 5 minutos
+        </div>
+
+        <h3>7 Puntos de Integración con IA</h3>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>1. Asistente de Creación</h4>
+                <p>Autocompletado inteligente, estimaciones de precio y cantidad basado en histórico</p>
+            </div>
+
+            <div class="feature-card">
+                <h4>2. Detección de Duplicados</h4>
+                <p>Validación automática de PRs similares y verificación de presupuesto</p>
+            </div>
+
+            <div class="feature-card">
+                <h4>3. Scoring de Aprobación</h4>
+                <p>Análisis de riesgo y recomendaciones para aprobadores</p>
+            </div>
+
+            <div class="feature-card">
+                <h4>4. Matching Automático OC ↔ PR</h4>
+                <p>Vinculación inteligente aunque no haya referencia exacta</p>
+            </div>
+
+            <div class="feature-card">
+                <h4>5. OCR de Remitos</h4>
+                <p>Extracción automática de datos para autocompletar recepciones</p>
+            </div>
+
+            <div class="feature-card">
+                <h4>6. Analytics Predictivos</h4>
+                <p>Predicción de necesidades y optimización de compras</p>
+            </div>
+
+            <div class="feature-card">
+                <h4>7. Chatbot de Asistencia</h4>
+                <p>Consultas de estado y guía de uso en lenguaje natural</p>
+            </div>
+        </div>
+
+        <h2>Roadmap de Implementación</h2>
+
+        <div class="highlight-box">
+            <h3>Estrategia MVP + Full</h3>
+            <p><strong>Total estimado:</strong> 5 semanas</p>
+
+            <h4>MVP (2.5 semanas) - Demo mostrable</h4>
+            <ul>
+                <li>Semana 1: Infraestructura (Modelos Prisma + Endpoints básicos)</li>
+                <li>Semana 2: Sincronización (Sync-client instalado + funcionando)</li>
+                <li>Semana 2.5: CRUD PRs + Aprobación simple (1 nivel)</li>
+                <li><strong>Demo MVP:</strong> Flujo PR → Aprobar → Softland → OC</li>
+            </ul>
+
+            <h4>FULL (2.5 semanas) - Production ready</h4>
+            <ul>
+                <li>Semana 3: Aprobación multinivel (6 dimensiones) + Cotizaciones + Aprobación de Specs</li>
+                <li>Semana 4: Notificaciones + Recepciones + Anticipos</li>
+                <li>Semana 5: UI completa + Testing E2E + Deploy</li>
+                <li><strong>Producción:</strong> Sistema completo en cliente</li>
+            </ul>
+        </div>
+
+        <div class="success-box">
+            <h3>Configuración Requerida</h3>
+            <ul>
+                <li>Acceso a Softland SQL Server (host, port, DB, user, pass)</li>
+                <li>Estructura de tablas Softland (RequerimientosCompra, OrdenesCompra, Recepciones)</li>
+                <li>Servidor Windows para sync-client</li>
+                <li>Definición de niveles de aprobación por cliente</li>
+                <li>Configuración de tipos de compra a habilitar</li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 60px; padding: 30px; background: #f8f9fa; border-radius: 8px; text-align: center; border-top: 4px solid #667eea;">
+            <h3 style="color: #2c3e50; margin-bottom: 15px;">Módulo Purchase Requests</h3>
+            <p style="color: #7f8c8d; line-height: 1.8;">
+                Sistema completo y configurable para gestión de requerimientos de compra<br>
+                con 5 tipos de circuitos, aprobaciones multinivel (6 dimensiones),<br>
+                proceso de cotizaciones con aprobación de especificaciones,<br>
+                integración bidireccional con ERP e inteligencia artificial.<br><br>
+                <strong>Documento actualizado:</strong> 2025-11-29<br>
+                <strong>Estado:</strong> Listo para implementación
+            </p>
+        </div>
+    </div>
+</body>
+</html>

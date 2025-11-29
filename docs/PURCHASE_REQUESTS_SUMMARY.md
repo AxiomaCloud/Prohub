@@ -240,32 +240,170 @@ Softland SQL ← Sync-Client.exe → Parse → PostgreSQL (sync tables) ← Hub
 
 ---
 
+## 🔄 Paso de Aprobación de Especificaciones/Cotización (NUEVO - CLAVE)
+
+### ¿Qué es?
+Un paso crítico que ocurre **DESPUÉS** de recibir las cotizaciones y **ANTES** de emitir la OC.
+
+### ¿Cuándo aplica?
+Solo para tipos de compra **WITH_QUOTE** y **WITH_BID**.
+
+### ¿Qué valida?
+
+```
+Estado: SPECS_APPROVED
+
+✅ Las cotizaciones fueron evaluadas técnicamente (si aplica)
+✅ Se seleccionó la mejor oferta según criterios definidos
+✅ El precio final fue aprobado por el responsable
+✅ Las especificaciones técnicas son correctas y completas
+✅ Se puede proceder a emitir la OC con confianza
+```
+
+### Flujo del Paso
+
+```
+QUOTES_RECEIVED
+    ↓
+Evaluación Técnica (si aplica)
+    ↓
+Comparación de Cotizaciones
+    ↓
+Selección de Mejor Oferta
+    ↓
+¿Requiere Aprobación Adicional por Monto?
+    ↓ (si es monto alto)
+Aprobador revisa selección y precio final
+    ↓
+SPECS_APPROVED (estado clave)
+    ↓
+READY_FOR_PO (listo para emitir OC)
+    ↓
+Emisión de OC en ERP
+```
+
+### Ejemplo Real (basado en UDESA)
+
+```javascript
+// Caso: Compra de notebooks por $45,000
+
+1. PR aprobado → AWAITING_QUOTES
+2. Compras solicita cotizaciones a 3 proveedores
+3. Proveedores envían ofertas → QUOTES_RECEIVED
+4. Revisor Técnico IT evalúa especificaciones técnicas
+   - Proveedor A: TECH_APPROVED (cumple specs)
+   - Proveedor B: TECH_APPROVED (cumple specs)
+   - Proveedor C: TECH_REJECTED (specs insuficientes)
+5. Compras compara A vs B (precio, plazo, garantía)
+6. Selecciona Proveedor B (mejor relación precio/calidad)
+7. Como monto > $10k, requiere aprobación de Gerente
+8. Gerente revisa y aprueba selección → SPECS_APPROVED
+9. Sistema marca cotización B como SELECTED
+10. Estado cambia a READY_FOR_PO
+11. Compras puede emitir OC con confianza
+```
+
 ## 📊 Características del Módulo
 
-### Estados de Purchase Request
+### Tipos de Compra (NUEVO)
+
+El sistema soporta 5 tipos de compra configurables (basado en circuitos-compras.html):
+
+1. **DIRECT** - Compra Directa/Simple
+   - Sin cotización
+   - Proveedor conocido/único
+   - Flujo más rápido
+
+2. **WITH_QUOTE** - Compra con Cotización Simple
+   - Comparar ofertas de múltiples proveedores
+   - Selección de mejor precio
+   - Aprobación de especificaciones
+
+3. **WITH_BID** - Compra con Licitación/Concurso
+   - Proceso formal competitivo
+   - Evaluación técnica obligatoria
+   - Pliego de licitación
+   - Aprobación de especificaciones
+
+4. **WITH_ADVANCE** - Compra con Anticipo
+   - Pago anticipado antes de entrega
+   - Autorización especial de anticipo
+   - Doble facturación (anticipo + saldo)
+
+5. **DIRECT_INVOICE** - Factura Directa (Sin OC)
+   - Gastos menores/urgentes
+   - Servicios recurrentes
+   - Sin OC previa
+   - Aprobación post-facto
+
+### Estados de Purchase Request (ACTUALIZADO)
 
 1. **DRAFT** - Borrador
 2. **PENDING** - Esperando primera aprobación
 3. **IN_APPROVAL** - En proceso de aprobación
-4. **APPROVED** - Aprobado, listo para ERP
-5. **SENT_TO_ERP** - Sincronizado a Softland (via sync-client)
-6. **PO_CREATED** - OC creada en Softland
-7. **PARTIALLY_RECEIVED** - Recepción parcial
-8. **RECEIVED** - Completamente recibido
-9. **REJECTED** - Rechazado
-10. **CANCELLED** - Cancelado
+4. **APPROVED** - Aprobado, listo para ERP (compra directa)
+5. **AWAITING_QUOTES** - Esperando cotizaciones (NUEVO)
+6. **QUOTES_RECEIVED** - Cotizaciones recibidas (NUEVO)
+7. **SPECS_APPROVED** - Especificaciones/cotización aprobadas (NUEVO - CLAVE)
+8. **READY_FOR_PO** - Listo para emitir OC (NUEVO)
+9. **SENT_TO_ERP** - Sincronizado a Softland
+10. **PO_CREATED** - OC creada en Softland
+11. **PARTIALLY_RECEIVED** - Recepción parcial
+12. **RECEIVED** - Completamente recibido
+13. **REJECTED** - Rechazado
+14. **CANCELLED** - Cancelado
 
-### Workflow de Aprobación
+### Sistema de Aprobaciones Mejorado (NUEVO)
 
-**Por Monto** (configurable):
-- $0 - $10,000: Supervisor
-- $10,001 - $50,000: Supervisor + Gerente
-- $50,001+: Supervisor + Gerente + Director
+El sistema ahora soporta **6 dimensiones configurables** para determinar los niveles de aprobación requeridos:
 
-**Acciones**:
+#### 1. Por MONTO (ya existía, mejorado)
+```javascript
+$0 - $10,000: Nivel 1 (Supervisor)
+$10,001 - $50,000: Nivel 1 + Nivel 2 (Gerente)
+$50,001+: Nivel 1 + Nivel 2 + Nivel 3 (Director)
+```
+
+#### 2. Por CATEGORÍA/TIPO DE ITEM (NUEVO)
+```javascript
+Categoría "Tecnología" → Requiere aprobación de Revisor Técnico IT
+Categoría "Obras" → Requiere aprobación de Gerente de Infraestructura
+```
+
+#### 3. Por ITEM/CÓDIGO ESPECÍFICO (NUEVO)
+```javascript
+Items de seguridad (cámaras, alarmas) → Requiere aprobación de Seguridad
+Items farmacéuticos → Requiere aprobación de Farmacia
+```
+
+#### 4. Por PUESTO/ROL del SOLICITANTE (NUEVO)
+```javascript
+Solicitante con rol "Auxiliar" → Requiere aprobación adicional
+Solicitante con rol "Gerente" → Aprobación simplificada
+```
+
+#### 5. Por DEPARTAMENTO/CENTRO DE COSTO (NUEVO)
+```javascript
+Departamento "SEDE-PILAR" → Requiere aprobación de Gerente de Sede
+Centro de costo "CC-100" → Requiere aprobación especial
+```
+
+#### 6. ATRIBUTOS PERSONALIZABLES (NUEVO)
+```javascript
+{
+  "purchaseType": ["WITH_BID"],      // Licitaciones
+  "priority": ["URGENT"],             // Urgentes
+  "estimatedAmount": { "min": 50000 } // Montos altos
+}
+→ Requiere aprobación de Director
+```
+
+**Acciones de Aprobación**:
 - ✅ Aprobar
 - ❌ Rechazar
 - ✏️ Solicitar cambios
+
+**El sistema combina TODAS las dimensiones** para calcular los niveles de aprobación requeridos para cada PR.
 
 ### Notificaciones
 

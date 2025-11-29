@@ -53,6 +53,9 @@ model PurchaseRequest {
   status          PurchaseRequestStatus
   priority        PurchaseRequestPriority @default(NORMAL)
 
+  // Tipo de Compra (NUEVO)
+  purchaseType    PurchaseType @default(DIRECT)
+
   // Multi-tenant
   tenantId        String
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
@@ -61,6 +64,7 @@ model PurchaseRequest {
   requestedBy     String
   requestedByUser User     @relation("RequestedPurchases", fields: [requestedBy], references: [id])
   department      String?  // Departamento/Centro de costo
+  costCenter      String?  // Centro de costo específico
 
   // Montos (opcional, para calcular nivel de aprobación)
   estimatedAmount Decimal?
@@ -68,6 +72,7 @@ model PurchaseRequest {
 
   // Fechas
   neededByDate    DateTime? // Fecha en que se necesita
+  quotesDeadline  DateTime? // Fecha límite para recibir cotizaciones (nuevo)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -77,31 +82,45 @@ model PurchaseRequest {
   erpStatus       ErpSyncStatus @default(PENDING)
   erpError        String?
 
+  // Anticipo (para purchaseType = WITH_ADVANCE)
+  requiresAdvance     Boolean @default(false)
+  advancePercentage   Decimal? // Porcentaje de anticipo (ej: 30, 50)
+  advanceAmount       Decimal? // Monto fijo de anticipo
+  advanceJustification String? @db.Text
+
   // Relaciones
   items           PurchaseRequestItem[]
   approvals       PurchaseRequestApproval[]
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
   purchaseOrderId String?
   comments        PurchaseRequestComment[]
+  quotes          SupplierQuote[] // Cotizaciones recibidas (nuevo)
+  selectedQuote   SupplierQuote? @relation("SelectedQuote", fields: [selectedQuoteId], references: [id])
+  selectedQuoteId String?
 
   @@unique([number, tenantId])
   @@index([tenantId, status])
   @@index([requestedBy])
   @@index([erpStatus])
   @@index([createdAt])
+  @@index([purchaseType])
 }
 
 enum PurchaseRequestStatus {
-  DRAFT           // Borrador, no enviado aún
-  PENDING         // Esperando aprobación
-  IN_APPROVAL     // En proceso de aprobación
-  APPROVED        // Aprobado, listo para enviar a ERP
-  SENT_TO_ERP     // Enviado al ERP
-  PO_CREATED      // OC creada en ERP
+  DRAFT              // Borrador, no enviado aún
+  PENDING            // Esperando aprobación
+  IN_APPROVAL        // En proceso de aprobación
+  APPROVED           // Aprobado, listo para enviar a ERP
+  SENT_TO_ERP        // Enviado al ERP
+  AWAITING_QUOTES    // Esperando cotizaciones de proveedores (nuevo)
+  QUOTES_RECEIVED    // Cotizaciones recibidas (nuevo)
+  SPECS_APPROVED     // Especificaciones/cotización aprobadas (nuevo)
+  READY_FOR_PO       // Listo para emitir OC (nuevo)
+  PO_CREATED         // OC creada en ERP
   PARTIALLY_RECEIVED // Parcialmente recibido
-  RECEIVED        // Completamente recibido
-  REJECTED        // Rechazado en algún nivel
-  CANCELLED       // Cancelado por el solicitante
+  RECEIVED           // Completamente recibido
+  REJECTED           // Rechazado en algún nivel
+  CANCELLED          // Cancelado por el solicitante
 }
 
 enum PurchaseRequestPriority {
@@ -109,6 +128,15 @@ enum PurchaseRequestPriority {
   NORMAL
   HIGH
   URGENT
+}
+
+// Tipos de Compra (basado en circuitos-compras.html)
+enum PurchaseType {
+  DIRECT             // Compra Directa/Simple (sin cotización, proveedor conocido)
+  WITH_QUOTE         // Compra con Cotización Simple (comparar ofertas)
+  WITH_BID           // Compra con Licitación/Concurso (proceso formal competitivo)
+  WITH_ADVANCE       // Compra con Anticipo (pago anticipado antes de entrega)
+  DIRECT_INVOICE     // Factura Directa (sin OC previa, gastos menores/urgentes)
 }
 
 enum ErpSyncStatus {
@@ -154,7 +182,7 @@ model PurchaseRequestItem {
 }
 
 // ============================================
-// NIVELES DE APROBACIÓN
+// NIVELES DE APROBACIÓN (MEJORADO)
 // ============================================
 
 model ApprovalLevel {
@@ -166,9 +194,26 @@ model ApprovalLevel {
   name            String   // "Supervisor", "Gerente", "Compras"
   description     String?
 
-  // Condiciones para este nivel
+  // 1. Condiciones por MONTO (ya existía)
   minAmount       Decimal? // Si el monto >= minAmount, se requiere este nivel
   maxAmount       Decimal? // Si el monto <= maxAmount, se requiere este nivel
+
+  // 2. Condiciones por CATEGORÍA/TIPO DE ITEM (NUEVO)
+  categoryIds     String[] // IDs de categorías que requieren este nivel
+
+  // 3. Condiciones por ITEM/CÓDIGO ESPECÍFICO (NUEVO)
+  specificItems   String[] // Códigos de productos específicos que requieren aprobación
+
+  // 4. Condiciones por PUESTO/ROL del SOLICITANTE (NUEVO)
+  requesterRoles  String[] // Roles del solicitante que requieren este nivel
+
+  // 5. Condiciones por DEPARTAMENTO/CENTRO DE COSTO (NUEVO)
+  departments     String[] // Departamentos que requieren este nivel
+  costCenters     String[] // Centros de costo que requieren este nivel
+
+  // 6. ATRIBUTOS PERSONALIZABLES (NUEVO)
+  customRules     Json?    // Reglas personalizadas en formato JSON
+  // Ejemplo: { "purchaseType": ["WITH_BID", "WITH_ADVANCE"], "priority": ["URGENT"] }
 
   // Aprobadores
   approverRoles   Role[]   // Roles que pueden aprobar en este nivel
@@ -177,6 +222,9 @@ model ApprovalLevel {
   // Configuración
   requiresAll     Boolean  @default(false) // Si true, todos los aprobadores deben aprobar
   autoApprove     Boolean  @default(false) // Aprobación automática (para niveles sin validación)
+
+  // Configuración por tipo de compra
+  appliesTo       PurchaseType[] @default([]) // Tipos de compra a los que aplica (vacío = todos)
 
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -305,6 +353,88 @@ enum QualityStatus {
   ACCEPTED
   REJECTED
   PENDING_INSPECTION
+}
+
+// ============================================
+// COTIZACIONES DE PROVEEDORES (NUEVO)
+// ============================================
+
+model SupplierQuote {
+  id                  String   @id @default(cuid())
+  purchaseRequestId   String
+  purchaseRequest     PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+
+  supplierId          String
+  supplier            User     @relation("SupplierQuotes", fields: [supplierId], references: [id])
+
+  // Datos de la cotización
+  quoteNumber         String?  // Número de cotización del proveedor
+  totalAmount         Decimal
+  currency            String   @default("ARS")
+  validUntil          DateTime // Fecha de validez de la cotización
+  deliveryDays        Int?     // Días de entrega
+  paymentTerms        String?  // Condiciones de pago
+
+  // Archivos
+  quoteFile           String?  // URL del archivo de cotización
+
+  // Estado
+  status              QuoteStatus @default(SUBMITTED)
+
+  // Evaluación técnica (para licitaciones)
+  technicalScore      Decimal? // Puntaje técnico (0-100)
+  technicalNotes      String?  @db.Text
+  technicalApprover   String?
+  technicalApprovedAt DateTime?
+
+  // Evaluación final
+  isSelected          Boolean  @default(false)
+  selectionNotes      String?  @db.Text
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relaciones
+  items               SupplierQuoteItem[]
+  selectedFor         PurchaseRequest[] @relation("SelectedQuote")
+
+  @@index([purchaseRequestId])
+  @@index([supplierId])
+  @@index([status])
+}
+
+enum QuoteStatus {
+  SUBMITTED          // Enviada por el proveedor
+  UNDER_REVIEW       // En revisión técnica
+  TECH_APPROVED      // Aprobada técnicamente
+  TECH_REJECTED      // Rechazada técnicamente
+  SELECTED           // Seleccionada para OC
+  REJECTED           // No seleccionada
+}
+
+model SupplierQuoteItem {
+  id              String   @id @default(cuid())
+  quoteId         String
+  quote           SupplierQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Referencia al item del PR
+  prItemId        String
+
+  // Datos cotizados
+  description     String
+  quantity        Decimal
+  unitPrice       Decimal
+  totalPrice      Decimal
+  unit            String
+
+  // Especificaciones técnicas
+  brand           String?
+  model           String?
+  specifications  Json?    // Especificaciones técnicas en JSON
+
+  createdAt       DateTime @default(now())
+
+  @@index([quoteId])
 }
 
 // ============================================
@@ -442,44 +572,145 @@ enum SyncDirection {
 graph TD
     A[Solicitante crea PR] --> B{Guardar como DRAFT?}
     B -->|Sí| C[Estado: DRAFT]
-    B -->|No, enviar| D[Estado: PENDING]
-    D --> E[Calcular niveles de aprobación según monto]
-    E --> F[Crear registros de aprobación]
-    F --> G[Estado: IN_APPROVAL]
+    B -->|No, enviar| D[Seleccionar Tipo de Compra]
+    D --> E{Tipo de compra}
+    E -->|DIRECT/DIRECT_INVOICE| F[Estado: PENDING]
+    E -->|WITH_QUOTE/WITH_BID| G[Estado: PENDING]
+    E -->|WITH_ADVANCE| H[Definir anticipo]
+    H --> F
+    F --> I[Calcular niveles de aprobación]
+    I --> J[Crear registros de aprobación]
+    J --> K[Estado: IN_APPROVAL]
 ```
 
-### 2. Workflow de Aprobación
+### 2. Sistema de Aprobación Mejorado
 
-**Configuración por Monto:**
+**Configuración Multidimensional (6 criterios):**
+
 ```javascript
-Ejemplo:
-- $0 - $10,000: Nivel 1 (Supervisor)
-- $10,001 - $50,000: Nivel 1 + Nivel 2 (Gerente)
-- $50,001+: Nivel 1 + Nivel 2 + Nivel 3 (Director)
+// 1. Por MONTO
+{
+  level: 1,
+  name: "Supervisor",
+  minAmount: 0,
+  maxAmount: 10000
+}
+
+// 2. Por CATEGORÍA/TIPO DE ITEM
+{
+  level: 2,
+  name: "Revisor Técnico IT",
+  categoryIds: ["tech-hardware", "software-licenses"]
+}
+
+// 3. Por ITEM/CÓDIGO ESPECÍFICO
+{
+  level: 3,
+  name: "Seguridad",
+  specificItems: ["CAMARA-SEG-001", "ALARMA-X-500"]
+}
+
+// 4. Por PUESTO/ROL del SOLICITANTE
+{
+  level: 1,
+  name: "Aprobación adicional para auxiliares",
+  requesterRoles: ["AUXILIARY", "JUNIOR"]
+}
+
+// 5. Por DEPARTAMENTO/CENTRO DE COSTO
+{
+  level: 2,
+  name: "Gerente de Sede",
+  departments: ["SEDE-PILAR", "SEDE-VICTORIA"],
+  costCenters: ["CC-100", "CC-200"]
+}
+
+// 6. ATRIBUTOS PERSONALIZABLES
+{
+  level: 3,
+  name: "Director para licitaciones urgentes",
+  customRules: {
+    "purchaseType": ["WITH_BID"],
+    "priority": ["URGENT"],
+    "estimatedAmount": { "min": 50000 }
+  }
+}
 ```
 
-**Proceso:**
+**Proceso de Aprobación:**
 ```mermaid
 graph TD
-    A[IN_APPROVAL] --> B[Aprobador Nivel 1]
-    B -->|Aprueba| C{Hay más niveles?}
-    B -->|Rechaza| D[REJECTED]
-    B -->|Solicita cambios| E[Vuelve a DRAFT]
-    C -->|Sí| F[Aprobador Nivel 2]
-    C -->|No| G[APPROVED]
-    F -->|Aprueba| H{Hay más niveles?}
-    F -->|Rechaza| D
-    H -->|Sí| I[Aprobador Nivel N]
-    H -->|No| G
-    I -->|Aprueba| G
-    I -->|Rechaza| D
+    A[IN_APPROVAL] --> B[Sistema calcula niveles requeridos]
+    B --> C{Evalúa 6 dimensiones}
+    C --> D[Nivel 1: Por Monto]
+    C --> E[Nivel 2: Por Categoría]
+    C --> F[Nivel 3: Por Item Específico]
+    C --> G[Nivel 4: Por Rol Solicitante]
+    C --> H[Nivel 5: Por Depto/CC]
+    C --> I[Nivel 6: Reglas Custom]
+    D & E & F & G & H & I --> J[Combina niveles requeridos]
+    J --> K[Aprobador Nivel 1]
+    K -->|Aprueba| L{Hay más niveles?}
+    K -->|Rechaza| M[REJECTED]
+    K -->|Solicita cambios| N[Vuelve a DRAFT]
+    L -->|Sí| O[Aprobador Nivel N]
+    L -->|No| P{Requiere cotización?}
+    P -->|No| Q[APPROVED]
+    P -->|Sí| R[AWAITING_QUOTES]
+    O -->|Aprueba| L
+    O -->|Rechaza| M
 ```
 
-### 3. Envío a ERP
+### 3. Workflow de Cotizaciones (NUEVO)
+
+**Solo para purchaseType = WITH_QUOTE o WITH_BID**
 
 ```mermaid
 graph TD
-    A[APPROVED] --> B[Validar datos]
+    A[AWAITING_QUOTES] --> B[Compras envía solicitud a proveedores]
+    B --> C{Licitación formal?}
+    C -->|Sí WITH_BID| D[Publicar pliego de licitación]
+    C -->|No WITH_QUOTE| E[Solicitud de cotización simple]
+    D --> F[Proveedores presentan ofertas]
+    E --> F
+    F --> G[QUOTES_RECEIVED]
+    G --> H{Requiere evaluación técnica?}
+    H -->|Sí| I[Revisor Técnico evalúa]
+    H -->|No| J[Compras compara cotizaciones]
+    I --> K{Aprobada técnicamente?}
+    K -->|No| L[QuoteStatus: TECH_REJECTED]
+    K -->|Sí| M[QuoteStatus: TECH_APPROVED]
+    M --> J
+    J --> N[Seleccionar mejor cotización]
+    N --> O{Requiere aprobación adicional?}
+    O -->|Sí monto alto| P[Aprobador revisa selección]
+    O -->|No| Q[SPECS_APPROVED]
+    P -->|Aprueba| Q
+    P -->|Rechaza| R[Volver a evaluar]
+    Q --> S[Marcar cotización como SELECTED]
+    S --> T[READY_FOR_PO]
+    T --> U[Emitir OC]
+```
+
+**Paso Crítico: Aprobación de Especificaciones/Cotización**
+
+Este paso ocurre DESPUÉS de recibir cotizaciones y ANTES de emitir la OC:
+
+```javascript
+// Estado: SPECS_APPROVED
+// Garantiza que:
+// 1. Las cotizaciones fueron evaluadas técnicamente (si aplica)
+// 2. Se seleccionó la mejor oferta según criterios
+// 3. El precio final fue aprobado
+// 4. Las especificaciones técnicas son correctas
+// 5. Se puede proceder a emitir la OC con confianza
+```
+
+### 4. Envío a ERP
+
+```mermaid
+graph TD
+    A[APPROVED o READY_FOR_PO] --> B[Validar datos]
     B --> C[Conectar a ERP Softland]
     C --> D[Insertar en tabla requerimientos]
     D --> E{Éxito?}
@@ -489,7 +720,30 @@ graph TD
     H --> I[Esperar OC del ERP]
 ```
 
-### 4. Sincronización de OC desde ERP
+### 5. Workflow de Compra con Anticipo (NUEVO)
+
+**Solo para purchaseType = WITH_ADVANCE**
+
+```mermaid
+graph TD
+    A[READY_FOR_PO o APPROVED] --> B[Generar OC con anticipo]
+    B --> C[Aprobador autoriza anticipo]
+    C --> D{Aprobado?}
+    D -->|No| E[Rechazar anticipo]
+    D -->|Sí| F[PO_CREATED con flag anticipo]
+    F --> G[Proveedor emite factura anticipo]
+    G --> H[Área de pagos procesa anticipo]
+    H --> I[Proveedor recibe pago anticipo]
+    I --> J[Proveedor prepara entrega]
+    J --> K[Entregar mercadería/servicio]
+    K --> L[Receptor confirma recepción]
+    L --> M[PARTIALLY_RECEIVED o RECEIVED]
+    M --> N[Proveedor emite factura saldo]
+    N --> O[Área de pagos procesa saldo]
+    O --> P[Cierre del ciclo]
+```
+
+### 6. Sincronización de OC desde ERP
 
 ```mermaid
 graph TD
@@ -501,7 +755,7 @@ graph TD
     F --> G[Notificar al solicitante]
 ```
 
-### 5. Recepción de Mercadería
+### 7. Recepción de Mercadería
 
 ```mermaid
 graph TD
@@ -516,7 +770,7 @@ graph TD
     H --> I[Enviar recepción al ERP]
 ```
 
-### 6. Envío de Recepción al ERP
+### 8. Envío de Recepción al ERP
 
 ```mermaid
 graph TD
@@ -727,6 +981,31 @@ GET    /api/v1/admin/approval-levels
 POST   /api/v1/admin/approval-levels
 PATCH  /api/v1/admin/approval-levels/:id
 DELETE /api/v1/admin/approval-levels/:id
+```
+
+### Quotes (NUEVO)
+
+```
+# Solicitar cotizaciones
+POST   /api/v1/purchase-requests/:id/request-quotes
+GET    /api/v1/purchase-requests/:id/quotes
+
+# Proveedor envía cotización
+POST   /api/v1/purchase-requests/:id/quotes        # Crear cotización
+GET    /api/v1/quotes/:id                           # Ver detalle
+PATCH  /api/v1/quotes/:id                           # Actualizar cotización
+
+# Evaluación técnica
+POST   /api/v1/quotes/:id/technical-review
+POST   /api/v1/quotes/:id/approve-technically
+POST   /api/v1/quotes/:id/reject-technically
+
+# Selección de cotización
+POST   /api/v1/purchase-requests/:id/select-quote
+POST   /api/v1/purchase-requests/:id/approve-specs  # Aprobar especificaciones (nuevo paso)
+
+# Comparativo
+GET    /api/v1/purchase-requests/:id/quotes/comparison
 ```
 
 ### Receptions
@@ -1376,20 +1655,46 @@ class ErpConfigService {
 
 ## Anexos
 
-### Estados de Purchase Request
+### Estados de Purchase Request (ACTUALIZADO)
 
-| Estado | Descripción | Puede editar | Puede cancelar |
-|--------|-------------|--------------|----------------|
-| DRAFT | Borrador | Solicitante | Solicitante |
-| PENDING | Pendiente inicial | No | Solicitante |
-| IN_APPROVAL | En aprobación | No | Solicitante |
-| APPROVED | Aprobado | No | Admin |
-| SENT_TO_ERP | Enviado al ERP | No | No |
-| PO_CREATED | OC creada | No | No |
-| PARTIALLY_RECEIVED | Parcialmente recibido | No | No |
-| RECEIVED | Completamente recibido | No | No |
-| REJECTED | Rechazado | Solicitante (para reenvío) | Solicitante |
-| CANCELLED | Cancelado | No | No |
+| Estado | Descripción | Puede editar | Puede cancelar | Tipos de compra |
+|--------|-------------|--------------|----------------|-----------------|
+| DRAFT | Borrador | Solicitante | Solicitante | Todos |
+| PENDING | Pendiente inicial | No | Solicitante | Todos |
+| IN_APPROVAL | En aprobación | No | Solicitante | Todos |
+| APPROVED | Aprobado para compra directa | No | Admin | DIRECT, DIRECT_INVOICE |
+| AWAITING_QUOTES | Esperando cotizaciones | No | Admin | WITH_QUOTE, WITH_BID |
+| QUOTES_RECEIVED | Cotizaciones recibidas | No | Admin | WITH_QUOTE, WITH_BID |
+| SPECS_APPROVED | Especificaciones/cotización aprobadas | No | No | WITH_QUOTE, WITH_BID |
+| READY_FOR_PO | Listo para emitir OC | No | No | WITH_QUOTE, WITH_BID, WITH_ADVANCE |
+| SENT_TO_ERP | Enviado al ERP | No | No | Todos |
+| PO_CREATED | OC creada | No | No | Todos |
+| PARTIALLY_RECEIVED | Parcialmente recibido | No | No | Todos |
+| RECEIVED | Completamente recibido | No | No | Todos |
+| REJECTED | Rechazado | Solicitante (para reenvío) | Solicitante | Todos |
+| CANCELLED | Cancelado | No | No | Todos |
+
+### Flujo de Estados por Tipo de Compra
+
+```javascript
+// DIRECT (Compra Directa Simple)
+DRAFT → PENDING → IN_APPROVAL → APPROVED → SENT_TO_ERP → PO_CREATED → RECEIVED
+
+// WITH_QUOTE (Compra con Cotización Simple)
+DRAFT → PENDING → IN_APPROVAL → AWAITING_QUOTES → QUOTES_RECEIVED →
+SPECS_APPROVED → READY_FOR_PO → SENT_TO_ERP → PO_CREATED → RECEIVED
+
+// WITH_BID (Licitación/Concurso)
+DRAFT → PENDING → IN_APPROVAL → AWAITING_QUOTES → QUOTES_RECEIVED →
+SPECS_APPROVED → READY_FOR_PO → SENT_TO_ERP → PO_CREATED → RECEIVED
+
+// WITH_ADVANCE (Compra con Anticipo)
+DRAFT → PENDING → IN_APPROVAL → APPROVED → READY_FOR_PO →
+SENT_TO_ERP → PO_CREATED → (pago anticipo) → RECEIVED → (pago saldo)
+
+// DIRECT_INVOICE (Factura Directa sin OC)
+No usa PR típicamente (flujo excepcional post-compra)
+```
 
 ### Notificaciones
 
