@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Resumen Funcional: Módulo Purchase Requests - Hub AXIOMA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-dark: #352151;
+            --primary: #8E6AAA;
+            --accent-yellow: #FCE5B7;
+            --accent-pink: #F1ABB5;
+            --background: #FAFAFA;
+            --text: #2C3E50;
+            --text-light: #7F8C8D;
+            --border: #E0E0E0;
+            --success: #27AE60;
+            --warning: #F39C12;
+            --danger: #E74C3C;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--background);
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 20px rgba(53, 33, 81, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .header-meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            opacity: 0.95;
+            font-size: 0.95rem;
+        }
+
+        .header-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        nav {
+            background: var(--primary-dark);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        nav a:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        main {
+            padding: 3rem 2rem;
+        }
+
+        section {
+            margin-bottom: 4rem;
+        }
+
+        h2 {
+            color: var(--primary-dark);
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--primary);
+        }
+
+        h3 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+        }
+
+        h4 {
+            color: var(--text);
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 1rem;
+        }
+
+        strong {
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+
+        ul, ol {
+            margin: 1rem 0 1rem 2rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .card {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .highlight {
+            background: var(--accent-yellow);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr:hover {
+            background: var(--background);
+        }
+
+        .timeline {
+            border-left: 3px solid var(--primary);
+            padding-left: 2rem;
+            margin: 2rem 0;
+        }
+
+        .timeline-item {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '✓';
+            position: absolute;
+            left: -2.5rem;
+            background: var(--success);
+            color: white;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+
+        .badge-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .badge-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .badge-info {
+            background: var(--primary);
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .grid-item {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .grid-item h4 {
+            color: var(--primary);
+            margin-top: 0;
+        }
+
+        .callout {
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+
+        .callout-info {
+            background: #EBF5FB;
+            border-color: #3498DB;
+        }
+
+        .callout-success {
+            background: #EAFAF1;
+            border-color: var(--success);
+        }
+
+        .callout-warning {
+            background: #FEF9E7;
+            border-color: var(--warning);
+        }
+
+        .callout-danger {
+            background: #FDEDEC;
+            border-color: var(--danger);
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .comparison-column {
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .comparison-before {
+            background: #FDEDEC;
+            border: 2px solid var(--danger);
+        }
+
+        .comparison-after {
+            background: #EAFAF1;
+            border: 2px solid var(--success);
+        }
+
+        .ui-mockup {
+            background: #f8f9fa;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            overflow-x: auto;
+        }
+
+        footer {
+            background: var(--primary-dark);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+            margin-right: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                border-radius: 0;
+            }
+
+            header h1 {
+                font-size: 1.75rem;
+            }
+
+            .header-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            nav ul {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            main {
+                padding: 2rem 1rem;
+            }
+
+            .comparison {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+
+        @media print {
+            nav {
+                display: none;
+            }
+
+            .container {
+                box-shadow: none;
+            }
+
+            section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><span class="emoji">📦</span> Resumen Funcional: Módulo Purchase Requests</h1>
+            <div class="header-meta">
+                <span><strong>Documento:</strong> Resumen Funcional para Usuarios de Negocio</span>
+                <span><strong>Fecha:</strong> 29 Noviembre 2025</span>
+                <span><strong>Audiencia:</strong> Product Owners, Stakeholders, Management</span>
+            </div>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#que-es">Qué es</a></li>
+                <li><a href="#roles">Usuarios y Roles</a></li>
+                <li><a href="#flujo">Flujo Completo</a></li>
+                <li><a href="#caracteristicas">Características</a></li>
+                <li><a href="#ia">Integraciones IA</a></li>
+                <li><a href="#beneficios">Beneficios</a></li>
+                <li><a href="#casos-uso">Casos de Uso</a></li>
+                <li><a href="#faq">FAQ</a></li>
+                <li><a href="#roi">ROI</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <!-- QUÉ ES -->
+            <section id="que-es">
+                <h2><span class="emoji">🎯</span> ¿Qué es?</h2>
+                <p class="card">
+                    Sistema completo para <strong>digitalizar y automatizar el proceso de compras</strong> de una empresa, desde que alguien necesita algo hasta que la mercadería llega al almacén.
+                </p>
+            </section>
+
+            <!-- USUARIOS Y ROLES -->
+            <section id="roles">
+                <h2><span class="emoji">👥</span> Usuarios y Roles</h2>
+                <div class="grid">
+                    <div class="grid-item">
+                        <h4>1. Solicitante</h4>
+                        <p><em>(cualquier empleado)</em></p>
+                        <ul>
+                            <li>Crea requerimientos de compra</li>
+                            <li>Hace seguimiento de sus pedidos</li>
+                            <li>Recibe notificaciones de aprobaciones/rechazos</li>
+                        </ul>
+                    </div>
+                    <div class="grid-item">
+                        <h4>2. Aprobadores</h4>
+                        <p><em>(supervisores, gerentes, directores)</em></p>
+                        <ul>
+                            <li>Aprueban o rechazan según su nivel</li>
+                            <li>Pueden solicitar cambios</li>
+                            <li>Configurables por rango de monto</li>
+                        </ul>
+                    </div>
+                    <div class="grid-item">
+                        <h4>3. Compras</h4>
+                        <p><em>(departamento de compras)</em></p>
+                        <ul>
+                            <li>Ve todos los PRs aprobados</li>
+                            <li>Monitorea integración con ERP</li>
+                            <li>Gestiona proveedores</li>
+                        </ul>
+                    </div>
+                    <div class="grid-item">
+                        <h4>4. Almacén</h4>
+                        <p><em>(receptores)</em></p>
+                        <ul>
+                            <li>Registra recepciones de mercadería</li>
+                            <li>Valida contra órdenes de compra</li>
+                            <li>Reporta discrepancias</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FLUJO COMPLETO -->
+            <section id="flujo">
+                <h2><span class="emoji">📋</span> ¿Cómo Funciona? (Flujo Completo)</h2>
+
+                <h3>PASO 1: Crear Requerimiento (PR)</h3>
+                <div class="callout callout-info">
+                    <strong>Juan (Desarrollador) necesita equipos:</strong>
+                    <div class="code-block">🖥️ Formulario simple:
+- "Necesito 5 notebooks Dell XPS para el equipo de desarrollo"
+- Monto estimado: $40,000
+- Fecha necesaria: 15/12/2025
+- Departamento: IT
+- Prioridad: ALTA</div>
+                </div>
+                <p><strong>El sistema:</strong></p>
+                <ul>
+                    <li>Genera número automático: <span class="highlight">PR-2025-00042</span></li>
+                    <li>Determina cuántos niveles de aprobación necesita según el monto</li>
+                    <li>Estado: <span class="badge badge-warning">DRAFT</span> (borrador)</li>
+                </ul>
+
+                <h3>PASO 2: Workflow de Aprobación Multinivel</h3>
+                <div class="card">
+                    <strong>Configuración de ejemplo:</strong>
+                    <div class="code-block">$0 - $10,000       → Solo Supervisor (1 aprobación)
+$10,001 - $50,000  → Supervisor + Gerente (2 aprobaciones)
+$50,001+           → Supervisor + Gerente + Director (3 aprobaciones)</div>
+                </div>
+
+                <p><strong>Para el PR de Juan ($40,000):</strong></p>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <strong>1️⃣ María (Supervisora IT)</strong> recibe notificación
+                        <br>→ Revisa → ✅ Aprueba: "OK, necesario para proyecto Q4"
+                    </div>
+                    <div class="timeline-item">
+                        <strong>2️⃣ Carlos (Gerente IT)</strong> recibe notificación
+                        <br>→ Revisa presupuesto → ✅ Aprueba: "Aprobado, dentro de budget"
+                    </div>
+                </div>
+                <div class="callout callout-success">
+                    <strong>✅ PR APROBADO</strong> → Pasa automáticamente a Compras
+                </div>
+
+                <p><strong>Opciones en cada nivel:</strong></p>
+                <ul>
+                    <li><span class="badge badge-success">✅ Aprobar</span> Pasa al siguiente nivel</li>
+                    <li><span class="badge badge-danger">❌ Rechazar</span> Se cancela (con motivo)</li>
+                    <li><span class="badge badge-warning">✏️ Solicitar cambios</span> Vuelve al solicitante</li>
+                </ul>
+
+                <h3>PASO 3: Envío Automático al ERP Softland</h3>
+                <div class="callout callout-info">
+                    <strong>Cuando el PR está APROBADO:</strong>
+                    <div class="code-block">📤 Sistema automáticamente:
+1. Copia el PR a una tabla de sincronización
+2. Sync-Client (instalado en servidor del cliente) lo detecta
+3. Inserta el PR en Softland SQL Server
+4. PR ahora está en el ERP → Estado: SENT_TO_ERP</div>
+                </div>
+                <p><strong>En Softland:</strong></p>
+                <ul>
+                    <li>Comprador ve el requerimiento</li>
+                    <li>Cotiza con proveedores</li>
+                    <li>Crea Orden de Compra (OC-2025-00789)</li>
+                </ul>
+
+                <h3>PASO 4: OC Regresa Automáticamente</h3>
+                <div class="card">
+                    <strong>Cada 5 minutos el sistema sincroniza:</strong>
+                    <div class="code-block">🔄 Sync-Client detecta nueva OC en Softland
+📥 La sube a Hub automáticamente
+🔗 Hub vincula OC con el PR de Juan
+📧 Juan recibe notificación:
+   "Tu OC OC-2025-00789 está lista"
+   "Proveedor: Dell Argentina"
+   "Monto: $41,500"
+   "Entrega estimada: 01/12/2025"</div>
+                </div>
+
+                <h3>PASO 5: Recepción de Mercadería</h3>
+                <div class="callout callout-success">
+                    <strong>Llega la mercadería al almacén:</strong>
+                    <div class="code-block">📦 Ana (Almacén) en Hub:
+1. Ve OC pendiente de recepción
+2. Registra:
+   - Remito: REM-DELL-456
+   - Items recibidos: 3 notebooks (de 5 ordenadas) ⚠️
+   - Motivo: "Entrega parcial, resto próxima semana"
+   - Foto del remito (opcional)
+
+3. Confirma recepción
+
+📤 Sistema automáticamente:
+- Envía recepción a Softland
+- Softland actualiza inventario (+3 notebooks)
+- PR cambia a: PARTIALLY_RECEIVED</div>
+                </div>
+            </section>
+
+            <!-- CARACTERÍSTICAS CLAVE -->
+            <section id="caracteristicas">
+                <h2><span class="emoji">🎨</span> Características Clave</h2>
+
+                <h3>1. Aprobaciones Inteligentes</h3>
+                <div class="card">
+                    <strong>Por Monto Configurable:</strong>
+                    <ul>
+                        <li>Cada empresa define sus propios rangos</li>
+                        <li>Automático según monto del PR</li>
+                        <li>Multinivel secuencial</li>
+                    </ul>
+                    <strong>Flexibilidad:</strong>
+                    <ul>
+                        <li>Por rol: "Cualquier Gerente puede aprobar nivel 2"</li>
+                        <li>Por usuario específico: "Solo María o Juan pueden aprobar"</li>
+                        <li>Requiere todos: "Deben aprobar TODOS los del nivel"</li>
+                    </ul>
+                </div>
+
+                <h3>2. Notificaciones en Tiempo Real</h3>
+                <div class="code-block">📧 Juan recibe:
+- PR creado → Portal
+- Requiere aprobación → Portal + Email
+- Aprobado nivel 1 → Portal
+- Aprobado nivel 2 → Portal
+- OC creada → Portal + Email + WebSocket
+- OC lista para recibir → Portal
+- Mercadería recibida → Portal</div>
+                <p><strong>Canales:</strong> Portal web (real-time), Email, WebSocket, WhatsApp (opcional)</p>
+
+                <h3>3. Trazabilidad Completa</h3>
+                <div class="timeline">
+                    <div class="timeline-item">15/11 10:00 - Juan creó PR</div>
+                    <div class="timeline-item">15/11 10:05 - Juan envió a aprobación</div>
+                    <div class="timeline-item">15/11 11:30 - María aprobó (Nivel 1)</div>
+                    <div class="timeline-item">15/11 14:20 - Carlos aprobó (Nivel 2)</div>
+                    <div class="timeline-item">15/11 14:21 - Enviado a Softland</div>
+                    <div class="timeline-item">18/11 09:15 - OC-2025-789 creada ($41,500)</div>
+                    <div class="timeline-item">01/12 11:00 - Recepción parcial (3 units)</div>
+                    <div class="timeline-item">08/12 10:30 - Recepción final (2 units) - COMPLETADO</div>
+                </div>
+
+                <h3>4. Recepciones Flexibles</h3>
+                <ul>
+                    <li>Recibir parte de lo ordenado (parciales)</li>
+                    <li>Múltiples recepciones por OC</li>
+                    <li>Validación automática contra OC</li>
+                    <li>Control de calidad: <span class="badge badge-success">Aceptado</span> <span class="badge badge-danger">Rechazado</span> <span class="badge badge-warning">Pendiente</span></li>
+                </ul>
+            </section>
+
+            <!-- INTEGRACIONES IA -->
+            <section id="ia">
+                <h2><span class="emoji">🤖</span> 7 Integraciones con IA (Opcional)</h2>
+
+                <div class="grid">
+                    <div class="grid-item">
+                        <h4>1. Asistente de Creación</h4>
+                        <p>Sugiere descripción, cantidades y precios basado en histórico</p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>2. Detección de Duplicados</h4>
+                        <p>Alerta si existe un PR similar reciente</p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>3. Recomendación de Aprobación</h4>
+                        <p>Scoring de riesgo y recomendación automática</p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>4. Matching Automático OC ↔ PR</h4>
+                        <p>Vincula OCs con PRs por monto, descripción y contexto</p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>5. OCR de Remitos</h4>
+                        <p>Extrae datos del remito y autocompleta recepción</p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>6. Analytics Predictivos</h4>
+                        <p>Predice necesidades y optimiza compras</p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>7. Chatbot de Asistencia</h4>
+                        <p>Consultas de estado y guía de uso</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BENEFICIOS -->
+            <section id="beneficios">
+                <h2><span class="emoji">💡</span> Beneficios del Negocio</h2>
+
+                <div class="comparison">
+                    <div class="comparison-column comparison-before">
+                        <h3>❌ Antes (Proceso Manual)</h3>
+                        <ul>
+                            <li>Email chains infinitos</li>
+                            <li>Excel compartido (desactualizado)</li>
+                            <li>No se sabe quién aprobó qué</li>
+                            <li>PRs perdidos</li>
+                            <li>Seguimiento manual de OCs</li>
+                            <li>Recepciones en papel</li>
+                            <li>Sin trazabilidad</li>
+                            <li><strong>Tiempo promedio: 15 días</strong></li>
+                        </ul>
+                    </div>
+                    <div class="comparison-column comparison-after">
+                        <h3>✅ Después (Con Purchase Requests)</h3>
+                        <ul>
+                            <li>Portal centralizado</li>
+                            <li>Workflow automático</li>
+                            <li>Notificaciones en tiempo real</li>
+                            <li>Auditoría completa</li>
+                            <li>Integración bidireccional con ERP</li>
+                            <li>Recepciones digitales</li>
+                            <li>Trazabilidad 100%</li>
+                            <li><strong>Tiempo promedio: 3 días (-80%)</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CASOS DE USO -->
+            <section id="casos-uso">
+                <h2><span class="emoji">🎯</span> Casos de Uso Reales</h2>
+
+                <div class="grid">
+                    <div class="grid-item">
+                        <h4>Caso 1: Compra Regular</h4>
+                        <div class="code-block" style="font-size: 0.8rem;">Juan (IT) → 5 notebooks → $40K
+→ Supervisor (30 min)
+→ Gerente (2 horas)
+→ Softland automático (5 min)
+→ Comprador cotiza (1 día)
+→ OC creada
+→ Almacén registra
+→ Inventario actualizado</div>
+                    </div>
+
+                    <div class="grid-item">
+                        <h4>Caso 2: Compra Urgente</h4>
+                        <div class="code-block" style="font-size: 0.8rem;">María (Producción)
+→ Insumo crítico
+→ Prioridad URGENTE
+→ Notificaciones prioritarias
+→ Aprobaciones express
+→ Seguimiento real-time</div>
+                    </div>
+
+                    <div class="grid-item">
+                        <h4>Caso 3: Compra Grande</h4>
+                        <div class="code-block" style="font-size: 0.8rem;">Director → Maquinaria → $250K
+→ 3 niveles de aprobación
+→ Supervisor → Gerente → Dir
+→ Cada uno revisa y aprueba
+→ Trazabilidad completa</div>
+                    </div>
+
+                    <div class="grid-item">
+                        <h4>Caso 4: Rechazo con Feedback</h4>
+                        <div class="code-block" style="font-size: 0.8rem;">Ana (Admin) → Material → $15K
+→ Gerente rechaza:
+   "Presupuesto agotado"
+→ Ana recibe notificación
+→ Puede modificar/cancelar
+   o programar próximo mes</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ESTADOS -->
+            <section id="estados">
+                <h2><span class="emoji">🔢</span> Estados del Purchase Request</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Estado</th>
+                            <th>Descripción</th>
+                            <th>Usuario ve</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-warning">DRAFT</span></td>
+                            <td>Borrador, no enviado</td>
+                            <td>"En borrador - Editar o Enviar"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-info">PENDING</span></td>
+                            <td>Esperando primera aprobación</td>
+                            <td>"Pendiente aprobación"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-warning">IN_APPROVAL</span></td>
+                            <td>En proceso de aprobación</td>
+                            <td>"Nivel 1 aprobado, esperando Nivel 2"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-success">APPROVED</span></td>
+                            <td>Aprobado, listo para ERP</td>
+                            <td>"Aprobado - En proceso de envío a Softland"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-info">SENT_TO_ERP</span></td>
+                            <td>Enviado a Softland</td>
+                            <td>"Enviado a Compras (Softland)"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-success">PO_CREATED</span></td>
+                            <td>OC creada en ERP</td>
+                            <td>"OC-2025-789 creada - Esperando entrega"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-warning">PARTIALLY_RECEIVED</span></td>
+                            <td>Recibido parcialmente</td>
+                            <td>"3 de 5 recibidas - Pendiente 2"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-success">RECEIVED</span></td>
+                            <td>Completamente recibido</td>
+                            <td>"Completado - En inventario"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-danger">REJECTED</span></td>
+                            <td>Rechazado</td>
+                            <td>"Rechazado: [motivo]"</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge">CANCELLED</span></td>
+                            <td>Cancelado por solicitante</td>
+                            <td>"Cancelado"</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- FAQ -->
+            <section id="faq">
+                <h2><span class="emoji">🎓</span> Preguntas Frecuentes (FAQ)</h2>
+
+                <div class="card">
+                    <h4>¿Puedo editar un PR después de enviarlo?</h4>
+                    <p>No, una vez enviado a aprobación el PR se bloquea. Si el aprobador solicita cambios, volverá a estado DRAFT y podrás editarlo.</p>
+                </div>
+
+                <div class="card">
+                    <h4>¿Qué pasa si un aprobador está de vacaciones?</h4>
+                    <p>El admin puede reasignar la aprobación a otro usuario del mismo nivel o aprobar en su lugar.</p>
+                </div>
+
+                <div class="card">
+                    <h4>¿Puedo cancelar un PR?</h4>
+                    <p>Sí, mientras esté en DRAFT, PENDING o IN_APPROVAL. Una vez en SENT_TO_ERP solo un admin puede cancelar.</p>
+                </div>
+
+                <div class="card">
+                    <h4>¿Cómo sé que mi OC está lista?</h4>
+                    <p>Recibes notificación automática por email y en el portal. Además el PR cambia a estado PO_CREATED.</p>
+                </div>
+
+                <div class="card">
+                    <h4>¿Cuánto tarda en sincronizar con Softland?</h4>
+                    <ul>
+                        <li>Envío de PR: 5 minutos (máximo)</li>
+                        <li>Recepción de OC: 5 minutos (máximo)</li>
+                        <li>Envío de recepción: 5 minutos (máximo)</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- ROI -->
+            <section id="roi">
+                <h2><span class="emoji">📈</span> ROI Estimado</h2>
+
+                <h3>Tiempo ahorrado por PR:</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Actividad</th>
+                            <th>Antes</th>
+                            <th>Después</th>
+                            <th>Mejora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Creación de PR</td>
+                            <td>15 min</td>
+                            <td>5 min</td>
+                            <td><span class="badge badge-success">-66%</span></td>
+                        </tr>
+                        <tr>
+                            <td>Proceso de aprobación</td>
+                            <td>5 días</td>
+                            <td>1 día</td>
+                            <td><span class="badge badge-success">-80%</span></td>
+                        </tr>
+                        <tr>
+                            <td>Seguimiento de OC</td>
+                            <td>30 min/día</td>
+                            <td>0 min</td>
+                            <td><span class="badge badge-success">-100%</span></td>
+                        </tr>
+                        <tr>
+                            <td>Registro de recepción</td>
+                            <td>20 min</td>
+                            <td>5 min</td>
+                            <td><span class="badge badge-success">-75%</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout callout-success">
+                    <h3>Total por PR: 15 días → 3 días (-80%)</h3>
+                </div>
+
+                <h3>Con 100 PRs/mes:</h3>
+                <div class="card">
+                    <ul>
+                        <li><strong>Tiempo ahorrado:</strong> ~960 horas/mes</li>
+                        <li><strong>Costo estimado:</strong> $50/hora</li>
+                        <li><strong>Ahorro mensual:</strong> <span class="highlight">~$48,000</span></li>
+                    </ul>
+                </div>
+
+                <h3>Beneficios adicionales:</h3>
+                <div class="grid">
+                    <div class="grid-item">
+                        <h4>Reducción de errores</h4>
+                        <p><span class="badge badge-success">-90%</span></p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>Control presupuestario</h4>
+                        <p><span class="badge badge-success">+40%</span></p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>Visibilidad real-time</h4>
+                        <p><span class="badge badge-info">Invaluable</span></p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>Auditoría completa</h4>
+                        <p><span class="badge badge-success">100%</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RESUMEN -->
+            <section id="resumen">
+                <h2><span class="emoji">✅</span> Resumen en 3 Puntos</h2>
+
+                <div class="callout callout-info">
+                    <h3>1. Digitaliza el proceso de compras completo</h3>
+                    <p>Desde "necesito algo" hasta "llegó y está en inventario"</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <h3>2. Automatiza la aprobación y sincronización</h3>
+                    <ul>
+                        <li>Multinivel por monto</li>
+                        <li>Integración bidireccional con ERP</li>
+                        <li>Sin intervención manual</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-success">
+                    <h3>3. Da visibilidad y control total</h3>
+                    <ul>
+                        <li>Cualquiera sabe en qué estado está cada PR</li>
+                        <li>Trazabilidad completa (auditoría)</li>
+                        <li>Métricas y analytics en tiempo real</li>
+                    </ul>
+                </div>
+
+                <div class="card" style="background: linear-gradient(135deg, #352151 0%, #8E6AAA 100%); color: white; text-align: center; padding: 2rem; margin-top: 2rem;">
+                    <h2 style="color: white; border: none; margin: 0;">En resumen</h2>
+                    <p style="font-size: 1.2rem; margin-top: 1rem;">
+                        Transforma un proceso caótico de emails y Excel en un <strong>workflow digital, automático y trazable</strong> que reduce tiempos de 15 días a 3 días y elimina errores manuales.
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p><strong>Documento creado:</strong> 29 Noviembre 2025</p>
+            <p><strong>Versión:</strong> 1.0</p>
+            <p><strong>Para:</strong> Stakeholders, Product Owners, Management</p>
+            <p><strong>Estado:</strong> ✅ Aprobado para implementación</p>
+            <p style="margin-top: 1rem; opacity: 0.8;">Hub AXIOMA - Portal de Proveedores</p>
+        </footer>
+    </div>
+</body>
+</html>
