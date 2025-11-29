@@ -1,0 +1,458 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTENTICACIÓN Y USUARIOS
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  avatar        String?
+  emailVerified Boolean   @default(false)
+  superuser     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Multi-tenant
+  tenantMemberships TenantMembership[]
+
+  // Actividad
+  uploadedDocuments  Document[]       @relation("UploadedDocuments")
+  documentEvents     DocumentEvent[]
+  comments           Comment[]
+
+  @@index([email])
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  legalName   String
+  taxId       String   @unique // CUIT, RUT, etc.
+  country     String
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  settings    Json     @default("{}")
+  branding    Json?    // Logo, colores personalizados
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  memberships TenantMembership[]
+
+  // Como cliente (recibe documentos)
+  documentsReceived Document[]       @relation("ClientDocuments")
+  purchaseOrders    PurchaseOrder[]
+  paymentsIssued    Payment[]
+
+  // Como proveedor (envía documentos)
+  documentsSent     Document[]       @relation("ProviderDocuments")
+  paymentsReceived  Payment[]        @relation("ReceivedPayments")
+
+  // Menu items personalizados
+  menuItems         MenuItem[]
+
+  @@index([taxId])
+  @@index([isActive])
+}
+
+model TenantMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+  roles     Role[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Metadata de invitación
+  invitedBy String?
+  invitedAt DateTime?
+  joinedAt  DateTime?
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+}
+
+enum Role {
+  PROVIDER              // Puede cargar documentos
+  CLIENT_VIEWER         // Solo ver documentos
+  CLIENT_APPROVER       // Aprobar/rechazar documentos
+  CLIENT_ADMIN          // Gestión completa
+  SUPER_ADMIN           // Admin global del sistema
+}
+
+// ============================================
+// DOCUMENTOS
+// ============================================
+
+model Document {
+  id        String   @id @default(cuid())
+  number    String
+  type      DocumentType
+  status    DocumentStatus
+
+  // Montos
+  amount      Decimal
+  taxAmount   Decimal
+  totalAmount Decimal
+  currency    String   @default("ARS")
+
+  // Archivo
+  fileUrl     String
+  fileName    String
+  fileType    String
+  fileSize    Int
+
+  // Multi-tenant
+  providerTenantId String
+  providerTenant   Tenant @relation("ProviderDocuments", fields: [providerTenantId], references: [id])
+
+  clientTenantId   String
+  clientTenant     Tenant @relation("ClientDocuments", fields: [clientTenantId], references: [id])
+
+  // Usuario que subió
+  uploadedBy       String
+  uploader         User   @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
+
+  // Fechas
+  date             DateTime?  // Fecha del documento
+  dueDate          DateTime?  // Fecha de vencimiento
+  uploadedAt       DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Parse integration
+  parseJobId       String?
+  parseDocumentId  String?      // ID del documento en Parse (documentos_procesados.id)
+  parseStatus      ParseStatus  @default(PENDING)
+  parseData        Json?
+  parseConfidence  Decimal?
+  parseError       String?
+  parseRawText     String?      @db.Text
+  parsedAt         DateTime?
+
+  // Relaciones
+  purchaseOrderId  String?
+  purchaseOrder    PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  timeline         DocumentEvent[]
+  comments         Comment[]
+  attachments      Attachment[]
+  paymentItems     PaymentItem[]
+
+  @@unique([number, providerTenantId, clientTenantId])
+  @@index([providerTenantId, clientTenantId, status])
+  @@index([clientTenantId, status, uploadedAt])
+  @@index([parseStatus])
+}
+
+enum DocumentType {
+  INVOICE
+  CREDIT_NOTE
+  DEBIT_NOTE
+  RECEIPT
+}
+
+enum DocumentStatus {
+  PROCESSING   // Subido, esperando Parse
+  PRESENTED    // Presentado, esperando revisión
+  IN_REVIEW    // En proceso de revisión
+  APPROVED     // Aprobado
+  PAID         // Pagado
+  REJECTED     // Rechazado
+}
+
+enum ParseStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+}
+
+model DocumentEvent {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  fromStatus  DocumentStatus?
+  toStatus    DocumentStatus
+  reason      String?
+  metadata    Json?
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+
+  @@index([documentId, createdAt])
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  text        String   @db.Text
+  attachments Attachment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([documentId, createdAt])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  fileUrl    String
+  fileName   String
+  fileType   String
+  fileSize   Int
+
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  commentId  String?
+  comment    Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  uploadedAt DateTime @default(now())
+
+  @@index([documentId])
+  @@index([commentId])
+}
+
+// ============================================
+// MENU DINÁMICO
+// ============================================
+
+model MenuItem {
+  id                 String       @id @default(cuid())
+  parentId           String?
+  title              String       @db.VarChar(100)
+  icon               String       @db.VarChar(50)
+  url                String?      @db.VarChar(255)
+  description        String?      @db.VarChar(500)
+  orderIndex         Int          @default(0)
+  isActive           Boolean      @default(true)
+  requiresPermission String?      @db.VarChar(100)
+  superuserOnly      Boolean      @default(false)
+  tenantId           String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  createdBy          String?
+  updatedBy          String?
+
+  parent             MenuItem?    @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children           MenuItem[]   @relation("MenuHierarchy")
+  tenant             Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+  @@index([orderIndex])
+  @@index([parentId])
+  @@index([superuserOnly])
+  @@index([tenantId])
+  @@map("menu_items")
+}
+
+// ============================================
+// ÓRDENES DE COMPRA
+// ============================================
+
+model PurchaseOrder {
+  id             String    @id @default(cuid())
+  number         String
+  description    String?
+  amount         Decimal
+  currency       String    @default("ARS")
+  status         PurchaseOrderStatus
+
+  clientTenantId String
+  clientTenant   Tenant    @relation(fields: [clientTenantId], references: [id])
+
+  // Fechas
+  date           DateTime
+  dueDate        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Archivo
+  fileUrl        String?
+  fileName       String?
+
+  // Relaciones
+  documents      Document[]
+
+  @@unique([number, clientTenantId])
+  @@index([clientTenantId, status])
+}
+
+enum PurchaseOrderStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// ============================================
+// PAGOS
+// ============================================
+
+model Payment {
+  id              String   @id @default(cuid())
+  number          String
+  amount          Decimal
+  currency        String   @default("ARS")
+  status          PaymentStatus
+
+  // Tenant que emite el pago
+  issuedByTenantId String
+  issuedByTenant   Tenant @relation(fields: [issuedByTenantId], references: [id])
+
+  // Tenant que recibe el pago
+  receivedByTenantId String
+  receivedByTenant   Tenant @relation("ReceivedPayments", fields: [receivedByTenantId], references: [id])
+
+  // Fechas
+  issueDate       DateTime
+  scheduledDate   DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Archivos
+  receiptUrl      String?
+  retentionUrls   Json?     // Array de URLs de retenciones
+
+  // Documentos incluidos en el pago
+  items           PaymentItem[]
+
+  @@unique([number, issuedByTenantId])
+  @@index([issuedByTenantId, status])
+  @@index([receivedByTenantId, status])
+}
+
+enum PaymentStatus {
+  SCHEDULED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model PaymentItem {
+  id         String  @id @default(cuid())
+  paymentId  String
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  amount     Decimal
+
+  @@index([paymentId])
+  @@index([documentId])
+}
+
+// ============================================
+// COMUNICACIONES
+// ============================================
+
+model Conversation {
+  id              String   @id @default(cuid())
+  subject         String
+  status          ConversationStatus
+  channel         CommunicationChannel
+
+  // Participantes
+  providerTenantId String
+  clientTenantId   String
+
+  createdById     String
+  closedById      String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  closedAt        DateTime?
+
+  messages        Message[]
+
+  @@index([providerTenantId, clientTenantId])
+  @@index([status])
+}
+
+enum ConversationStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum CommunicationChannel {
+  PORTAL
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId       String
+  text           String       @db.Text
+  channel        CommunicationChannel
+
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ============================================
+// NOTIFICACIONES
+// ============================================
+
+model Notification {
+  id        String            @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String            @db.Text
+  data      Json?
+  channel   CommunicationChannel
+
+  readAt    DateTime?
+  sentAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  @@index([userId, readAt])
+}
+
+enum NotificationType {
+  DOCUMENT_UPLOADED
+  DOCUMENT_PARSED
+  DOCUMENT_STATUS_CHANGED
+  PAYMENT_ISSUED
+  MESSAGE_RECEIVED
+  APPROVAL_REQUIRED
+}

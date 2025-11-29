@@ -1,0 +1,42 @@
+{
+  "name": "prohub-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ProHub - Portal de Proveedores AXIOMA (Monorepo)",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail -n \"backend,frontend\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspaces",
+    "build:backend": "npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "start:backend": "npm run start --workspace=backend",
+    "start:frontend": "npm run start --workspace=frontend",
+    "lint": "npm run lint --workspaces",
+    "clean": "rm -rf node_modules backend/node_modules frontend/node_modules shared/node_modules"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AxiomaCloud/Prohub.git"
+  },
+  "keywords": [
+    "prohub",
+    "axioma",
+    "monorepo",
+    "multi-tenant"
+  ],
+  "author": "AXIOMA",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AxiomaCloud/Prohub/issues"
+  },
+  "homepage": "https://github.com/AxiomaCloud/Prohub#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

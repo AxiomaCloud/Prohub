@@ -9,8 +9,13 @@ coverage/
 # Next.js
 .next/
 out/
+
+# Build outputs
 build/
 dist/
+backend/dist/
+frontend/.next/
+shared/dist/
 
 # Production
 *.log
@@ -24,6 +29,8 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env
+frontend/.env.local
 
 # IDE
 .vscode/
@@ -41,7 +48,17 @@ Thumbs.db
 
 # Prisma
 prisma/.env
+backend/prisma/.env
 
 # Misc
 *.pem
 .vercel
+
+# Old structure (to be removed)
+/src/
+/prisma/
+next-env.d.ts
+next.config.ts
+tailwind.config.ts
+postcss.config.mjs
+.eslintrc.json
