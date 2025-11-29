@@ -1,4 +1,4 @@
-# ÍNDICE DE DOCUMENTACIÓN - ProHub
+# ÍNDICE DE DOCUMENTACIÓN - Hub
 
 Guía completa para el desarrollo del Portal de Proveedores de AXIOMA.
 
@@ -121,6 +121,131 @@ Guía completa para el desarrollo del Portal de Proveedores de AXIOMA.
 
 ---
 
+## 📦 MÓDULO: PURCHASE REQUESTS (Requerimientos de Compra)
+
+### 9. [PURCHASE_REQUESTS_SUMMARY.md](./PURCHASE_REQUESTS_SUMMARY.md) ⭐ **EMPIEZA AQUÍ**
+**Resumen ejecutivo completo**
+- Objetivo del módulo
+- 6 documentos técnicos generados
+- Comparación de 3 opciones arquitectónicas
+- Recomendación: Sync-Client Standalone
+- Roadmap de implementación (5 semanas)
+- Checklist pre-implementación
+- Próximos pasos
+
+**Lee esto primero** para entender el alcance completo del módulo Purchase Requests y decidir la arquitectura.
+
+---
+
+### 10. [PURCHASE_REQUESTS_MODULE.md](./PURCHASE_REQUESTS_MODULE.md)
+**Especificaciones técnicas detalladas** (60 KB)
+- 11 modelos Prisma (PurchaseRequest, ApprovalLevel, PurchaseReception, etc.)
+- Workflow de 9 estados
+- Aprobaciones multinivel por monto
+- 30+ endpoints API REST
+- 7 puntos de integración con IA
+- Sistema de notificaciones
+- Roadmap: 14-20 semanas
+
+**Lee esto** para entender las especificaciones técnicas completas del módulo.
+
+---
+
+### 11. [FINAL_ARCHITECTURE_WITH_SYNC_CLIENT.md](./FINAL_ARCHITECTURE_WITH_SYNC_CLIENT.md) ⭐ **RECOMENDADA**
+**Arquitectura con Sync-Client Standalone** (50 KB)
+- Arquitectura: Hub ← HTTP → PostgreSQL ← Sync-Client.exe → Softland SQL
+- Reutiliza sync-client existente de Parse
+- Sin dependencias adicionales
+- Más seguro (credenciales en cliente)
+- ETL personalizable con SQL
+- Roadmap: 5 semanas
+- Complejidad: Baja
+
+**Lee esto** para implementar la arquitectura recomendada de integración con ERP.
+
+---
+
+### 12. [FINAL_ARCHITECTURE.md](./FINAL_ARCHITECTURE.md)
+**Arquitectura con Parse como Gateway** (30 KB)
+- Arquitectura: Hub ← Webhooks → Parse ← SQL → Softland
+- Parse maneja sincronización
+- Webhooks para eventos en tiempo real
+- Roadmap: 5 semanas
+- Complejidad: Media
+
+**Lee esto** si prefieres usar Parse como intermediario para la integración con ERP.
+
+---
+
+### 13. [INTEGRATION_PARSE_ARCHITECTURE.md](./INTEGRATION_PARSE_ARCHITECTURE.md)
+**Arquitectura reutilizable de Parse** (45 KB)
+- Sistema de API Keys de Parse (código reutilizable)
+- Middleware autenticación + encriptación AES-256
+- Sincronización bidireccional SQL
+- Servicios de integración ERP
+- Jobs BullMQ
+- Código JavaScript/TypeScript listo
+
+**Lee esto** para entender qué código de Parse puedes reutilizar en Hub.
+
+---
+
+### 14. [WEBHOOK_INTEGRATION.md](./WEBHOOK_INTEGRATION.md)
+**Integración Parse ↔ Hub via Webhooks** (40 KB)
+- Webhooks Parse → Hub (eventos)
+- API calls Hub → Parse (acciones)
+- Código TypeScript listo
+- Validación HMAC SHA-256
+- Sistema de reintentos
+- Eventos: purchase_order.created, sync.completed, etc.
+
+**Lee esto** si decides usar webhooks para comunicación entre Parse y Hub.
+
+---
+
+### 15. [SIMPLIFIED_ARCHITECTURE.md](./SIMPLIFIED_ARCHITECTURE.md)
+**Arquitectura con Triggers PostgreSQL** (35 KB) - DESCARTADA
+- Triggers PostgreSQL para sincronización
+- Sin jobs de sincronización
+- Parse sincroniza en background
+- Hub solo lee/escribe PostgreSQL
+
+**Status**: Descartada por complejidad en debugging de triggers.
+
+---
+
+### 16. [SYNC_CLIENT_INTEGRATION.md](./SYNC_CLIENT_INTEGRATION.md) ⭐ **IMPLEMENTACIÓN**
+**Guía de implementación del Sync-Client en Hub** (NUEVO)
+- Endpoints que Hub debe implementar
+- Modelos Prisma para sync (sync_configurations, sync_api_keys, sync_logs)
+- Tablas de sincronización (schema sync)
+- Autenticación con API Keys
+- Encriptación de credenciales SQL
+- Flujo completo PR → OC → Recepción
+- Checklist de implementación
+
+**Lee esto** para implementar la integración con el sync-client-standalone existente.
+
+---
+
+### 17. [ROADMAP_PURCHASE_REQUESTS.md](./ROADMAP_PURCHASE_REQUESTS.md) ⭐ **PLAN DE TRABAJO**
+**Roadmap detallado con tareas tildables** (NUEVO)
+- **Estrategia MVP + Full**: 2.5 semanas MVP mostrable + 2.5 semanas Full
+- Tabla comparativa MVP vs Full (qué incluir en cada fase)
+- 50+ tareas específicas con checkboxes
+- Código de ejemplo para cada tarea
+- Criterios de aceptación claros
+- Script de demo MVP para mostrar al cliente
+- Decisiones de scope justificadas
+- Estimaciones de tiempo por tarea
+- Roles y responsabilidades
+- Riesgos y mitigaciones
+- Métricas de éxito
+
+**Lee esto** para ejecutar la implementación paso a paso (empezando por MVP).
+
+---
+
 ## 🗺️ RUTA SUGERIDA DE LECTURA
 
 ### Para Entender el Proyecto
@@ -140,9 +265,19 @@ Guía completa para el desarrollo del Portal de Proveedores de AXIOMA.
 3. PARSE_INTEGRATION.md - Integración con Parse
 4. WIREFRAMES.md - Referencia visual
 
+### Para Purchase Requests Module
+1. **PURCHASE_REQUESTS_SUMMARY.md** ⭐ - Resumen ejecutivo y decisión de arquitectura
+2. **PURCHASE_REQUESTS_MODULE.md** - Especificaciones técnicas detalladas
+3. **FINAL_ARCHITECTURE_WITH_SYNC_CLIENT.md** ⭐ - Arquitectura recomendada
+4. **SYNC_CLIENT_INTEGRATION.md** ⭐ - Guía de implementación paso a paso
+5. **ROADMAP_PURCHASE_REQUESTS.md** ⭐ - Plan de trabajo con tareas tildables
+6. FINAL_ARCHITECTURE.md - Alternativa con Parse gateway (opcional)
+7. INTEGRATION_PARSE_ARCHITECTURE.md - Código reutilizable de Parse (opcional)
+8. WEBHOOK_INTEGRATION.md - Webhooks Parse ↔ Hub (opcional)
+
 ---
 
-## 🎯 DIFERENCIADORES CLAVE DE PROHUB
+## 🎯 DIFERENCIADORES CLAVE DE HUB
 
 Recordá que estos son los puntos clave que nos diferencian de la competencia:
 
@@ -186,17 +321,29 @@ Recordá que estos son los puntos clave que nos diferencian de la competencia:
 ## 📂 ESTRUCTURA DE ARCHIVOS
 
 ```
-ProHub/
-├── README.md                    # Visión general
+Hub/
+├── README.md                                    # Visión general
 ├── docs/
-│   ├── INDEX.md                 # Este archivo
-│   ├── MODULES.md               # Detalle de módulos
-│   ├── DOCUMENT_FLOW.md         # Flujo de documentos
-│   ├── MULTI_TENANT.md          # Arquitectura multi-tenant
-│   ├── PARSE_INTEGRATION.md     # Integración con Parse
-│   ├── DESIGN_SYSTEM.md         # Sistema de diseño
-│   ├── WIREFRAMES.md            # Diseños de pantallas
-│   └── TECHNICAL_SPECS.md       # Especificaciones técnicas
+│   ├── INDEX.md                                 # Este archivo
+│   ├── MODULES.md                               # Detalle de módulos
+│   ├── DOCUMENT_FLOW.md                         # Flujo de documentos
+│   ├── MULTI_TENANT.md                          # Arquitectura multi-tenant
+│   ├── PARSE_INTEGRATION.md                     # Integración con Parse
+│   ├── DESIGN_SYSTEM.md                         # Sistema de diseño
+│   ├── WIREFRAMES.md                            # Diseños de pantallas
+│   ├── TECHNICAL_SPECS.md                       # Especificaciones técnicas
+│   │
+│   └── Purchase Requests Module/
+│       ├── PURCHASE_REQUESTS_SUMMARY.md         # ⭐ Resumen ejecutivo
+│       ├── PURCHASE_REQUESTS_MODULE.md          # Especificaciones técnicas
+│       ├── FINAL_ARCHITECTURE_WITH_SYNC_CLIENT.md  # ⭐ Arquitectura recomendada
+│       ├── SYNC_CLIENT_INTEGRATION.md           # ⭐ Guía de implementación
+│       ├── ROADMAP_PURCHASE_REQUESTS.md         # ⭐ Plan de trabajo (5 semanas)
+│       ├── FINAL_ARCHITECTURE.md                # Alternativa Parse gateway
+│       ├── INTEGRATION_PARSE_ARCHITECTURE.md    # Código reutilizable
+│       ├── WEBHOOK_INTEGRATION.md               # Webhooks Parse ↔ Hub
+│       └── SIMPLIFIED_ARCHITECTURE.md           # (Descartada)
+│
 └── (código fuente irá aquí)
 ```
 
@@ -214,12 +361,23 @@ Al desarrollar con Claude, recomendá:
 
 ### Comandos útiles para Claude
 
+**Para el sistema base:**
 ```
 "Lee el archivo TECHNICAL_SPECS.md y implementa el schema de Prisma"
 "Usando DESIGN_SYSTEM.md, crea el componente Button"
 "Siguiendo WIREFRAMES.md, implementa la pantalla de login"
 "Basándote en PARSE_INTEGRATION.md, crea el endpoint de upload"
 "Según MULTI_TENANT.md, implementa el middleware de autenticación"
+```
+
+**Para el módulo Purchase Requests:**
+```
+"Lee PURCHASE_REQUESTS_SUMMARY.md y explícame las opciones de arquitectura"
+"Usando ROADMAP_PURCHASE_REQUESTS.md, implementa la Semana 1 completa"
+"Implementa la Task 1.1 del roadmap: crear modelos Prisma de sync"
+"Implementa la Task 3.8: job de procesamiento de OCs"
+"Revisa el roadmap y marca las tareas completadas hasta ahora"
+"Implementa todos los endpoints de la Semana 1 según el roadmap"
 ```
 
 ---
@@ -232,6 +390,9 @@ Desarrollado por AXIOMA
 
 ---
 
-**Versión:** 1.0
-**Última actualización:** Noviembre 2025
-**Estado:** Documentación completa - Listo para desarrollo
+**Versión:** 1.3
+**Última actualización:** 29 Noviembre 2025
+**Estado:** Documentación completa - Sistema base + Módulo Purchase Requests listos
+**Nuevos módulos:** Purchase Requests (9 documentos, ~420 KB)
+**Nuevo:** Roadmap MVP + Full con 50+ tareas tildables (ROADMAP_PURCHASE_REQUESTS.md)
+**Estrategia:** 2.5 semanas MVP + 2.5 semanas Full

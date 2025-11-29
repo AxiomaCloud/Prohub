@@ -1,4 +1,4 @@
-# MÓDULOS DEL SISTEMA - ProHub
+# MÓDULOS DEL SISTEMA - Hub
 
 Detalle completo de cada módulo del Portal de Proveedores con las mejoras de AXIOMA.
 
@@ -476,7 +476,7 @@ Canal centralizado para consultas, reclamos y comunicación con la empresa clien
 Ejemplos de mensajes que se envían automáticamente:
 
 ```
-📄 *ProHub - AXIOMA*
+📄 *Hub - AXIOMA*
 
 Hola Juan!
 
@@ -486,11 +486,11 @@ Tu documento ha sido procesado:
 • Estado: ✅ EN REVISIÓN
 
 Revisá el detalle en:
-https://prohub.axioma.com/facturas/F-001
+https://hub.axioma.com/facturas/F-001
 
 ---
 
-💰 *ProHub - AXIOMA*
+💰 *Hub - AXIOMA*
 
 ¡Tenés un nuevo pago! 💵
 
@@ -503,11 +503,11 @@ Facturas incluidas:
 • F-002  $10,500
 
 Ver comprobantes:
-https://prohub.axioma.com/pagos/12345
+https://hub.axioma.com/pagos/12345
 
 ---
 
-⚠️ *ProHub - AXIOMA*
+⚠️ *Hub - AXIOMA*
 
 Tu factura fue rechazada:
 
@@ -517,7 +517,7 @@ Tu factura fue rechazada:
 Por favor, adjuntá el remito y volvé a enviar.
 
 Ir al documento:
-https://prohub.axioma.com/facturas/F-020
+https://hub.axioma.com/facturas/F-020
 ```
 
 ---
@@ -751,7 +751,7 @@ Funcionalidad especial para usuarios que son **proveedores Y clientes** simultá
 
 ## 📊 RESUMEN DE MEJORAS POR MÓDULO
 
-| Módulo | Competencia | AXIOMA ProHub |
+| Módulo | Competencia | AXIOMA Hub |
 |--------|-------------|---------------|
 | Buzón Documentos | Formularios manuales, solo PDF | **Parse IA**, 1 click, múltiples formatos |
 | Facturas | Tabla simple, estado texto | **Kanban/Pipeline visual**, timeline, notificaciones |

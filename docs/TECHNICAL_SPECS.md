@@ -1,4 +1,4 @@
-# ESPECIFICACIONES TÉCNICAS - ProHub
+# ESPECIFICACIONES TÉCNICAS - Hub
 
 Especificaciones técnicas completas para el desarrollo del Portal de Proveedores.
 
@@ -817,7 +817,7 @@ test('upload document flow', async ({ page }) => {
 
 ```.env
 # Database
-DATABASE_URL=postgresql://user:password@host:5432/prohub
+DATABASE_URL=postgresql://user:password@host:5432/hub
 
 # Auth
 JWT_SECRET=your-secret-key
@@ -827,7 +827,7 @@ JWT_EXPIRES_IN=7d
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
-S3_BUCKET_NAME=prohub-documents
+S3_BUCKET_NAME=hub-documents
 
 # Redis
 REDIS_HOST=localhost
@@ -847,11 +847,11 @@ SMTP_HOST=smtp.sendgrid.net
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
-EMAIL_FROM=noreply@prohub.axioma.com
+EMAIL_FROM=noreply@hub.axioma.com
 
 # App
-NEXT_PUBLIC_APP_URL=https://prohub.axioma.com
-FRONTEND_URL=https://prohub.axioma.com
+NEXT_PUBLIC_APP_URL=https://hub.axioma.com
+FRONTEND_URL=https://hub.axioma.com
 ```
 
 ### Vercel Deploy

@@ -1,6 +1,6 @@
 # ARQUITECTURA MULTI-TENANT
 
-Sistema de autenticación y gestión multi-empresa para ProHub.
+Sistema de autenticación y gestión multi-empresa para Hub.
 
 ---
 
@@ -22,7 +22,7 @@ Juan es proveedor de:
 3 logins, 3 contraseñas, 3 sesiones separadas
 ```
 
-**✅ Solución AXIOMA ProHub:**
+**✅ Solución AXIOMA Hub:**
 - **1 USUARIO = ACCESO A TODAS TUS EMPRESAS**
 - Login único con JWT
 - Selector de empresa en el header
@@ -389,7 +389,7 @@ export async function PATCH(req: NextRequest) {
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  AXIOMA ProHub                                             │
+│  AXIOMA Hub                                             │
 │                                                            │
 │  ┌─────────────────────────┐   👤 Juan Pérez          ▼  │
 │  │ 🏢 Empresa A SA      ▼  │                              │
@@ -800,11 +800,11 @@ export const createPrismaClient = (tenantId?: string) => {
 ### Email de Invitación
 
 ```
-Asunto: Invitación a ProHub - Empresa A SA
+Asunto: Invitación a Hub - Empresa A SA
 
 Hola Juan!
 
-Ana López te invitó a unirte a Empresa A SA en AXIOMA ProHub.
+Ana López te invitó a unirte a Empresa A SA en AXIOMA Hub.
 
 Rol asignado: Proveedor
 

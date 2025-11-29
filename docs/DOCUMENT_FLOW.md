@@ -1,6 +1,6 @@
 # FLUJO DE DOCUMENTOS - Pipeline y Estados
 
-Diseño del sistema de estados para documentos en ProHub con visualización tipo Kanban/Pipeline.
+Diseño del sistema de estados para documentos en Hub con visualización tipo Kanban/Pipeline.
 
 ---
 

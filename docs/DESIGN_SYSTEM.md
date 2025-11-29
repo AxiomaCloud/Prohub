@@ -1,4 +1,4 @@
-# SISTEMA DE DISEÑO - ProHub
+# SISTEMA DE DISEÑO - Hub
 
 Sistema de diseño completo basado en AXIOMA Parse para mantener consistencia visual en toda la plataforma.
 

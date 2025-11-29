@@ -1,6 +1,6 @@
 # INTEGRACIÓN CON AXIOMA PARSE
 
-Documentación técnica de la integración entre ProHub y Parse para escaneo automático de documentos con IA.
+Documentación técnica de la integración entre Hub y Parse para escaneo automático de documentos con IA.
 
 ---
 
@@ -13,7 +13,7 @@ Documentación técnica de la integración entre ProHub y Parse para escaneo aut
 - Errores de tipeo frecuentes
 - Solo acepta PDF
 
-**✅ ProHub + Parse:**
+**✅ Hub + Parse:**
 - Proveedor arrastra archivo (PDF, JPG, PNG, etc.)
 - Parse escanea con IA en segundos
 - Datos extraídos automáticamente
@@ -28,14 +28,14 @@ Documentación técnica de la integración entre ProHub y Parse para escaneo aut
 
 ```
 ┌─────────────┐
-│   PROHUB    │
+│   HUB    │
 │  (Frontend) │
 └──────┬──────┘
        │
        │ 1. Upload archivo
        ▼
 ┌──────────────┐
-│   ProHub     │
+│   Hub     │
 │   Backend    │
 │  (Next.js)   │
 └──────┬───────┘
@@ -52,14 +52,14 @@ Documentación técnica de la integración entre ProHub y Parse para escaneo aut
        │ 4. Extrae datos
        ▼
 ┌──────────────┐
-│   ProHub     │
+│   Hub     │
 │   Backend    │
 └──────┬───────┘
        │
        │ 5. Retorna datos
        ▼
 ┌──────────────┐
-│   ProHub     │
+│   Hub     │
 │  (Frontend)  │
 │  Muestra     │
 │  resultados  │
@@ -68,8 +68,8 @@ Documentación técnica de la integración entre ProHub y Parse para escaneo aut
 
 ### Componentes
 
-1. **ProHub Frontend**: Interfaz de carga
-2. **ProHub Backend**: API y orquestación
+1. **Hub Frontend**: Interfaz de carga
+2. **Hub Backend**: API y orquestación
 3. **AWS S3**: Almacenamiento de archivos
 4. **Parse Backend**: Motor de IA/OCR
 5. **Base de Datos**: PostgreSQL compartida o separada
@@ -89,7 +89,7 @@ Envía un documento para análisis.
 **Request:**
 ```json
 {
-  "fileUrl": "https://s3.amazonaws.com/prohub/docs/factura-123.pdf",
+  "fileUrl": "https://s3.amazonaws.com/hub/docs/factura-123.pdf",
   "fileName": "factura-123.pdf",
   "fileType": "application/pdf",
   "tenantId": "tenant_empresa_a",
@@ -829,7 +829,7 @@ PARSE_API_KEY=your-parse-api-key
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
-S3_BUCKET_NAME=prohub-documents
+S3_BUCKET_NAME=hub-documents
 
 # Redis (para cola)
 REDIS_HOST=localhost
