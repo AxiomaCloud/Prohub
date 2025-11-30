@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propuesta: Chatbot/Asistente IA para ProHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin: 30px 0 15px 0;
+        }
+
+        h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin: 20px 0 10px 0;
+        }
+
+        p {
+            margin: 15px 0;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin: 15px 0 15px 30px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .highlight-box {
+            background: #f7f9fc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .quote {
+            background: #ffeaa7;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-left: 4px solid #fdcb6e;
+            font-style: italic;
+            border-radius: 8px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .diagram {
+            background: #f7f9fc;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:hover {
+            background: #f7f9fc;
+        }
+
+        .card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
+        }
+
+        .card h3 {
+            margin-top: 0;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 5px 5px 5px 0;
+        }
+
+        .badge.success {
+            background: #00b894;
+        }
+
+        .badge.warning {
+            background: #fdcb6e;
+            color: #333;
+        }
+
+        .badge.danger {
+            background: #d63031;
+        }
+
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .pros, .cons {
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .pros {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+
+        .cons {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+
+        .footer {
+            background: #f7f9fc;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #667eea;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -36px;
+            top: 5px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #667eea;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 40px 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .pros-cons {
+                grid-template-columns: 1fr;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+
+        .toc {
+            background: #f7f9fc;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 30px 0;
+            border: 2px solid #e2e8f0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .toc li {
+            margin: 10px 0;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Propuesta: Chatbot/Asistente IA para ProHub</h1>
+            <p>Transformando la gestión de documentos con Inteligencia Artificial</p>
+        </div>
+
+        <div class="content">
+            <!-- Tabla de Contenidos -->
+            <div class="toc">
+                <h3>📋 Tabla de Contenidos</h3>
+                <ul>
+                    <li><a href="#resumen">Resumen Ejecutivo</a></li>
+                    <li><a href="#opciones">Opciones de Implementación</a></li>
+                    <li><a href="#arquitectura">Arquitectura Técnica</a></li>
+                    <li><a href="#flujo">Flujo de Ejemplo</a></li>
+                    <li><a href="#capacidades">Capacidades del Asistente</a></li>
+                    <li><a href="#implementacion">Consideraciones de Implementación</a></li>
+                    <li><a href="#fases">Fases de Implementación</a></li>
+                    <li><a href="#costos">Estimación de Costos</a></li>
+                    <li><a href="#beneficios">Beneficios Esperados</a></li>
+                    <li><a href="#riesgos">Riesgos y Mitigaciones</a></li>
+                    <li><a href="#metricas">Métricas de Éxito</a></li>
+                </ul>
+            </div>
+
+            <!-- Resumen Ejecutivo -->
+            <section id="resumen">
+                <h2>🎯 Resumen Ejecutivo</h2>
+                <div class="highlight-box">
+                    <p>Integrar un <strong>asistente conversacional basado en IA</strong> que permita a los usuarios crear y gestionar documentos, órdenes de compra y requerimientos mediante comandos en lenguaje natural.</p>
+                </div>
+
+                <div class="quote">
+                    <strong>Ejemplo de uso:</strong><br>
+                    "Haceme un requerimiento para la compra de una notebook para mi"
+                </div>
+
+                <p>El sistema interpreta la solicitud, extrae la información relevante y genera automáticamente el documento correspondiente.</p>
+            </section>
+
+            <!-- Opciones de Implementación -->
+            <section id="opciones">
+                <h2>💡 Opciones de Implementación</h2>
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 4px solid #4caf50;">
+                    <h3 style="color: #2e7d32; margin-top: 0;">⭐ RECOMENDACIÓN: Chat Widget Integrado</h3>
+                    <p><strong>¿Por qué es la mejor opción?</strong></p>
+                    <ul>
+                        <li>✅ <strong>No invasivo:</strong> Está cuando lo necesitás, desaparece cuando no</li>
+                        <li>✅ <strong>Familiar:</strong> Los usuarios ya conocen este patrón (WhatsApp Web, Intercom)</li>
+                        <li>✅ <strong>Contextual:</strong> Puede sugerir acciones basadas en la pantalla actual</li>
+                        <li>✅ <strong>Escalable:</strong> Fácil agregar más funcionalidades sin cambiar la UI principal</li>
+                        <li>✅ <strong>ROI más alto:</strong> Implementación moderada con máximo impacto en UX</li>
+                    </ul>
+                    <p style="margin-top: 15px;"><em>Las otras opciones se presentan para comparación, pero el widget es la opción óptima para ProHub.</em></p>
+                </div>
+
+                <div class="card">
+                    <h3>1. Chat Widget Integrado <span class="badge success">✓ Recomendado</span></h3>
+                    <p>Widget flotante tipo Intercom/Crisp integrado en la interfaz de ProHub.</p>
+
+                    <h4>Características:</h4>
+                    <ul>
+                        <li>Botón flotante accesible desde cualquier pantalla</li>
+                        <li>Panel de chat expandible</li>
+                        <li>Comandos de voz y texto</li>
+                        <li>Sugerencias contextuales basadas en la pantalla actual</li>
+                    </ul>
+
+                    <h4>Casos de uso:</h4>
+                    <ul>
+                        <li>"Crear requerimiento para compra de notebook Dell i7 32GB RAM"</li>
+                        <li>"Generar comprobante de la orden #1234"</li>
+                        <li>"Mostrar estado de mis solicitudes pendientes"</li>
+                        <li>"Aprobar todos los documentos pendientes de Proveedor XYZ"</li>
+                    </ul>
+
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✅ Ventajas</h4>
+                            <ul>
+                                <li>Contexto del usuario disponible</li>
+                                <li>Pre-rellena formularios automáticamente</li>
+                                <li>Acceso directo a las APIs</li>
+                                <li>No interrumpe el flujo de trabajo</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>❌ Consideraciones</h4>
+                            <ul>
+                                <li>Requiere desarrollo de UI adicional</li>
+                                <li>Puede ser ignorado si no es descubierto</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>2. Asistente en Header/Sidebar</h3>
+                    <p>Barra de comandos persistente similar a GitHub Copilot Chat.</p>
+
+                    <h4>Características:</h4>
+                    <ul>
+                        <li>Siempre visible en la interfaz</li>
+                        <li>Historial de comandos</li>
+                        <li>Acceso rápido mediante atajo de teclado (Ej: Ctrl+K)</li>
+                    </ul>
+
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✅ Ventajas</h4>
+                            <ul>
+                                <li>Mayor visibilidad</li>
+                                <li>Fomenta el uso constante</li>
+                                <li>Integración más nativa con la UI</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>❌ Desventajas</h4>
+                            <ul>
+                                <li>Ocupa espacio permanente en pantalla</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>3. Comandos Slash (estilo Slack/Notion)</h3>
+                    <p>Sistema de comandos en inputs existentes.</p>
+
+                    <h4>Ejemplos:</h4>
+                    <ul>
+                        <li><code>/crear-orden laptop HP</code> → Abre modal pre-llenado</li>
+                        <li><code>/estado orden-1234</code> → Muestra información</li>
+                        <li><code>/aprobar doc-5678</code> → Aprueba documento</li>
+                    </ul>
+
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✅ Ventajas</h4>
+                            <ul>
+                                <li>Implementación más ligera</li>
+                                <li>No requiere UI adicional</li>
+                                <li>Usuarios familiarizados con el patrón</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>❌ Desventajas</h4>
+                            <ul>
+                                <li>Menos descubrible</li>
+                                <li>Requiere memorizar comandos</li>
+                                <li>No tan conversacional</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Arquitectura Técnica -->
+            <section id="arquitectura">
+                <h2>🏗️ Arquitectura Técnica</h2>
+
+                <h3>Stack Tecnológico</h3>
+                <p>Aprovechando la infraestructura existente con <strong>Parse</strong>:</p>
+
+                <div class="diagram">┌─────────────┐
+│   Usuario   │
+└──────┬──────┘
+       │ Escribe comando en lenguaje natural
+       ▼
+┌─────────────────────────┐
+│  Widget Chat (Frontend) │
+│  - shadcn/ui components │
+│  - React/Next.js        │
+└──────────┬──────────────┘
+           │ POST /api/chat
+           ▼
+┌─────────────────────────┐
+│   Parse Cloud Function  │
+│   - Recibe mensaje      │
+│   - Contexto usuario    │
+└──────────┬──────────────┘
+           │ Procesa con Parse AI
+           ▼
+┌─────────────────────────┐
+│      Parse AI (IA)      │
+│   - Claude/GPT-4        │
+│   - Extrae entidades    │
+│   - Identifica acción   │
+└──────────┬──────────────┘
+           │ Retorna intención estructurada
+           ▼
+┌─────────────────────────┐
+│  Orquestador (Parse)    │
+│  - Valida permisos      │
+│  - Llama API Hub        │
+└──────────┬──────────────┘
+           │ POST /purchase-requests (etc)
+           ▼
+┌─────────────────────────┐
+│    API Hub (Backend)    │
+│  - Crea documento       │
+│  - Retorna resultado    │
+└──────────┬──────────────┘
+           │ Respuesta JSON
+           ▼
+┌─────────────────────────┐
+│  Widget Chat (Frontend) │
+│  "✅ Documento creado"  │
+└─────────────────────────┘</div>
+
+                <h3>Componentes Principales</h3>
+
+                <div class="card">
+                    <h4>1. Frontend - Widget Chat</h4>
+                    <ul>
+                        <li>Componente React con shadcn/ui</li>
+                        <li>Manejo de estado con Zustand/Context</li>
+                        <li>Streaming de respuestas (efecto de escritura)</li>
+                        <li>Markdown rendering para respuestas formateadas</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>2. Backend - Parse Cloud Functions</h4>
+                    <div class="code-block">// Ejemplo simplificado
+Parse.Cloud.define("chatbot-command", async (request) => {
+  const { message, context } = request.params;
+
+  // 1. Validar sesión y permisos
+  const user = request.user;
+
+  // 2. Procesar con Parse AI
+  const aiResponse = await Parse.AI.chat({
+    messages: [{
+      role: "system",
+      content: systemPrompt // Define capacidades y formato
+    }, {
+      role: "user",
+      content: message
+    }],
+    model: "claude-3-5-sonnet"
+  });
+
+  // 3. Extraer acción estructurada
+  const action = parseAIResponse(aiResponse);
+
+  // 4. Ejecutar acción
+  const result = await executeAction(action, user);
+
+  return result;
+});</div>
+                </div>
+
+                <div class="card">
+                    <h4>3. Procesamiento IA</h4>
+                    <p>El prompt del sistema define:</p>
+                    <ul>
+                        <li>Acciones disponibles (crear_orden, aprobar_doc, consultar_estado, etc.)</li>
+                        <li>Formato de respuesta (JSON estructurado)</li>
+                        <li>Reglas de negocio (límites, validaciones)</li>
+                        <li>Contexto del usuario (empresa, rol, permisos)</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>4. Integración con APIs Existentes</h4>
+                    <p>Reutiliza todos los endpoints documentados:</p>
+                    <ul>
+                        <li><code>POST /api/purchase-requests</code> - Crear requerimientos</li>
+                        <li><code>POST /api/orders</code> - Generar órdenes</li>
+                        <li><code>PATCH /api/documents/{id}/approve</code> - Aprobar documentos</li>
+                        <li><code>GET /api/documents</code> - Consultar estados</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Flujo de Ejemplo -->
+            <section id="flujo">
+                <h2>🔄 Flujo de Ejemplo Detallado</h2>
+
+                <h3>Caso: Crear Requerimiento de Compra</h3>
+
+                <div class="highlight-box">
+                    <strong>Input del usuario:</strong>
+                    <div class="quote">
+                        "Necesito una notebook para diseño gráfico, presupuesto máximo $2000, urgente"
+                    </div>
+                </div>
+
+                <h4>Procesamiento Parse AI:</h4>
+                <div class="code-block">{
+  "accion": "crear_purchase_request",
+  "entidades": {
+    "categoria": "Tecnología",
+    "items": [{
+      "descripcion": "Notebook para diseño gráfico",
+      "tipo": "Hardware",
+      "especificaciones_sugeridas": [
+        "GPU dedicada (NVIDIA/AMD)",
+        "16GB RAM mínimo",
+        "Pantalla >15\" alta resolución"
+      ]
+    }],
+    "presupuesto_maximo": 2000,
+    "urgencia": "alta",
+    "justificacion": "Herramienta de trabajo para diseño gráfico"
+  }
+}</div>
+
+                <h4>Respuesta del sistema:</h4>
+                <div class="highlight-box">
+                    <strong>✅ Borrador de requerimiento creado</strong><br><br>
+                    <strong>📋 Resumen:</strong><br>
+                    • Categoría: Tecnología<br>
+                    • Item: Notebook para diseño gráfico<br>
+                    • Presupuesto: $2000<br>
+                    • Urgencia: Alta<br><br>
+                    <strong>Especificaciones recomendadas:</strong><br>
+                    • GPU dedicada (NVIDIA/AMD)<br>
+                    • 16GB RAM mínimo<br>
+                    • Pantalla >15" alta resolución<br><br>
+                    <strong>¿Querés:</strong><br>
+                    1. [Revisar y editar] el borrador<br>
+                    2. [Enviar directamente] a aprobación<br>
+                    3. [Agregar más detalles]
+                </div>
+            </section>
+
+            <!-- Capacidades -->
+            <section id="capacidades">
+                <h2>🚀 Capacidades del Asistente</h2>
+
+                <div class="card">
+                    <h3>Gestión de Documentos</h3>
+                    <ul>
+                        <li>✅ Crear purchase requests</li>
+                        <li>✅ Generar órdenes de compra</li>
+                        <li>✅ Crear comprobantes de pago</li>
+                        <li>✅ Aprobar/rechazar documentos</li>
+                        <li>✅ Consultar estados y tracking</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Consultas Inteligentes</h3>
+                    <ul>
+                        <li>📊 "¿Cuántas órdenes tengo pendientes?"</li>
+                        <li>🔍 "Mostrame documentos de Proveedor XYZ del último mes"</li>
+                        <li>💰 "¿Cuál es el total de compras de este trimestre?"</li>
+                        <li>⏱️ "¿Qué documentos están por vencer?"</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Acciones Masivas</h3>
+                    <ul>
+                        <li>♻️ "Aprobar todos los documentos de menos de $1000"</li>
+                        <li>📧 "Recordar a proveedores con documentos pendientes"</li>
+                        <li>📄 "Exportar reporte de compras del mes"</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Asistencia Contextual</h3>
+                    <ul>
+                        <li>💡 Sugerencias basadas en pantalla actual</li>
+                        <li>🔔 Notificaciones proactivas ("Tenés 3 docs para aprobar")</li>
+                        <li>📝 Auto-completado de campos repetitivos</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Implementación -->
+            <section id="implementacion">
+                <h2>⚙️ Consideraciones de Implementación</h2>
+
+                <h3>🔒 Seguridad y Permisos</h3>
+                <div class="highlight-box">
+                    <h4>Validación estricta:</h4>
+                    <ul>
+                        <li>Todos los comandos validan permisos del usuario actual</li>
+                        <li>Respeta roles (Supplier, Customer, Admin)</li>
+                        <li>Multi-tenant: solo acceso a datos de su empresa</li>
+                        <li>Rate limiting para prevenir abuso</li>
+                    </ul>
+                </div>
+
+                <h3>✨ Experiencia de Usuario</h3>
+                <div class="card">
+                    <h4>Confirmaciones para acciones críticas:</h4>
+                    <ul>
+                        <li>Eliminar documentos</li>
+                        <li>Aprobar montos grandes (>$X)</li>
+                        <li>Cambios de estado irreversibles</li>
+                    </ul>
+
+                    <h4>Feedback visual:</h4>
+                    <ul>
+                        <li>Loading states durante procesamiento</li>
+                        <li>Animaciones de éxito/error</li>
+                        <li>Preview antes de ejecutar acción</li>
+                    </ul>
+
+                    <h4>Onboarding:</h4>
+                    <ul>
+                        <li>Tutorial interactivo al primer uso</li>
+                        <li>Ejemplos de comandos comunes</li>
+                        <li>Tips contextuales</li>
+                    </ul>
+                </div>
+
+                <h3>⚡ Performance</h3>
+                <div class="card">
+                    <h4>Optimizaciones:</h4>
+                    <ul>
+                        <li>Caché de respuestas frecuentes</li>
+                        <li>Streaming de respuestas largas</li>
+                        <li>Lazy loading del widget</li>
+                        <li>Debounce en inputs</li>
+                    </ul>
+
+                    <h4>Límites:</h4>
+                    <ul>
+                        <li>Máximo de tokens por request</li>
+                        <li>Timeout de 30s por comando</li>
+                        <li>Queue para acciones masivas</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Fases -->
+            <section id="fases">
+                <h2>📅 Fases de Implementación</h2>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="card">
+                            <h3>Fase 1: MVP <span class="badge">2-3 semanas</span></h3>
+                            <ul>
+                                <li>Widget básico con UI minimal</li>
+                                <li>Comandos principales:
+                                    <ul>
+                                        <li>Crear purchase request</li>
+                                        <li>Consultar estado documentos</li>
+                                        <li>Aprobar/rechazar documentos</li>
+                                    </ul>
+                                </li>
+                                <li>Integración con Parse AI</li>
+                                <li>Testing con usuarios beta</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="card">
+                            <h3>Fase 2: Expansión <span class="badge warning">2-3 semanas</span></h3>
+                            <ul>
+                                <li>Comandos avanzados (búsquedas, reportes)</li>
+                                <li>Acciones masivas</li>
+                                <li>Mejoras de UX (sugerencias, autocomplete)</li>
+                                <li>Historial de conversaciones</li>
+                                <li>Exportación de datos</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="card">
+                            <h3>Fase 3: Inteligencia <span class="badge success">3-4 semanas</span></h3>
+                            <ul>
+                                <li>Aprendizaje de patrones de usuario</li>
+                                <li>Sugerencias proactivas</li>
+                                <li>Integración con notificaciones</li>
+                                <li>Comandos de voz</li>
+                                <li>Analytics de uso</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Costos -->
+            <section id="costos">
+                <h2>💰 Estimación de Costos</h2>
+
+                <h3>Desarrollo</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Fase 1 (MVP)</div>
+                        <div class="metric-value">80-120</div>
+                        <div class="metric-label">horas</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Fase 2 (Expansión)</div>
+                        <div class="metric-value">60-80</div>
+                        <div class="metric-label">horas</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Fase 3 (Inteligencia)</div>
+                        <div class="metric-value">80-100</div>
+                        <div class="metric-label">horas</div>
+                    </div>
+                </div>
+
+                <h3>Infraestructura (mensual)</h3>
+                <div class="card">
+                    <h4>Parse AI (Claude/GPT):</h4>
+                    <ul>
+                        <li>~$0.01-0.03 por request</li>
+                        <li>Estimado 1000 requests/mes: <strong>$10-30/mes</strong></li>
+                    </ul>
+                    <h4>Parse Backend:</h4>
+                    <p>Incluido en plan actual</p>
+                    <h4>Hosting Widget:</h4>
+                    <p>Negligible (CDN)</p>
+                    <div class="highlight-box">
+                        <strong>Total infraestructura:</strong> ~$15-50/mes dependiendo de uso
+                    </div>
+                </div>
+            </section>
+
+            <!-- Beneficios -->
+            <section id="beneficios">
+                <h2>🎁 Beneficios Esperados</h2>
+
+                <div class="card">
+                    <h3>Para Usuarios</h3>
+                    <ul>
+                        <li>⚡ <strong>Velocidad:</strong> Crear documentos en segundos vs minutos</li>
+                        <li>🎯 <strong>Simplicidad:</strong> Lenguaje natural vs formularios complejos</li>
+                        <li>📱 <strong>Accesibilidad:</strong> Desde cualquier dispositivo</li>
+                        <li>🧠 <strong>Inteligencia:</strong> Aprende preferencias del usuario</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Para el Negocio</h3>
+                    <ul>
+                        <li>📈 <strong>Adopción:</strong> Reduce fricción de usuarios nuevos</li>
+                        <li>💼 <strong>Productividad:</strong> Menos tiempo en tareas administrativas</li>
+                        <li>🔄 <strong>Retención:</strong> Feature diferenciador vs competencia</li>
+                        <li>📊 <strong>Datos:</strong> Insights sobre cómo usan el sistema</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Diferenciación Competitiva</h3>
+                    <ul>
+                        <li>✨ <strong>Innovación:</strong> Pocos ERP tienen IA conversacional</li>
+                        <li>🚀 <strong>Marketing:</strong> "ProHub con Asistente IA"</li>
+                        <li>💎 <strong>Premium:</strong> Justifica pricing más alto</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Riesgos -->
+            <section id="riesgos">
+                <h2>⚠️ Riesgos y Mitigaciones</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Riesgo</th>
+                            <th>Probabilidad</th>
+                            <th>Impacto</th>
+                            <th>Mitigación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>IA malinterpreta comandos</td>
+                            <td><span class="badge warning">Media</span></td>
+                            <td><span class="badge warning">Medio</span></td>
+                            <td>Confirmaciones para acciones críticas, feedback claro</td>
+                        </tr>
+                        <tr>
+                            <td>Costos de IA exceden estimado</td>
+                            <td><span class="badge success">Baja</span></td>
+                            <td><span class="badge success">Bajo</span></td>
+                            <td>Rate limiting, caché agresivo, fallback a comandos</td>
+                        </tr>
+                        <tr>
+                            <td>Usuarios no lo adoptan</td>
+                            <td><span class="badge warning">Media</span></td>
+                            <td><span class="badge danger">Alto</span></td>
+                            <td>Onboarding proactivo, gamificación, métricas de uso</td>
+                        </tr>
+                        <tr>
+                            <td>Problemas de permisos</td>
+                            <td><span class="badge success">Baja</span></td>
+                            <td><span class="badge danger">Alto</span></td>
+                            <td>Testing exhaustivo de roles, auditoría de acciones</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Métricas -->
+            <section id="metricas">
+                <h2>📊 Métricas de Éxito</h2>
+
+                <h3>KPIs (3 meses post-lanzamiento)</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Adopción</div>
+                        <div class="metric-value">>40%</div>
+                        <div class="metric-label">usuarios activos</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Frecuencia</div>
+                        <div class="metric-value">>5</div>
+                        <div class="metric-label">comandos/usuario/semana</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Satisfacción</div>
+                        <div class="metric-value">NPS >50</div>
+                        <div class="metric-label">en feature</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Eficiencia</div>
+                        <div class="metric-value">-30%</div>
+                        <div class="metric-label">tiempo de creación</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Precisión IA</div>
+                        <div class="metric-value">>85%</div>
+                        <div class="metric-label">interpretación correcta</div>
+                    </div>
+                </div>
+
+                <h3>Tracking</h3>
+                <div class="card">
+                    <ul>
+                        <li>Comandos más usados</li>
+                        <li>Tasa de error/re-intentos</li>
+                        <li>Tiempo promedio de respuesta</li>
+                        <li>Conversiones (chat → documento creado)</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Próximos Pasos -->
+            <section>
+                <h2>🚦 Próximos Pasos</h2>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <strong>1. Validación:</strong> Reunión para aprobar propuesta
+                    </div>
+                    <div class="timeline-item">
+                        <strong>2. Priorización:</strong> Definir comandos del MVP
+                    </div>
+                    <div class="timeline-item">
+                        <strong>3. Diseño:</strong> Wireframes del widget y flujos
+                    </div>
+                    <div class="timeline-item">
+                        <strong>4. Prototipo:</strong> PoC funcional (1 semana)
+                    </div>
+                    <div class="timeline-item">
+                        <strong>5. Desarrollo:</strong> Fase 1 completa
+                    </div>
+                    <div class="timeline-item">
+                        <strong>6. Beta:</strong> Testing con 10-20 usuarios
+                    </div>
+                    <div class="timeline-item">
+                        <strong>7. Launch:</strong> Rollout gradual
+                    </div>
+                </div>
+            </section>
+
+            <!-- Referencias -->
+            <section>
+                <h2>📚 Referencias Técnicas</h2>
+
+                <div class="card">
+                    <ul>
+                        <li><strong>Parse AI Docs:</strong> <a href="https://docs.parseplatform.org/parse-server/guide/#ai" target="_blank">https://docs.parseplatform.org/parse-server/guide/#ai</a></li>
+                        <li><strong>shadcn/ui Chat:</strong> <a href="https://ui.shadcn.com/docs/components/chat" target="_blank">https://ui.shadcn.com/docs/components/chat</a></li>
+                        <li><strong>Claude API:</strong> <a href="https://docs.anthropic.com/claude/reference" target="_blank">https://docs.anthropic.com/claude/reference</a></li>
+                        <li><strong>API Hub:</strong> Ver <code>docs/06-api-endpoints.md</code></li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <div class="footer">
+            <p><strong>Documento creado:</strong> 2025-11-30</p>
+            <p><strong>Versión:</strong> 1.0</p>
+            <p><strong>Autores:</strong> Equipo ProHub + Claude Code</p>
+        </div>
+    </div>
+</body>
+</html>
