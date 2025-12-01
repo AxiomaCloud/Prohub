@@ -39,6 +39,9 @@
     "winston": "^3.17.0",
     "zod": "^4.1.12"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",

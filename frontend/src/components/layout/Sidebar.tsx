@@ -40,7 +40,12 @@ import {
   ScanText,
   Package,
   Brain,
-  ArrowLeft
+  ArrowLeft,
+  ShoppingCart,
+  ClipboardList,
+  PackageCheck,
+  LayoutDashboard,
+  Network
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,7 +94,11 @@ const IconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Sparkles,
   ScanText,
   Package,
-  Brain
+  Brain,
+  ShoppingCart,
+  ClipboardList,
+  PackageCheck,
+  LayoutDashboard
 };
 
 // Helper para obtener el componente de ícono desde el nombre
@@ -256,7 +265,7 @@ export function Sidebar({ children }: SidebarProps) {
           )}
         >
           <div className="w-8 h-8 bg-palette-yellow rounded-lg flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-palette-dark" />
+            <Network className="w-5 h-5 text-palette-dark" />
           </div>
           <h1 className="text-text-white font-semibold text-lg">Hub</h1>
         </div>
@@ -269,7 +278,7 @@ export function Sidebar({ children }: SidebarProps) {
           )}
         >
           <div className="w-8 h-8 bg-palette-yellow rounded-lg flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-palette-dark" />
+            <Network className="w-5 h-5 text-palette-dark" />
           </div>
         </div>
 
@@ -563,11 +572,11 @@ export function Sidebar({ children }: SidebarProps) {
         <div className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-white">
           <button
             onClick={() => router.push('/dashboard')}
-            className="flex items-center space-x-3 hover:opacity-80"
+            className="flex items-center space-x-3"
             title="Ir a Hub"
           >
             <div className="w-8 h-8 bg-palette-yellow rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-palette-dark" />
+              <Package className="w-5 h-5 text-palette-dark" />
             </div>
             <h1 className="text-text-primary font-semibold text-lg">Hub</h1>
           </button>

@@ -5,7 +5,7 @@ import { SidebarProvider } from '@/contexts/SidebarContext'
 import { ConfirmProvider } from '@/hooks/useConfirm'
 
 export const metadata: Metadata = {
-  title: 'ProHub - Portal de Proveedores AXIOMA',
+  title: 'Hub - Portal de Proveedores AXIOMA',
   description: 'Portal de proveedores con IA para gestión de documentos, facturas y pagos',
 }
 
