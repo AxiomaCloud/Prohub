@@ -109,7 +109,26 @@ HUB es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 - Chat interno
 - Historial completo de conversaciones
 
-### **6. Panel de Control (Admin)**
+### **6. 🤖 Chatbot con IA (NUEVO)**
+- **Asistente inteligente con Claude 3.5 Sonnet**
+- Widget flotante estilo WhatsApp/Intercom
+- **Crear requerimientos de compra con lenguaje natural**
+- Consultas sobre estado de documentos
+- Aprobaciones automáticas (próximamente)
+- Disponible 24/7 en todas las pantallas
+
+**Ejemplos de uso:**
+```
+"Necesito una notebook para diseño, presupuesto $2000, urgente"
+"Haceme un requerimiento de 5 sillas de oficina ergonómicas"
+"¿Cuál es el estado de mis requerimientos pendientes?"
+```
+
+El chatbot interpreta el lenguaje natural, extrae información relevante y ejecuta la acción automáticamente.
+
+📚 **Documentación:** Ver `/docs/AI_CHATBOT_SETUP.md`
+
+### **7. Panel de Control (Admin)**
 - Dashboard con métricas clave
 - Aceptar/rechazar facturas
 - Gestión de usuarios ilimitados
