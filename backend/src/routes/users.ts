@@ -1,10 +1,22 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { authenticate } from '../middleware/auth';
 import { hashPassword } from '../utils/password';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Lista de roles disponibles para el frontend
+const AVAILABLE_ROLES = [
+  { value: 'PROVIDER', label: 'Proveedor', description: 'Puede cargar documentos' },
+  { value: 'CLIENT_VIEWER', label: 'Visor', description: 'Solo ver documentos' },
+  { value: 'CLIENT_APPROVER', label: 'Aprobador Documentos', description: 'Aprobar/rechazar documentos' },
+  { value: 'CLIENT_ADMIN', label: 'Administrador', description: 'Gestión completa' },
+  { value: 'SUPER_ADMIN', label: 'Super Admin', description: 'Admin global del sistema' },
+  { value: 'PURCHASE_REQUESTER', label: 'Solicitante Compras', description: 'Puede crear requerimientos de compra' },
+  { value: 'PURCHASE_APPROVER', label: 'Aprobador Compras', description: 'Puede aprobar requerimientos de compra' },
+  { value: 'PURCHASE_ADMIN', label: 'Admin Compras', description: 'Gestión completa del circuito de compras' },
+];
 
 /**
  * GET /api/users
@@ -166,6 +178,225 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// ROLES MANAGEMENT
+// ============================================
+
+/**
+ * GET /api/users/roles/available
+ * Get list of available roles
+ */
+router.get('/roles/available', authenticate, async (req: Request, res: Response) => {
+  try {
+    res.json({ roles: AVAILABLE_ROLES });
+  } catch (error) {
+    console.error('Error fetching available roles:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/users/:id/roles
+ * Get user roles for a specific tenant
+ */
+router.get('/:id/roles', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.query.tenantId as string;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    const membership = await prisma.tenantMembership.findUnique({
+      where: {
+        userId_tenantId: {
+          userId: id,
+          tenantId: tenantId,
+        },
+      },
+      select: {
+        id: true,
+        roles: true,
+        isActive: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(404).json({ error: 'User is not a member of this tenant' });
+    }
+
+    res.json(membership);
+  } catch (error) {
+    console.error('Error fetching user roles:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/users/:id/roles
+ * Update user roles for a specific tenant
+ */
+router.put('/:id/roles', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { tenantId, roles } = req.body;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    if (!Array.isArray(roles)) {
+      return res.status(400).json({ error: 'roles must be an array' });
+    }
+
+    // Validate roles
+    const validRoles = AVAILABLE_ROLES.map(r => r.value);
+    const invalidRoles = roles.filter(r => !validRoles.includes(r));
+    if (invalidRoles.length > 0) {
+      return res.status(400).json({ error: `Invalid roles: ${invalidRoles.join(', ')}` });
+    }
+
+    // Check if membership exists
+    const existingMembership = await prisma.tenantMembership.findUnique({
+      where: {
+        userId_tenantId: {
+          userId: id,
+          tenantId: tenantId,
+        },
+      },
+    });
+
+    let membership;
+
+    if (existingMembership) {
+      // Update existing membership
+      membership = await prisma.tenantMembership.update({
+        where: {
+          userId_tenantId: {
+            userId: id,
+            tenantId: tenantId,
+          },
+        },
+        data: {
+          roles: roles as Role[],
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+    } else {
+      // Create new membership
+      membership = await prisma.tenantMembership.create({
+        data: {
+          userId: id,
+          tenantId: tenantId,
+          roles: roles as Role[],
+          joinedAt: new Date(),
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+    }
+
+    res.json(membership);
+  } catch (error) {
+    console.error('Error updating user roles:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/users/with-roles
+ * Get all users with their roles for a specific tenant
+ */
+router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.query.tenantId as string;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatar: true,
+        emailVerified: true,
+        superuser: true,
+        createdAt: true,
+        tenantMemberships: {
+          where: {
+            tenantId: tenantId,
+          },
+          select: {
+            id: true,
+            roles: true,
+            isActive: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    // Transform to include roles directly
+    const usersWithRoles = users.map(user => ({
+      ...user,
+      roles: user.tenantMemberships[0]?.roles || [],
+      membershipActive: user.tenantMemberships[0]?.isActive ?? false,
+      hasMembership: user.tenantMemberships.length > 0,
+    }));
+
+    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES });
+  } catch (error) {
+    console.error('Error fetching users with roles:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

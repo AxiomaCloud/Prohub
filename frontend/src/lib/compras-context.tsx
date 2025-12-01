@@ -1,8 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Usuario, Requerimiento, OrdenCompra, Proveedor, Adjunto, EstadoAdjunto } from '@/types/compras';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { Usuario, Requerimiento, OrdenCompra, Proveedor, Adjunto, EstadoAdjunto, RolUsuario } from '@/types/compras';
 import { usuariosMock, requerimientosMock, ordenesCompraMock, proveedoresMock } from '@/lib/mock';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ComprasContextType {
   // Usuario
@@ -44,8 +45,43 @@ interface Notificacion {
 
 const ComprasContext = createContext<ComprasContextType | undefined>(undefined);
 
+// Mapear roles del backend a roles del módulo de compras
+function mapRolesToComprasRole(roles: string[]): RolUsuario {
+  if (roles.includes('PURCHASE_ADMIN') || roles.includes('SUPER_ADMIN') || roles.includes('CLIENT_ADMIN')) {
+    return 'ADMIN';
+  }
+  if (roles.includes('PURCHASE_APPROVER')) {
+    return 'APROBADOR';
+  }
+  return 'SOLICITANTE';
+}
+
 export function ComprasProvider({ children }: { children: React.ReactNode }) {
-  const [usuarioActual, setUsuarioActual] = useState<Usuario>(usuariosMock[0]);
+  const { user: authUser, tenant: currentTenant } = useAuth();
+
+  // Convertir el usuario autenticado al formato del módulo de compras
+  const usuarioActual: Usuario = useMemo(() => {
+    if (authUser) {
+      // Obtener roles del tenant actual
+      const membership = authUser.tenantMemberships?.find(
+        (m) => m.tenantId === currentTenant?.id
+      );
+      const roles = membership?.roles || [];
+
+      return {
+        id: authUser.id,
+        nombre: authUser.name,
+        email: authUser.email,
+        rol: mapRolesToComprasRole(roles),
+        departamento: 'General', // TODO: Agregar departamento al modelo de usuario
+        avatar: undefined,
+      };
+    }
+    // Fallback a usuario mock si no hay usuario autenticado
+    return usuariosMock[0];
+  }, [authUser, currentTenant]);
+
+  const [usuarioActualState, setUsuarioActual] = useState<Usuario>(usuariosMock[0]);
   const [requerimientos, setRequerimientos] =
     useState<Requerimiento[]>(requerimientosMock);
   const [ordenesCompra, setOrdenesCompra] =
@@ -74,10 +110,9 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   const cambiarUsuario = useCallback((id: string) => {
-    const usuario = usuariosMock.find((u) => u.id === id);
-    if (usuario) {
-      setUsuarioActual(usuario);
-    }
+    // Esta función ya no cambia el usuario, ya que ahora se obtiene del contexto de auth
+    // Se mantiene por compatibilidad con el código existente
+    console.log('cambiarUsuario es deprecado, el usuario se obtiene del contexto de autenticación');
   }, []);
 
   const agregarRequerimiento = useCallback((req: Requerimiento) => {

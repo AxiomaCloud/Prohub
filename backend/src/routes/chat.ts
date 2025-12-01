@@ -44,7 +44,11 @@ router.post(
       }
 
       const { message, tenantId } = req.body;
-      const userId = (req as any).user.userId; // Del middleware authenticate
+      const userId = req.user?.id; // Del middleware authenticate
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
 
       // Obtener información del usuario
       const user = await getPrisma().user.findUnique({
@@ -53,6 +57,7 @@ router.post(
           id: true,
           name: true,
           email: true,
+          superuser: true,
           tenantMemberships: {
             where: { tenantId },
             select: {
@@ -66,14 +71,17 @@ router.post(
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
-      // Verificar que el usuario pertenece al tenant
-      if (user.tenantMemberships.length === 0) {
+      // Verificar que el usuario pertenece al tenant (superusers tienen acceso a todos)
+      if (!user.superuser && user.tenantMemberships.length === 0) {
         return res.status(403).json({
           error: 'No tienes acceso a este tenant'
         });
       }
 
-      const userRole = user.tenantMemberships[0].roles[0] || 'PROVIDER';
+      // Superusers tienen rol PURCHASE_ADMIN por defecto
+      const userRole = user.superuser
+        ? 'PURCHASE_ADMIN'
+        : (user.tenantMemberships[0]?.roles[0] || 'PROVIDER');
 
       console.log('\n🎯 ===== NUEVA SOLICITUD AL CHATBOT =====');
       console.log(`Usuario: ${user.name} (${user.email})`);
