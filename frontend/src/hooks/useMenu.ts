@@ -39,7 +39,7 @@ export function useMenu(): UseMenuResult {
       const response = await axios.get<MenuItem[]>(`${apiUrl}/api/menu`, {
         withCredentials: true,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('prohub_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('hub_token')}`
         }
       });
 

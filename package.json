@@ -1,8 +1,8 @@
 {
-  "name": "prohub-monorepo",
+  "name": "hub-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "ProHub - Portal de Proveedores AXIOMA (Monorepo)",
+  "description": "HUB - Portal de Proveedores AXIOMA (Monorepo)",
   "workspaces": [
     "backend",
     "frontend",
@@ -22,10 +22,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AxiomaCloud/Prohub.git"
+    "url": "git+https://github.com/AxiomaCloud/Hub.git"
   },
   "keywords": [
-    "prohub",
+    "hub",
     "axioma",
     "monorepo",
     "multi-tenant"
@@ -33,9 +33,9 @@
   "author": "AXIOMA",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/AxiomaCloud/Prohub/issues"
+    "url": "https://github.com/AxiomaCloud/Hub/issues"
   },
-  "homepage": "https://github.com/AxiomaCloud/Prohub#readme",
+  "homepage": "https://github.com/AxiomaCloud/Hub#readme",
   "devDependencies": {
     "concurrently": "^9.2.1"
   }

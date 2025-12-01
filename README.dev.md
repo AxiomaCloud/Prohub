@@ -1,4 +1,4 @@
-# ProHub - Instrucciones de Desarrollo
+# HUB - Instrucciones de Desarrollo
 
 Este es el README técnico de desarrollo. Para la documentación completa del proyecto, ver `/docs/README.md`.
 
@@ -66,7 +66,7 @@ npm run lint         # Ejecuta ESLint
 
 1. Actualiza `.env.local` con tu connection string:
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/prohub"
+DATABASE_URL="postgresql://user:password@localhost:5432/hub"
 ```
 
 2. Copia el schema completo de `/docs/TECHNICAL_SPECS.md` a `prisma/schema.prisma`

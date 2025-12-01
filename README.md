@@ -1,10 +1,10 @@
-# AXIOMA ProHub - Portal de Proveedores
+# AXIOMA HUB - Portal de Proveedores
 
 ## 🎯 Visión General
 
-ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestionar de forma centralizada toda la relación con sus proveedores: documentos, facturas, órdenes de compra, pagos y comunicaciones.
+HUB es el portal de proveedores de AXIOMA que permite a las empresas gestionar de forma centralizada toda la relación con sus proveedores: documentos, facturas, órdenes de compra, pagos y comunicaciones.
 
-**ProHub se integra completamente con Axioma Parse** para ofrecer una experiencia superior en la gestión de documentos.
+**HUB se integra completamente con Axioma Parse** para ofrecer una experiencia superior en la gestión de documentos.
 
 ---
 
@@ -12,7 +12,7 @@ ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestiona
 
 ### 1. **Carga Inteligente de Documentos** (Integración con Parse)
 **❌ Competencia:** El proveedor debe completar múltiples campos requeridos manualmente.
-**✅ AXIOMA ProHub:**
+**✅ AXIOMA HUB:**
 - **1 CLICK = 1 DOCUMENTO PROCESADO**
 - El proveedor simplemente arrastra/sube el documento
 - Parse escanea, clasifica y extrae datos automáticamente
@@ -21,7 +21,7 @@ ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestiona
 
 ### 2. **Multi-Tenant Inteligente**
 **❌ Competencia:** Si trabajás con 3 empresas, necesitás 3 usuarios y 3 contraseñas diferentes.
-**✅ AXIOMA ProHub:**
+**✅ AXIOMA HUB:**
 - **1 USUARIO = ACCESO A TODAS TUS EMPRESAS**
 - Login único con selector de empresa
 - Cambio entre tenants sin re-login
@@ -29,7 +29,7 @@ ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestiona
 
 ### 3. **Formatos de Archivo Flexibles**
 **❌ Competencia:** Solo acepta PDF.
-**✅ AXIOMA ProHub:**
+**✅ AXIOMA HUB:**
 - PDF, JPG, PNG, JPEG, WebP
 - Cualquier formato de imagen
 - Conversión automática si es necesario
@@ -37,7 +37,7 @@ ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestiona
 
 ### 4. **Vista de Estados Visual (Pipeline/Kanban)**
 **❌ Competencia:** Estado mostrado como un campo de texto simple.
-**✅ AXIOMA ProHub:**
+**✅ AXIOMA HUB:**
 - Vista tipo Kanban/Pipeline visual
 - Arrastrar y soltar documentos entre estados
 - Timeline de cambios de estado
@@ -46,7 +46,7 @@ ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestiona
 
 ### 5. **Virtualización de Documentos (Axioma Docs)**
 **❌ Competencia:** PDFs estáticos que hay que descargar.
-**✅ AXIOMA ProHub:**
+**✅ AXIOMA HUB:**
 - Visor de documentos integrado
 - Zoom, rotación, anotaciones
 - Descarga opcional
@@ -55,7 +55,7 @@ ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestiona
 
 ### 6. **Comunicación Omnicanal**
 **❌ Competencia:** Solo mensajes dentro del portal.
-**✅ AXIOMA ProHub:**
+**✅ AXIOMA HUB:**
 - WhatsApp integrado
 - Notificaciones push
 - Email automático
@@ -65,7 +65,7 @@ ProHub es el portal de proveedores de AXIOMA que permite a las empresas gestiona
 
 ### 7. **Roles Duales (Proveedor + Cliente)**
 **❌ Competencia:** Usuario separado si sos proveedor y cliente.
-**✅ AXIOMA ProHub:**
+**✅ AXIOMA HUB:**
 - Un usuario puede ser PROVEEDOR y CLIENTE simultáneamente
 - Switch de contexto inteligente
 - Buzón de entrada y salida
@@ -229,7 +229,7 @@ Ver documentación completa en `/docs/DESIGN_SYSTEM.md`
 ## 📁 ESTRUCTURA DEL PROYECTO
 
 ```
-prohub/
+hub/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/

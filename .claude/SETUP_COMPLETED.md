@@ -1,4 +1,4 @@
-# ✅ SETUP COMPLETADO - ProHub
+# ✅ SETUP COMPLETADO - HUB
 
 **Fecha:** 15 de Noviembre 2025
 **Duración:** ~30 minutos
@@ -56,7 +56,7 @@
 ### 4. ✅ Estructura de Carpetas Creada
 
 ```
-prohub/
+hub/
 ├── src/
 │   ├── app/                 ✅ App Router
 │   ├── components/          ✅ Componentes (vacío, listo para uso)
@@ -185,7 +185,7 @@ npm run lint     # ✅ ESLint
 ### Página principal creada
 
 Visita `http://localhost:3000` para ver:
-- ✅ Título "AXIOMA ProHub"
+- ✅ Título "AXIOMA HUB"
 - ✅ 3 tarjetas con diferenciadores (IA-First, Multi-Tenant, Omnicanal)
 - ✅ Mensaje "Setup completado ✅"
 - ✅ Estilos de Tailwind con colores AXIOMA aplicados
@@ -194,7 +194,7 @@ Visita `http://localhost:3000` para ver:
 
 ```tsx
 <h1 className="text-4xl font-bold text-sidebar mb-8">
-  AXIOMA ProHub
+  AXIOMA HUB
 </h1>
 ```
 

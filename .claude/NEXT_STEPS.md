@@ -1,4 +1,4 @@
-# PRÓXIMOS PASOS - ProHub
+# PRÓXIMOS PASOS - HUB
 
 Plan de acción recomendado para comenzar el desarrollo.
 
@@ -9,8 +9,8 @@ Plan de acción recomendado para comenzar el desarrollo.
 ### 1.1 Inicializar Proyecto Next.js
 
 ```bash
-npx create-next-app@latest prohub --typescript --tailwind --app --src-dir
-cd prohub
+npx create-next-app@latest hub --typescript --tailwind --app --src-dir
+cd hub
 ```
 
 **Opciones a seleccionar:**
@@ -96,7 +96,7 @@ JWT_EXPIRES_IN="7d"
 AWS_REGION="us-east-1"
 AWS_ACCESS_KEY_ID="..."
 AWS_SECRET_ACCESS_KEY="..."
-S3_BUCKET_NAME="prohub-documents"
+S3_BUCKET_NAME="hub-documents"
 
 # Redis
 REDIS_HOST="localhost"

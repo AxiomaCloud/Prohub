@@ -1,7 +1,7 @@
 {
-  "name": "@prohub/frontend",
+  "name": "@hub/frontend",
   "version": "1.0.0",
-  "description": "ProHub Frontend - Next.js App",
+  "description": "HUB Frontend - Next.js App",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
