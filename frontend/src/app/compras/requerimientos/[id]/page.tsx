@@ -150,25 +150,34 @@ export default function DetalleRequerimientoPage() {
   };
 
   const handleConfirmarRecepcion = (data: {
-    conformidad: 'CONFORME' | 'PARCIAL' | 'NO_CONFORME';
+    tipoRecepcion: 'TOTAL' | 'PARCIAL';
     observaciones: string;
-    itemsRecibidos: { descripcion: string; cantidadEsperada: number; cantidadRecibida: number }[];
+    itemsRecibidos: {
+      id: string;
+      itemOCId: string;
+      descripcion: string;
+      unidad: string;
+      cantidadEsperada: number;
+      cantidadRecibida: number;
+      cantidadPendiente: number;
+    }[];
   }) => {
     actualizarRequerimiento(requerimiento.id, {
       estado: 'RECIBIDO',
       recepcion: {
         id: `rec-${Date.now()}`,
+        numero: `REC-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
         requerimientoId: requerimiento.id,
         ordenCompraId: requerimiento.ordenCompra?.id || '',
         receptorId: usuarioActual.id,
         receptor: usuarioActual,
         fechaRecepcion: new Date(),
-        conformidad: data.conformidad,
+        tipoRecepcion: data.tipoRecepcion,
         observaciones: data.observaciones,
         itemsRecibidos: data.itemsRecibidos,
       },
       ordenCompra: requerimiento.ordenCompra
-        ? { ...requerimiento.ordenCompra, estado: 'ENTREGADA' }
+        ? { ...requerimiento.ordenCompra, estado: 'FINALIZADA' }
         : undefined,
     });
     setShowRecepcionModal(false);

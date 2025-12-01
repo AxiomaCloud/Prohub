@@ -197,12 +197,16 @@ export function useRequerimientos(usuarioId?: string) {
     (
       id: string,
       data: {
-        conformidad: 'CONFORME' | 'PARCIAL' | 'NO_CONFORME';
+        tipoRecepcion: 'TOTAL' | 'PARCIAL';
         observaciones?: string;
         itemsRecibidos: {
+          id: string;
+          itemOCId: string;
           descripcion: string;
+          unidad: string;
           cantidadEsperada: number;
           cantidadRecibida: number;
+          cantidadPendiente: number;
         }[];
       }
     ) => {
@@ -212,12 +216,13 @@ export function useRequerimientos(usuarioId?: string) {
 
           const recepcion = {
             id: `rec-${Date.now()}`,
+            numero: `REC-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
             requerimientoId: id,
             ordenCompraId: r.ordenCompra?.id || '',
             receptorId: usuarioActualMock.id,
             receptor: usuarioActualMock,
             fechaRecepcion: new Date(),
-            conformidad: data.conformidad,
+            tipoRecepcion: data.tipoRecepcion,
             observaciones: data.observaciones,
             itemsRecibidos: data.itemsRecibidos,
           };
@@ -227,7 +232,7 @@ export function useRequerimientos(usuarioId?: string) {
             estado: 'RECIBIDO' as EstadoRequerimiento,
             recepcion,
             ordenCompra: r.ordenCompra
-              ? { ...r.ordenCompra, estado: 'ENTREGADA' as const }
+              ? { ...r.ordenCompra, estado: 'FINALIZADA' as const }
               : undefined,
           };
         })

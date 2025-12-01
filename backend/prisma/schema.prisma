@@ -36,6 +36,8 @@ model User {
 
   // Purchase Requests
   purchaseRequests   PurchaseRequest[] @relation("PurchaseRequestSolicitante")
+  purchaseRequestsAprobados PurchaseRequest[] @relation("PurchaseRequestAprobador")
+  attachmentsAprobados PurchaseRequestAttachment[]
 
   @@index([email])
 }
@@ -287,7 +289,190 @@ model MenuItem {
 }
 
 // ============================================
-// ÓRDENES DE COMPRA
+// ÓRDENES DE COMPRA (CIRCUITO DE COMPRAS)
+// ============================================
+
+model PurchaseOrderCircuit {
+  id                String    @id @default(cuid())
+  numero            String    // OC-2025-XXXXX
+
+  // Vínculo con el requerimiento (one-to-one)
+  purchaseRequestId String    @unique
+  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id])
+
+  // Proveedor
+  proveedorId       String
+  proveedor         Supplier  @relation(fields: [proveedorId], references: [id])
+
+  // Estado
+  estado            PurchaseOrderCircuitStatus @default(PENDIENTE_APROBACION)
+
+  // Montos
+  subtotal          Decimal   @db.Decimal(18,2)
+  impuestos         Decimal   @db.Decimal(18,2) @default(0)
+  total             Decimal   @db.Decimal(18,2)
+  moneda            String    @default("ARS")
+
+  // Condiciones
+  condicionPago     String?
+  lugarEntrega      String?
+  observaciones     String?   @db.Text
+
+  // Fechas
+  fechaEmision      DateTime  @default(now())
+  fechaEntregaEstimada DateTime?
+
+  // Multi-tenant
+  tenantId          String
+
+  // Usuario que creó la OC
+  creadoPorId       String
+
+  // Aprobación de OC
+  aprobadorOCId     String?
+  fechaAprobacionOC DateTime?
+  comentarioAprobacionOC String? @db.Text
+
+  // Items
+  items             PurchaseOrderItem[]
+
+  // Recepciones
+  recepciones       Reception[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([numero, tenantId])
+  @@index([tenantId, estado])
+  @@index([purchaseRequestId])
+  @@index([proveedorId])
+  @@map("purchase_order_circuits")
+}
+
+model PurchaseOrderItem {
+  id                  String    @id @default(cuid())
+  purchaseOrderId     String
+  purchaseOrder       PurchaseOrderCircuit @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  descripcion         String
+  cantidad            Int
+  cantidadRecibida    Int       @default(0)
+  unidad              String    @default("Unidad")
+  precioUnitario      Decimal   @db.Decimal(18,2)
+  total               Decimal   @db.Decimal(18,2)
+
+  createdAt           DateTime  @default(now())
+
+  // Items recibidos en recepciones
+  itemsRecibidos      ReceptionItem[]
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+enum PurchaseOrderCircuitStatus {
+  PENDIENTE_APROBACION
+  APROBADA
+  RECHAZADA
+  EN_PROCESO
+  PARCIALMENTE_RECIBIDA
+  ENTREGADA
+  FINALIZADA
+  CANCELADA
+}
+
+// ============================================
+// PROVEEDORES
+// ============================================
+
+model Supplier {
+  id          String    @id @default(cuid())
+  tenantId    String
+
+  nombre      String
+  cuit        String
+  direccion   String?
+  telefono    String?
+  email       String?
+  contacto    String?
+
+  isActive    Boolean   @default(true)
+
+  // Órdenes de compra
+  ordenesCompra PurchaseOrderCircuit[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([tenantId, cuit])
+  @@index([tenantId, isActive])
+  @@map("suppliers")
+}
+
+// ============================================
+// RECEPCIONES
+// ============================================
+
+model Reception {
+  id                String    @id @default(cuid())
+  numero            String    // REC-2025-XXXXX
+
+  // Vínculos
+  purchaseOrderId   String
+  purchaseOrder     PurchaseOrderCircuit @relation(fields: [purchaseOrderId], references: [id])
+
+  // Receptor
+  receptorId        String
+
+  // Datos de recepción
+  fechaRecepcion    DateTime  @default(now())
+  tipoRecepcion     ReceptionType @default(TOTAL)
+  observaciones     String?   @db.Text
+
+  // Multi-tenant
+  tenantId          String
+
+  // Items recibidos
+  itemsRecibidos    ReceptionItem[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([numero, tenantId])
+  @@index([tenantId])
+  @@index([purchaseOrderId])
+  @@map("receptions")
+}
+
+model ReceptionItem {
+  id                String    @id @default(cuid())
+  receptionId       String
+  reception         Reception @relation(fields: [receptionId], references: [id], onDelete: Cascade)
+
+  // Vínculo con item de OC
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+
+  descripcion       String
+  unidad            String
+  cantidadEsperada  Int
+  cantidadRecibida  Int
+  cantidadPendiente Int
+
+  createdAt         DateTime  @default(now())
+
+  @@index([receptionId])
+  @@index([purchaseOrderItemId])
+  @@map("reception_items")
+}
+
+enum ReceptionType {
+  TOTAL
+  PARCIAL
+}
+
+// ============================================
+// ÓRDENES DE COMPRA (LEGACY - para documentos)
 // ============================================
 
 model PurchaseOrder {
@@ -480,9 +665,16 @@ model PurchaseRequest {
   estado      PurchaseRequestStatus @default(BORRADOR)
   prioridad   PurchaseRequestPriority @default(NORMAL)
 
+  // Tipo de compra (para determinar regla de aprobación)
+  purchaseType  PurchaseType          @default(DIRECT)
+
+  // Switch de aprobación de especificaciones
+  requiresSpecApproval  Boolean       @default(false)
+
   // Datos del requerimiento
-  categoria   String                // Tecnología, Oficina, Servicios, etc.
-  justificacion String?             @db.Text
+  categoria     String                // Tecnología, Oficina, Servicios, etc.
+  centroCostos  String?               // Centro de costos
+  justificacion String?               @db.Text
 
   // Montos
   montoEstimado Decimal?            // Presupuesto estimado
@@ -496,16 +688,30 @@ model PurchaseRequest {
   solicitanteId String
   solicitante   User                @relation("PurchaseRequestSolicitante", fields: [solicitanteId], references: [id])
 
+  // Aprobación
+  aprobadorId         String?
+  aprobador           User?          @relation("PurchaseRequestAprobador", fields: [aprobadorId], references: [id])
+  fechaAprobacion     DateTime?
+  comentarioAprobador String?        @db.Text
+
   // Items del requerimiento
   items       PurchaseRequestItem[]
+
+  // Adjuntos
+  adjuntos    PurchaseRequestAttachment[]
+
+  // Orden de compra generada
+  ordenCompra PurchaseOrderCircuit?
 
   // Metadata del chatbot (si fue creado por IA)
   creadoPorIA Boolean               @default(false)
   promptOriginal String?            @db.Text // Comando original del usuario
 
   // Fechas
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  fechaNecesidad DateTime?             // Fecha en que se necesita
+  fechaEnvio     DateTime?             // Fecha de envío a aprobación
 
   @@index([tenantId, estado])
   @@index([solicitanteId])
@@ -529,12 +735,47 @@ model PurchaseRequestItem {
   @@index([purchaseRequestId])
 }
 
+model PurchaseRequestAttachment {
+  id                String         @id @default(cuid())
+  purchaseRequestId String
+  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+
+  nombre            String
+  tipo              String         // MIME type
+  tamanio           Int            // Tamaño en bytes
+  url               String         // URL del archivo
+
+  esEspecificacion  Boolean        @default(false) // Es documento de especificaciones técnicas
+  estado            AttachmentStatus @default(PENDIENTE)
+
+  // Aprobación de especificación
+  aprobadorId       String?
+  aprobador         User?          @relation(fields: [aprobadorId], references: [id])
+  fechaAprobacion   DateTime?
+  comentario        String?
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([purchaseRequestId])
+  @@map("purchase_request_attachments")
+}
+
+enum AttachmentStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
 enum PurchaseRequestStatus {
   BORRADOR
+  PENDIENTE_APROBACION
   ENVIADO
   EN_REVISION
   APROBADO
   RECHAZADO
+  OC_GENERADA
+  RECIBIDO
   CANCELADO
 }
 
@@ -543,5 +784,353 @@ enum PurchaseRequestPriority {
   NORMAL
   ALTA
   URGENTE
+}
+
+// Tipo de compra (para determinar regla de aprobación)
+enum PurchaseType {
+  DIRECT          // Compra directa (sin cotización)
+  WITH_QUOTE      // Con cotización
+  WITH_BID        // Con licitación
+  WITH_ADVANCE    // Con anticipo
+}
+
+// ============================================
+// SISTEMA DE NOTIFICACIONES - PREFERENCIAS
+// ============================================
+
+model UserNotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+
+  eventType NotificationEventType
+  documentType DocumentNotificationType?
+
+  emailEnabled    Boolean @default(true)
+  portalEnabled   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tenantId, eventType, documentType])
+  @@index([userId, tenantId])
+  @@map("user_notification_preferences")
+}
+
+enum NotificationEventType {
+  // Requerimientos
+  REQ_SUBMITTED
+  REQ_APPROVED
+  REQ_REJECTED
+  REQ_NEEDS_APPROVAL
+
+  // Órdenes de Compra
+  OC_GENERATED
+  OC_NEEDS_APPROVAL
+  OC_APPROVED
+  OC_REJECTED
+
+  // Recepciones
+  RECEPTION_REGISTERED
+  RECEPTION_COMPLETE
+
+  // Delegaciones
+  DELEGATION_RECEIVED
+  DELEGATION_EXPIRED
+}
+
+enum DocumentNotificationType {
+  PURCHASE_REQUEST
+  PURCHASE_ORDER
+  RECEPTION
+  ALL
+}
+
+// ============================================
+// SISTEMA DE NOTIFICACIONES - PLANTILLAS EMAIL
+// ============================================
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String?
+
+  eventType NotificationEventType
+
+  subject   String
+  bodyHtml  String   @db.Text
+  bodyText  String?  @db.Text
+
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, eventType])
+  @@map("email_templates")
+}
+
+// ============================================
+// SISTEMA DE NOTIFICACIONES - COLA DE EMAILS
+// ============================================
+
+model EmailQueue {
+  id          String   @id @default(cuid())
+
+  toEmail     String
+  toName      String?
+
+  subject     String
+  bodyHtml    String   @db.Text
+  bodyText    String?  @db.Text
+
+  eventType   NotificationEventType
+  relatedId   String?
+  relatedType String?
+
+  status      EmailQueueStatus @default(PENDING)
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  lastError   String?
+  sentAt      DateTime?
+
+  scheduledFor DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+  @@map("email_queue")
+}
+
+enum EmailQueueStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// SISTEMA DE AUTORIZACIONES - REGLAS
+// ============================================
+
+model ApprovalRule {
+  id          String   @id @default(cuid())
+  tenantId    String
+
+  name        String
+  description String?
+
+  // Condiciones para aplicar esta regla
+  purchaseType    PurchaseType?
+  minAmount       Decimal?          @db.Decimal(18,2)
+  maxAmount       Decimal?          @db.Decimal(18,2)
+  category        String?
+
+  // Prioridad (mayor = se evalúa primero)
+  priority    Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  // Niveles de aprobación
+  levels      ApprovalLevel[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, isActive, priority])
+  @@map("approval_rules")
+}
+
+// ============================================
+// SISTEMA DE AUTORIZACIONES - NIVELES
+// ============================================
+
+model ApprovalLevel {
+  id              String   @id @default(cuid())
+  approvalRuleId  String
+  approvalRule    ApprovalRule @relation(fields: [approvalRuleId], references: [id], onDelete: Cascade)
+
+  levelOrder      Int
+  name            String
+
+  // Modo: ANY = cualquiera aprueba (concurrente), ALL = todos aprueban (secuencial)
+  approvalMode    ApprovalMode @default(ANY)
+
+  // Tipo de nivel (general o especificaciones)
+  levelType       ApprovalLevelType @default(GENERAL)
+
+  // Aprobadores de este nivel
+  approvers       ApprovalLevelApprover[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([approvalRuleId, levelOrder])
+  @@map("approval_levels")
+}
+
+enum ApprovalMode {
+  ANY   // Cualquiera de los aprobadores puede aprobar (OR)
+  ALL   // Todos los aprobadores deben aprobar (AND)
+}
+
+enum ApprovalLevelType {
+  GENERAL         // Aprobación general del documento
+  SPECIFICATIONS  // Aprobación de especificaciones técnicas
+}
+
+// ============================================
+// SISTEMA DE AUTORIZACIONES - APROBADORES POR NIVEL
+// ============================================
+
+model ApprovalLevelApprover {
+  id                String   @id @default(cuid())
+  approvalLevelId   String
+  approvalLevel     ApprovalLevel @relation(fields: [approvalLevelId], references: [id], onDelete: Cascade)
+
+  // Puede ser usuario específico o rol
+  userId            String?
+  role              Role?
+
+  // Orden dentro del nivel (para modo ALL secuencial)
+  sequenceOrder     Int      @default(0)
+
+  createdAt         DateTime @default(now())
+
+  @@map("approval_level_approvers")
+}
+
+// ============================================
+// SISTEMA DE AUTORIZACIONES - WORKFLOW (instancia)
+// ============================================
+
+model ApprovalWorkflow {
+  id              String   @id @default(cuid())
+
+  // Documento asociado
+  documentType    ApprovalDocumentType
+  documentId      String
+  tenantId        String
+
+  // Regla que se aplicó
+  approvalRuleId  String
+
+  // Estado general del workflow
+  status          ApprovalWorkflowStatus @default(PENDING)
+  currentLevel    Int      @default(1)
+
+  // Instancias de aprobación
+  approvals       ApprovalInstance[]
+
+  // Metadata
+  initiatedBy     String
+  initiatedAt     DateTime @default(now())
+  completedAt     DateTime?
+
+  // Resultado final
+  finalDecision   ApprovalDecision?
+  finalComment    String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([documentType, documentId])
+  @@index([tenantId, status])
+  @@map("approval_workflows")
+}
+
+enum ApprovalDocumentType {
+  PURCHASE_REQUEST
+  PURCHASE_ORDER
+}
+
+enum ApprovalWorkflowStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// ============================================
+// SISTEMA DE AUTORIZACIONES - INSTANCIA DE APROBACIÓN
+// ============================================
+
+model ApprovalInstance {
+  id              String   @id @default(cuid())
+  workflowId      String
+  workflow        ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  // Nivel
+  levelOrder      Int
+  levelName       String
+  levelType       ApprovalLevelType @default(GENERAL)
+  approvalMode    ApprovalMode
+
+  // Aprobadores potenciales (para registro en modo ANY)
+  potentialApprovers Json?   // [{userId, role, name}]
+
+  // Aprobador que tomó la decisión
+  decidedById     String?
+  decidedByName   String?
+
+  // Decisión
+  decision        ApprovalDecision @default(PENDING)
+  comment         String?
+
+  // Fechas
+  assignedAt      DateTime @default(now())
+  decidedAt       DateTime?
+  dueDate         DateTime?
+
+  // Delegación (si aplica)
+  delegatedFromId String?
+  delegatedAt     DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([workflowId, levelOrder])
+  @@index([decidedById, decision])
+  @@map("approval_instances")
+}
+
+enum ApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+  DELEGATED
+  SKIPPED
+}
+
+// ============================================
+// SISTEMA DE AUTORIZACIONES - DELEGACIONES
+// ============================================
+
+model ApprovalDelegation {
+  id              String   @id @default(cuid())
+  tenantId        String
+
+  // Quien delega
+  delegatorId     String
+  delegatorName   String
+
+  // A quien delega
+  delegateId      String
+  delegateName    String
+
+  // Periodo de vigencia
+  startDate       DateTime
+  endDate         DateTime
+
+  reason          String?
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId, delegatorId, isActive])
+  @@index([delegateId, isActive])
+  @@map("approval_delegations")
 }
 

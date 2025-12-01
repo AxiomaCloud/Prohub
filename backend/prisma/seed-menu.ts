@@ -90,6 +90,24 @@ async function seedMenu() {
       orderIndex: 4,
       description: 'Gestión de órdenes de compra',
     },
+    {
+      id: '2-5',
+      parentId: '2',
+      title: 'Aprobación OC',
+      icon: 'ClipboardCheck',
+      url: '/compras/aprobaciones-oc',
+      orderIndex: 5,
+      description: 'Aprobación de órdenes de compra',
+    },
+    {
+      id: '2-6',
+      parentId: '2',
+      title: 'Recepción',
+      icon: 'PackageCheck',
+      url: '/compras/recepcion',
+      orderIndex: 6,
+      description: 'Recepción de compras y mercadería',
+    },
   ];
 
   const adminSubItems = [
@@ -123,20 +141,29 @@ async function seedMenu() {
     {
       id: '5-4',
       parentId: '5',
-      title: 'Planes',
-      icon: 'Package',
-      url: '/admin/planes',
+      title: 'Reglas de Aprobación',
+      icon: 'Shield',
+      url: '/admin/approval-rules',
       orderIndex: 4,
-      description: 'Gestión de planes y suscripciones',
+      description: 'Configuración de flujos de aprobación',
     },
     {
       id: '5-5',
       parentId: '5',
-      title: 'Preferencias',
-      icon: 'Settings',
+      title: 'Notificaciones',
+      icon: 'Bell',
       url: '/admin/settings',
       orderIndex: 5,
-      description: 'Configuración de cuenta y preferencias',
+      description: 'Configuración de notificaciones por email',
+    },
+    {
+      id: '5-6',
+      parentId: '5',
+      title: 'Planes',
+      icon: 'Package',
+      url: '/admin/planes',
+      orderIndex: 6,
+      description: 'Gestión de planes y suscripciones',
     },
   ];
 

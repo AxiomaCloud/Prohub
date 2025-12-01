@@ -1,9 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { Usuario, Requerimiento, OrdenCompra, Proveedor, Adjunto, EstadoAdjunto, RolUsuario } from '@/types/compras';
-import { usuariosMock, requerimientosMock, ordenesCompraMock, proveedoresMock } from '@/lib/mock';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { Usuario, Requerimiento, OrdenCompra, Proveedor, Adjunto, EstadoAdjunto, RolUsuario, Recepcion, ItemRecibido } from '@/types/compras';
+import { usuariosMock } from '@/lib/mock';
 import { useAuth } from '@/contexts/AuthContext';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 interface ComprasContextType {
   // Usuario
@@ -13,16 +15,33 @@ interface ComprasContextType {
 
   // Requerimientos
   requerimientos: Requerimiento[];
+  loadingRequerimientos: boolean;
   agregarRequerimiento: (req: Requerimiento) => void;
   actualizarRequerimiento: (id: string, data: Partial<Requerimiento>) => void;
+  refreshRequerimientos: () => Promise<void>;
 
   // Ordenes de Compra
   ordenesCompra: OrdenCompra[];
-  agregarOrdenCompra: (oc: OrdenCompra) => void;
+  loadingOrdenesCompra: boolean;
+  agregarOrdenCompra: (oc: Omit<OrdenCompra, 'id' | 'numero'>) => Promise<OrdenCompra | null>;
   actualizarOrdenCompra: (id: string, data: Partial<OrdenCompra>) => void;
+  refreshOrdenesCompra: () => Promise<void>;
+
+  // Recepciones
+  recepciones: Recepcion[];
+  loadingRecepciones: boolean;
+  agregarRecepcion: (recepcion: {
+    ordenCompraId: string;
+    itemsRecibidos: { itemOCId: string; cantidadRecibida: number }[];
+    observaciones?: string;
+  }) => Promise<Recepcion | null>;
+  refreshRecepciones: () => Promise<void>;
 
   // Proveedores
   proveedores: Proveedor[];
+  loadingProveedores: boolean;
+  agregarProveedor: (proveedor: Omit<Proveedor, 'id'>) => Promise<Proveedor | null>;
+  refreshProveedores: () => Promise<void>;
 
   // Aprobacion de adjuntos
   aprobarAdjunto: (requerimientoId: string, adjuntoId: string, aprobado: boolean, comentario?: string) => void;
@@ -62,7 +81,6 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
   // Convertir el usuario autenticado al formato del módulo de compras
   const usuarioActual: Usuario = useMemo(() => {
     if (authUser) {
-      // Obtener roles del tenant actual
       const membership = authUser.tenantMemberships?.find(
         (m) => m.tenantId === currentTenant?.id
       );
@@ -73,117 +91,384 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
         nombre: authUser.name,
         email: authUser.email,
         rol: mapRolesToComprasRole(roles),
-        departamento: 'General', // TODO: Agregar departamento al modelo de usuario
+        departamento: 'General',
         avatar: undefined,
       };
     }
-    // Fallback a usuario mock si no hay usuario autenticado
     return usuariosMock[0];
   }, [authUser, currentTenant]);
 
-  const [usuarioActualState, setUsuarioActual] = useState<Usuario>(usuariosMock[0]);
-  const [requerimientos, setRequerimientos] =
-    useState<Requerimiento[]>(requerimientosMock);
-  const [ordenesCompra, setOrdenesCompra] =
-    useState<OrdenCompra[]>(ordenesCompraMock);
-  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([
-    {
-      id: 'notif-1',
-      tipo: 'APROBACION_PENDIENTE',
-      titulo: 'Nuevo requerimiento pendiente',
-      mensaje:
-        'Juan Pérez solicita aprobación para "Notebooks Dell XPS para equipo de desarrollo"',
-      fecha: new Date('2025-11-28T10:30:00'),
-      leida: false,
-      requerimientoId: 'req-5',
-    },
-    {
-      id: 'notif-2',
-      tipo: 'APROBACION_PENDIENTE',
-      titulo: 'Nuevo requerimiento pendiente',
-      mensaje:
-        'Carlos López solicita aprobación para "Insumos de limpieza para oficina"',
-      fecha: new Date('2025-11-29T09:15:00'),
-      leida: false,
-      requerimientoId: 'req-6',
-    },
-  ]);
+  // Estados
+  const [requerimientos, setRequerimientos] = useState<Requerimiento[]>([]);
+  const [loadingRequerimientos, setLoadingRequerimientos] = useState(false);
+  const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([]);
+  const [loadingOrdenesCompra, setLoadingOrdenesCompra] = useState(false);
+  const [recepciones, setRecepciones] = useState<Recepcion[]>([]);
+  const [loadingRecepciones, setLoadingRecepciones] = useState(false);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [loadingProveedores, setLoadingProveedores] = useState(false);
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
 
-  const cambiarUsuario = useCallback((id: string) => {
-    // Esta función ya no cambia el usuario, ya que ahora se obtiene del contexto de auth
-    // Se mantiene por compatibilidad con el código existente
-    console.log('cambiarUsuario es deprecado, el usuario se obtiene del contexto de autenticación');
+  // Helper para obtener token
+  const getToken = useCallback(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('hub_token') : null;
   }, []);
+
+  // =============================================
+  // REQUERIMIENTOS
+  // =============================================
+  const fetchRequerimientos = useCallback(async () => {
+    if (!currentTenant?.id) return;
+    const token = getToken();
+    if (!token) return;
+
+    setLoadingRequerimientos(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/purchase-requests?tenantId=${currentTenant.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const mappedReqs: Requerimiento[] = data.requerimientos.map((req: any) => ({
+          ...req,
+          fechaCreacion: new Date(req.fechaCreacion),
+          fechaActualizacion: new Date(req.fechaActualizacion),
+          fechaNecesaria: req.fechaNecesaria ? new Date(req.fechaNecesaria) : undefined,
+          centroCostos: req.centroCostos || '',
+          justificacion: req.justificacion || req.descripcion || '',
+          descripcion: req.descripcion || req.justificacion || '',
+          prioridad: (req.prioridad || 'NORMAL').toUpperCase(),
+          adjuntos: req.adjuntos || [],
+          items: (req.items || []).map((item: any) => ({
+            ...item,
+            unidad: item.unidad || item.unidadMedida || 'Unidad',
+            precioUnitario: item.precioUnitario || item.precioEstimado || 0,
+            total: item.total || ((item.cantidad || 1) * (item.precioUnitario || item.precioEstimado || 0)),
+          })),
+        }));
+        setRequerimientos(mappedReqs);
+        console.log(`✅ Cargados ${mappedReqs.length} requerimientos`);
+      }
+    } catch (error) {
+      console.error('Error cargando requerimientos:', error);
+    } finally {
+      setLoadingRequerimientos(false);
+    }
+  }, [currentTenant?.id, getToken]);
 
   const agregarRequerimiento = useCallback((req: Requerimiento) => {
     setRequerimientos((prev) => [req, ...prev]);
-
-    // Si se envio a aprobacion, crear notificacion para aprobadores
-    if (req.estado === 'PENDIENTE_APROBACION') {
-      setNotificaciones((prev) => [
-        {
-          id: `notif-${Date.now()}`,
-          tipo: 'APROBACION_PENDIENTE',
-          titulo: 'Nuevo requerimiento pendiente',
-          mensaje: `${req.solicitante.nombre} solicita aprobación para "${req.titulo}"`,
-          fecha: new Date(),
-          leida: false,
-          requerimientoId: req.id,
-        },
-        ...prev,
-      ]);
-    }
-  }, []);
+    fetchRequerimientos();
+  }, [fetchRequerimientos]);
 
   const actualizarRequerimiento = useCallback(
     (id: string, data: Partial<Requerimiento>) => {
       setRequerimientos((prev) =>
         prev.map((r) => (r.id === id ? { ...r, ...data } : r))
       );
+    },
+    []
+  );
 
-      // Crear notificaciones segun el estado
-      const req = requerimientos.find((r) => r.id === id);
-      if (req && data.estado) {
-        if (data.estado === 'APROBADO' || data.estado === 'OC_GENERADA') {
-          setNotificaciones((prev) => [
-            {
-              id: `notif-${Date.now()}`,
-              tipo: 'APROBADO',
-              titulo: 'Requerimiento aprobado',
-              mensaje: `Tu requerimiento "${req.titulo}" ha sido aprobado`,
-              fecha: new Date(),
-              leida: false,
-              requerimientoId: id,
+  // =============================================
+  // ÓRDENES DE COMPRA
+  // =============================================
+  const fetchOrdenesCompra = useCallback(async () => {
+    if (!currentTenant?.id) return;
+    const token = getToken();
+    if (!token) return;
+
+    setLoadingOrdenesCompra(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/purchase-orders?tenantId=${currentTenant.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrdenesCompra(data.ordenesCompra || []);
+        console.log(`✅ Cargadas ${data.ordenesCompra?.length || 0} órdenes de compra`);
+      }
+    } catch (error) {
+      console.error('Error cargando órdenes de compra:', error);
+    } finally {
+      setLoadingOrdenesCompra(false);
+    }
+  }, [currentTenant?.id, getToken]);
+
+  const agregarOrdenCompra = useCallback(async (
+    ocData: Omit<OrdenCompra, 'id' | 'numero'>
+  ): Promise<OrdenCompra | null> => {
+    if (!currentTenant?.id) return null;
+    const token = getToken();
+    if (!token) return null;
+
+    try {
+      const response = await fetch(`${API_URL}/api/purchase-orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenantId: currentTenant.id,
+          purchaseRequestId: ocData.requerimientoId,
+          proveedorId: ocData.proveedorId,
+          items: ocData.items.map((item) => ({
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            unidad: item.unidad,
+            precioUnitario: item.precioUnitario,
+            total: item.total,
+          })),
+          subtotal: ocData.subtotal,
+          impuestos: ocData.impuestos,
+          total: ocData.total,
+          moneda: ocData.moneda,
+          condicionPago: ocData.condicionPago,
+          lugarEntrega: ocData.lugarEntrega,
+          fechaEntregaEstimada: ocData.fechaEntregaEstimada,
+          observaciones: ocData.observaciones,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ OC creada: ${data.ordenCompra.numero}`);
+
+        // Recargar datos
+        await Promise.all([fetchOrdenesCompra(), fetchRequerimientos()]);
+
+        return data.ordenCompra;
+      } else {
+        const error = await response.json();
+        console.error('Error creando OC:', error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error creando OC:', error);
+      return null;
+    }
+  }, [currentTenant?.id, getToken, fetchOrdenesCompra, fetchRequerimientos]);
+
+  const actualizarOrdenCompra = useCallback(
+    (id: string, data: Partial<OrdenCompra>) => {
+      setOrdenesCompra((prev) =>
+        prev.map((oc) => (oc.id === id ? { ...oc, ...data } : oc))
+      );
+    },
+    []
+  );
+
+  // =============================================
+  // RECEPCIONES
+  // =============================================
+  const fetchRecepciones = useCallback(async () => {
+    if (!currentTenant?.id) return;
+    const token = getToken();
+    if (!token) return;
+
+    setLoadingRecepciones(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/receptions?tenantId=${currentTenant.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setRecepciones(data.recepciones || []);
+        console.log(`✅ Cargadas ${data.recepciones?.length || 0} recepciones`);
+      }
+    } catch (error) {
+      console.error('Error cargando recepciones:', error);
+    } finally {
+      setLoadingRecepciones(false);
+    }
+  }, [currentTenant?.id, getToken]);
+
+  const agregarRecepcion = useCallback(async (recepcionData: {
+    ordenCompraId: string;
+    itemsRecibidos: { itemOCId: string; cantidadRecibida: number }[];
+    observaciones?: string;
+  }): Promise<Recepcion | null> => {
+    if (!currentTenant?.id) return null;
+    const token = getToken();
+    if (!token) return null;
+
+    try {
+      const response = await fetch(`${API_URL}/api/receptions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenantId: currentTenant.id,
+          purchaseOrderId: recepcionData.ordenCompraId,
+          itemsRecibidos: recepcionData.itemsRecibidos,
+          observaciones: recepcionData.observaciones,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Recepción registrada: ${data.recepcion.numero}`);
+
+        // Recargar datos
+        await Promise.all([fetchRecepciones(), fetchOrdenesCompra(), fetchRequerimientos()]);
+
+        return data.recepcion;
+      } else {
+        const error = await response.json();
+        console.error('Error registrando recepción:', error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error registrando recepción:', error);
+      return null;
+    }
+  }, [currentTenant?.id, getToken, fetchRecepciones, fetchOrdenesCompra, fetchRequerimientos]);
+
+  // =============================================
+  // PROVEEDORES - Ahora se cargan desde Parse via /api/parametros/proveedores
+  // =============================================
+  const fetchProveedores = useCallback(async () => {
+    console.log('[fetchProveedores] Iniciando... tenant:', currentTenant?.id);
+    if (!currentTenant?.id) {
+      console.log('[fetchProveedores] Sin tenant, abortando');
+      return;
+    }
+    const token = getToken();
+    if (!token) {
+      console.log('[fetchProveedores] Sin token, abortando');
+      return;
+    }
+
+    setLoadingProveedores(true);
+    try {
+      // Primero intentamos cargar desde Parse (parámetros maestros)
+      const url = `${API_URL}/api/parametros/proveedores`;
+      console.log('[fetchProveedores] Llamando a:', url);
+      const parseResponse = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('[fetchProveedores] Response status:', parseResponse.status);
+
+      if (parseResponse.ok) {
+        const data = await parseResponse.json();
+        console.log('[fetchProveedores] Data recibida:', data);
+        setProveedores(data.proveedores || []);
+        console.log(`✅ Cargados ${data.proveedores?.length || 0} proveedores desde Parse`);
+      } else {
+        // Fallback: cargar desde la tabla local de suppliers
+        console.log('⚠️ Parse no disponible, usando suppliers locales');
+        const response = await fetch(
+          `${API_URL}/api/suppliers?tenantId=${currentTenant.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
             },
-            ...prev,
-          ]);
-        } else if (data.estado === 'RECHAZADO') {
-          setNotificaciones((prev) => [
-            {
-              id: `notif-${Date.now()}`,
-              tipo: 'RECHAZADO',
-              titulo: 'Requerimiento rechazado',
-              mensaje: `Tu requerimiento "${req.titulo}" ha sido rechazado`,
-              fecha: new Date(),
-              leida: false,
-              requerimientoId: id,
-            },
-            ...prev,
-          ]);
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setProveedores(data.proveedores || []);
+          console.log(`✅ Cargados ${data.proveedores?.length || 0} proveedores locales`);
         }
       }
-    },
-    [requerimientos]
-  );
+    } catch (error) {
+      console.error('Error cargando proveedores:', error);
+    } finally {
+      setLoadingProveedores(false);
+    }
+  }, [currentTenant?.id, getToken]);
+
+  const agregarProveedor = useCallback(async (
+    proveedorData: Omit<Proveedor, 'id'>
+  ): Promise<Proveedor | null> => {
+    if (!currentTenant?.id) return null;
+    const token = getToken();
+    if (!token) return null;
+
+    try {
+      const response = await fetch(`${API_URL}/api/suppliers`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenantId: currentTenant.id,
+          ...proveedorData,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Proveedor creado: ${data.proveedor.nombre}`);
+        await fetchProveedores();
+        return data.proveedor;
+      } else {
+        const error = await response.json();
+        console.error('Error creando proveedor:', error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error creando proveedor:', error);
+      return null;
+    }
+  }, [currentTenant?.id, getToken, fetchProveedores]);
+
+  // =============================================
+  // EFECTOS - Cargar datos iniciales
+  // =============================================
+  useEffect(() => {
+    console.log('[ComprasContext] useEffect - currentTenant:', currentTenant?.id);
+    if (currentTenant?.id) {
+      console.log('[ComprasContext] Cargando datos iniciales...');
+      fetchRequerimientos();
+      fetchOrdenesCompra();
+      fetchRecepciones();
+      fetchProveedores();
+    }
+  }, [currentTenant?.id, fetchRequerimientos, fetchOrdenesCompra, fetchRecepciones, fetchProveedores]);
+
+  // =============================================
+  // FUNCIONES AUXILIARES
+  // =============================================
+  const cambiarUsuario = useCallback((id: string) => {
+    console.log('cambiarUsuario es deprecado');
+  }, []);
 
   const agregarNotificacion = useCallback(
     (notif: Omit<Notificacion, 'id' | 'fecha'>) => {
       setNotificaciones((prev) => [
-        {
-          ...notif,
-          id: `notif-${Date.now()}`,
-          fecha: new Date(),
-        },
+        { ...notif, id: `notif-${Date.now()}`, fecha: new Date() },
         ...prev,
       ]);
     },
@@ -196,53 +481,11 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  // Ordenes de Compra
-  const agregarOrdenCompra = useCallback((oc: OrdenCompra) => {
-    setOrdenesCompra((prev) => [oc, ...prev]);
-
-    // Actualizar el requerimiento con la OC
-    setRequerimientos((prev) =>
-      prev.map((r) =>
-        r.id === oc.requerimientoId
-          ? { ...r, estado: 'OC_GENERADA', ordenCompra: oc }
-          : r
-      )
-    );
-
-    // Crear notificacion
-    const req = requerimientos.find((r) => r.id === oc.requerimientoId);
-    if (req) {
-      setNotificaciones((prev) => [
-        {
-          id: `notif-${Date.now()}`,
-          tipo: 'OC_GENERADA',
-          titulo: 'Orden de Compra generada',
-          mensaje: `Se generó la ${oc.numero} para "${req.titulo}"`,
-          fecha: new Date(),
-          leida: false,
-          requerimientoId: req.id,
-        },
-        ...prev,
-      ]);
-    }
-  }, [requerimientos]);
-
-  const actualizarOrdenCompra = useCallback(
-    (id: string, data: Partial<OrdenCompra>) => {
-      setOrdenesCompra((prev) =>
-        prev.map((oc) => (oc.id === id ? { ...oc, ...data } : oc))
-      );
-    },
-    []
-  );
-
-  // Aprobacion de adjuntos individuales
   const aprobarAdjunto = useCallback(
     (requerimientoId: string, adjuntoId: string, aprobado: boolean, comentario?: string) => {
       setRequerimientos((prev) =>
         prev.map((r) => {
           if (r.id !== requerimientoId) return r;
-
           const adjuntosActualizados = r.adjuntos.map((adj) => {
             if (adj.id !== adjuntoId) return adj;
             return {
@@ -254,7 +497,6 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
               comentarioAprobacion: comentario,
             };
           });
-
           return { ...r, adjuntos: adjuntosActualizados };
         })
       );
@@ -262,19 +504,38 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
     [usuarioActual]
   );
 
+  // Vincular OC a requerimientos (para mostrar en el contexto)
+  const requerimientosConOC = useMemo(() => {
+    return requerimientos.map((req) => {
+      const oc = ordenesCompra.find((o) => o.requerimientoId === req.id);
+      return oc ? { ...req, ordenCompra: oc } : req;
+    });
+  }, [requerimientos, ordenesCompra]);
+
   return (
     <ComprasContext.Provider
       value={{
         usuarioActual,
         cambiarUsuario,
         usuarios: usuariosMock,
-        requerimientos,
+        requerimientos: requerimientosConOC,
+        loadingRequerimientos,
         agregarRequerimiento,
         actualizarRequerimiento,
+        refreshRequerimientos: fetchRequerimientos,
         ordenesCompra,
+        loadingOrdenesCompra,
         agregarOrdenCompra,
         actualizarOrdenCompra,
-        proveedores: proveedoresMock,
+        refreshOrdenesCompra: fetchOrdenesCompra,
+        recepciones,
+        loadingRecepciones,
+        agregarRecepcion,
+        refreshRecepciones: fetchRecepciones,
+        proveedores,
+        loadingProveedores,
+        agregarProveedor,
+        refreshProveedores: fetchProveedores,
         aprobarAdjunto,
         notificaciones,
         agregarNotificacion,

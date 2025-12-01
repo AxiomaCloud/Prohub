@@ -94,28 +94,33 @@ export default function OrdenCompraPage() {
     esSolicitante && requerimiento.estado === 'OC_GENERADA';
 
   const handleConfirmarRecepcion = (data: {
-    conformidad: 'CONFORME' | 'PARCIAL' | 'NO_CONFORME';
+    tipoRecepcion: 'TOTAL' | 'PARCIAL';
     observaciones: string;
     itemsRecibidos: {
+      id: string;
+      itemOCId: string;
       descripcion: string;
+      unidad: string;
       cantidadEsperada: number;
       cantidadRecibida: number;
+      cantidadPendiente: number;
     }[];
   }) => {
     actualizarRequerimiento(requerimiento.id, {
       estado: 'RECIBIDO',
       recepcion: {
         id: `rec-${Date.now()}`,
+        numero: `REC-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
         requerimientoId: requerimiento.id,
         ordenCompraId: ordenCompra.id,
         receptorId: usuarioActual.id,
         receptor: usuarioActual,
         fechaRecepcion: new Date(),
-        conformidad: data.conformidad,
+        tipoRecepcion: data.tipoRecepcion,
         observaciones: data.observaciones,
         itemsRecibidos: data.itemsRecibidos,
       },
-      ordenCompra: { ...ordenCompra, estado: 'ENTREGADA' },
+      ordenCompra: { ...ordenCompra, estado: 'FINALIZADA' },
     });
     setShowRecepcionModal(false);
     router.push('/compras/requerimientos');
@@ -123,12 +128,18 @@ export default function OrdenCompraPage() {
 
   const getEstadoOC = () => {
     switch (ordenCompra.estado) {
-      case 'PENDIENTE':
-        return { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700' };
+      case 'PENDIENTE_APROBACION':
+        return { label: 'Pendiente Aprobación', color: 'bg-yellow-100 text-yellow-700' };
+      case 'APROBADA':
+        return { label: 'Aprobada', color: 'bg-green-100 text-green-700' };
       case 'EN_PROCESO':
         return { label: 'En Proceso', color: 'bg-blue-100 text-blue-700' };
+      case 'PARCIALMENTE_RECIBIDA':
+        return { label: 'Parcialmente Recibida', color: 'bg-orange-100 text-orange-700' };
       case 'ENTREGADA':
-        return { label: 'Entregada', color: 'bg-green-100 text-green-700' };
+        return { label: 'Entregada', color: 'bg-teal-100 text-teal-700' };
+      case 'FINALIZADA':
+        return { label: 'Finalizada', color: 'bg-emerald-100 text-emerald-700' };
       default:
         return { label: ordenCompra.estado, color: 'bg-gray-100 text-gray-700' };
     }

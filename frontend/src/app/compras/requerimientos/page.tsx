@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { useCompras } from '@/lib/compras-context';
-import { useParametros } from '@/hooks/compras';
+import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { AdjuntosUpload } from '@/components/compras/AdjuntosUpload';
-import { ItemsTable } from '@/components/compras/ItemsTable';
-import { EstadoRequerimiento, Prioridad, Requerimiento, ItemRequerimiento, Adjunto } from '@/types/compras';
+import { RequerimientoModal } from '@/components/compras/RequerimientoModal';
+import { EstadoRequerimiento, Prioridad, Requerimiento } from '@/types/compras';
 import {
   Plus,
   Search,
@@ -19,7 +19,6 @@ import {
   Send,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Filter,
   Flag,
   X,
@@ -27,16 +26,10 @@ import {
   FileEdit,
   FileCheck,
   PackageCheck,
-  Save
+  Sparkles,
+  GitBranch,
 } from 'lucide-react';
-
-interface AdjuntoFile {
-  id: string;
-  file: File;
-  nombre: string;
-  tamanio: number;
-  tipo: string;
-}
+import CircuitoCompraModal, { useCircuitoCompraModal } from '@/components/compras/CircuitoCompraModal';
 
 // Configuracion de estados
 const estadosConfig: { id: EstadoRequerimiento; label: string; color: string; bgColor: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -111,505 +104,83 @@ function FiltroEstadosModal({
   );
 }
 
-// Tabs del modal
-type TabId = 'general' | 'items' | 'adjuntos' | 'justificacion';
-
-const tabs: { id: TabId; label: string }[] = [
-  { id: 'general', label: 'Informacion General' },
-  { id: 'items', label: 'Items' },
-  { id: 'adjuntos', label: 'Documentacion' },
-  { id: 'justificacion', label: 'Justificacion' },
-];
-
-// Modal de Requerimiento (Nuevo / Ver / Editar)
-function RequerimientoModal({
-  isOpen,
-  onClose,
-  onSuccess,
-  requerimiento,
-  readOnly = false,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  requerimiento?: Requerimiento | null;
-  readOnly?: boolean;
-}) {
-  const { usuarioActual, agregarRequerimiento, actualizarRequerimiento } = useCompras();
-  const { centrosCostos, categorias, prioridades } = useParametros();
-
-  const isEditing = !!requerimiento;
-  const isReadOnly = readOnly || (isEditing && !['BORRADOR', 'PENDIENTE_APROBACION'].includes(requerimiento?.estado || ''));
-
-  const [activeTab, setActiveTab] = useState<TabId>('general');
-  const [formData, setFormData] = useState({
-    titulo: '',
-    descripcion: '',
-    centroCostos: '',
-    categoria: '',
-    prioridad: 'NORMAL' as Prioridad,
-    fechaNecesaria: '',
-    justificacion: '',
-  });
-
-  const [items, setItems] = useState<ItemRequerimiento[]>([
-    {
-      id: 'item-1',
-      descripcion: '',
-      cantidad: 1,
-      unidad: 'Unidad',
-      precioUnitario: 0,
-      total: 0,
-    },
-  ]);
-
-  const [adjuntos, setAdjuntos] = useState<AdjuntoFile[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
-
-  // Cargar datos del requerimiento cuando se abre el modal
-  useEffect(() => {
-    if (isOpen && requerimiento) {
-      setFormData({
-        titulo: requerimiento.titulo,
-        descripcion: requerimiento.descripcion,
-        centroCostos: requerimiento.centroCostos,
-        categoria: requerimiento.categoria,
-        prioridad: requerimiento.prioridad,
-        fechaNecesaria: requerimiento.fechaNecesaria
-          ? new Date(requerimiento.fechaNecesaria).toISOString().split('T')[0]
-          : '',
-        justificacion: requerimiento.justificacion,
-      });
-      setItems(requerimiento.items.length > 0 ? requerimiento.items : [{
-        id: 'item-1',
-        descripcion: '',
-        cantidad: 1,
-        unidad: 'Unidad',
-        precioUnitario: 0,
-        total: 0,
-      }]);
-      // Convertir adjuntos existentes al formato del modal
-      setAdjuntos(requerimiento.adjuntos.map(adj => ({
-        id: adj.id,
-        file: new File([], adj.nombre),
-        nombre: adj.nombre,
-        tamanio: adj.tamanio,
-        tipo: adj.tipo,
-      })));
-    } else if (isOpen && !requerimiento) {
-      resetForm();
-    }
-  }, [isOpen, requerimiento]);
-
-  const resetForm = () => {
-    setActiveTab('general');
-    setFormData({
-      titulo: '',
-      descripcion: '',
-      centroCostos: '',
-      categoria: '',
-      prioridad: 'NORMAL',
-      fechaNecesaria: '',
-      justificacion: '',
-    });
-    setItems([{
-      id: 'item-1',
-      descripcion: '',
-      cantidad: 1,
-      unidad: 'Unidad',
-      precioUnitario: 0,
-      total: 0,
-    }]);
-    setAdjuntos([]);
-    setErrors({});
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.titulo.trim()) {
-      newErrors.titulo = 'El titulo es requerido';
-    }
-    if (!formData.descripcion.trim()) {
-      newErrors.descripcion = 'La descripcion es requerida';
-    }
-    if (!formData.centroCostos) {
-      newErrors.centroCostos = 'Seleccione un centro de costos';
-    }
-    if (!formData.categoria) {
-      newErrors.categoria = 'Seleccione una categoria';
-    }
-    if (!formData.justificacion.trim()) {
-      newErrors.justificacion = 'La justificacion es requerida';
-    }
-    if (items.length === 0 || items.every((i) => !i.descripcion)) {
-      newErrors.items = 'Agregue al menos un item';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (enviar: boolean) => {
-    if (enviar && !validateForm()) {
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const adjuntosFinal: Adjunto[] = adjuntos.map((adj) => ({
-        id: adj.id,
-        nombre: adj.nombre,
-        tipo: adj.tipo,
-        tamanio: adj.tamanio,
-        url: `/mock/${adj.nombre}`,
-        fechaSubida: new Date(),
-        estado: 'PENDIENTE' as const,
-      }));
-
-      const montoTotal = items.reduce((sum, item) => sum + item.total, 0);
-
-      if (isEditing && requerimiento) {
-        // Actualizar requerimiento existente
-        const datosActualizados: Partial<Requerimiento> = {
-          titulo: formData.titulo,
-          descripcion: formData.descripcion,
-          centroCostos: formData.centroCostos,
-          categoria: formData.categoria,
-          prioridad: formData.prioridad,
-          items: items.filter((i) => i.descripcion.trim() !== ''),
-          montoEstimado: montoTotal,
-          fechaNecesaria: formData.fechaNecesaria ? new Date(formData.fechaNecesaria) : undefined,
-          adjuntos: adjuntosFinal,
-          justificacion: formData.justificacion,
-          estado: enviar ? 'PENDIENTE_APROBACION' : requerimiento.estado,
-        };
-
-        actualizarRequerimiento(requerimiento.id, datosActualizados);
-      } else {
-        // Crear nuevo requerimiento
-        const year = new Date().getFullYear();
-        const randomNum = Math.floor(Math.random() * 10000).toString().padStart(5, '0');
-        const numero = `REQ-${year}-${randomNum}`;
-
-        const nuevoRequerimiento: Requerimiento = {
-          id: `req-${Date.now()}`,
-          numero,
-          titulo: formData.titulo,
-          descripcion: formData.descripcion,
-          solicitanteId: usuarioActual.id,
-          solicitante: usuarioActual,
-          departamento: usuarioActual.departamento,
-          centroCostos: formData.centroCostos,
-          categoria: formData.categoria,
-          prioridad: formData.prioridad,
-          items: items.filter((i) => i.descripcion.trim() !== ''),
-          montoEstimado: montoTotal,
-          moneda: 'ARS',
-          fechaCreacion: new Date(),
-          fechaNecesaria: formData.fechaNecesaria ? new Date(formData.fechaNecesaria) : undefined,
-          adjuntos: adjuntosFinal,
-          justificacion: formData.justificacion,
-          estado: enviar ? 'PENDIENTE_APROBACION' : 'BORRADOR',
-        };
-
-        agregarRequerimiento(nuevoRequerimiento);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      resetForm();
-      onSuccess();
-      onClose();
-    } catch (error) {
-      console.error('Error al guardar requerimiento:', error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleClose = () => {
-    resetForm();
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
-      {/* Backdrop con blur */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header con titulo y botones */}
-        <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-text-primary">
-                {isReadOnly
-                  ? `Requerimiento ${requerimiento?.numero || ''}`
-                  : isEditing
-                    ? 'Editar Requerimiento'
-                    : 'Nuevo Requerimiento'}
-              </h2>
-              <p className="text-sm text-text-secondary">
-                {isReadOnly
-                  ? 'Vista de solo lectura'
-                  : isEditing
-                    ? 'Modifique los datos del requerimiento'
-                    : 'Complete los datos del requerimiento'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {!isReadOnly && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSubmit(false)}
-                  disabled={submitting}
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {isEditing ? 'Guardar' : 'Borrador'}
-                </Button>
-                {(!isEditing || requerimiento?.estado === 'BORRADOR') && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => handleSubmit(true)}
-                    disabled={submitting}
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Enviar
-                  </Button>
-                )}
-              </>
-            )}
-            <button
-              onClick={handleClose}
-              className="p-2 text-text-secondary hover:text-text-primary hover:bg-gray-100 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-border flex-shrink-0 bg-gray-50">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-3 text-sm font-medium transition-colors relative ${
-                activeTab === tab.id
-                  ? 'text-palette-purple'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-palette-purple" />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Content - Scrollable con altura fija */}
-        <div className="overflow-y-auto p-6 h-[450px]">
-          {/* Tab: Informacion General */}
-          {activeTab === 'general' && (
-            <div className="space-y-4">
-              {/* Titulo */}
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Titulo {!isReadOnly && <span className="text-red-500">*</span>}
-                </label>
-                <input
-                  type="text"
-                  name="titulo"
-                  value={formData.titulo}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  placeholder="Ej: Notebooks Dell XPS para equipo de desarrollo"
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
-                    errors.titulo ? 'border-red-500' : 'border-border'
-                  } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
-                />
-                {errors.titulo && <p className="text-sm text-red-500 mt-1">{errors.titulo}</p>}
-              </div>
-
-              {/* Descripcion */}
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Descripcion {!isReadOnly && <span className="text-red-500">*</span>}
-                </label>
-                <textarea
-                  name="descripcion"
-                  value={formData.descripcion}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  rows={3}
-                  placeholder="Describa brevemente que necesita y por que"
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
-                    errors.descripcion ? 'border-red-500' : 'border-border'
-                  } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
-                />
-                {errors.descripcion && <p className="text-sm text-red-500 mt-1">{errors.descripcion}</p>}
-              </div>
-
-              {/* Row: Centro de Costos y Categoria */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Centro de Costos {!isReadOnly && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    name="centroCostos"
-                    value={formData.centroCostos}
-                    onChange={handleChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
-                      errors.centroCostos ? 'border-red-500' : 'border-border'
-                    } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
-                  >
-                    <option value="">Seleccione...</option>
-                    {centrosCostos.map((cc) => (
-                      <option key={cc.id} value={cc.nombre}>{cc.nombre}</option>
-                    ))}
-                  </select>
-                  {errors.centroCostos && <p className="text-sm text-red-500 mt-1">{errors.centroCostos}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Categoria {!isReadOnly && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    name="categoria"
-                    value={formData.categoria}
-                    onChange={handleChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
-                      errors.categoria ? 'border-red-500' : 'border-border'
-                    } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
-                  >
-                    <option value="">Seleccione...</option>
-                    {categorias.map((cat) => (
-                      <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>
-                    ))}
-                  </select>
-                  {errors.categoria && <p className="text-sm text-red-500 mt-1">{errors.categoria}</p>}
-                </div>
-              </div>
-
-              {/* Row: Prioridad y Fecha */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Prioridad {!isReadOnly && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    name="prioridad"
-                    value={formData.prioridad}
-                    onChange={handleChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
-                  >
-                    {prioridades.map((p) => (
-                      <option key={p.valor} value={p.valor}>{p.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Fecha Necesaria
-                  </label>
-                  <input
-                    type="date"
-                    name="fechaNecesaria"
-                    value={formData.fechaNecesaria}
-                    onChange={handleChange}
-                    disabled={isReadOnly}
-                    min={new Date().toISOString().split('T')[0]}
-                    className={`w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab: Items */}
-          {activeTab === 'items' && (
-            <div className="space-y-4">
-              <ItemsTable items={items} onItemsChange={setItems} readonly={isReadOnly} />
-              {errors.items && <p className="text-sm text-red-500">{errors.items}</p>}
-            </div>
-          )}
-
-          {/* Tab: Documentacion Adjunta */}
-          {activeTab === 'adjuntos' && (
-            <div className="space-y-4">
-              <AdjuntosUpload adjuntos={adjuntos} onAdjuntosChange={setAdjuntos} readonly={isReadOnly} />
-            </div>
-          )}
-
-          {/* Tab: Justificacion */}
-          {activeTab === 'justificacion' && (
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-text-primary mb-1">
-                Justificacion {!isReadOnly && <span className="text-red-500">*</span>}
-              </label>
-              <textarea
-                name="justificacion"
-                value={formData.justificacion}
-                onChange={handleChange}
-                disabled={isReadOnly}
-                rows={8}
-                placeholder="Explique por que es necesaria esta compra, que problema resuelve, etc."
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
-                  errors.justificacion ? 'border-red-500' : 'border-border'
-                } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
-              />
-              {errors.justificacion && <p className="text-sm text-red-500 mt-1">{errors.justificacion}</p>}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function RequerimientosPage() {
   const router = useRouter();
-  const { usuarioActual, requerimientos } = useCompras();
+  const { usuarioActual, requerimientos, actualizarRequerimiento, refreshRequerimientos } = useCompras();
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroEstados, setFiltroEstados] = useState<EstadoRequerimiento[]>(allEstados);
   const [showFiltroEstados, setShowFiltroEstados] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedRequerimiento, setSelectedRequerimiento] = useState<Requerimiento | null>(null);
   const [modalReadOnly, setModalReadOnly] = useState(false);
+  const [modalValidateOnOpen, setModalValidateOnOpen] = useState(false);
+
+  // Hook para el modal de circuito de compra
+  const circuitoModal = useCircuitoCompraModal();
+
+  // Validar requerimiento antes de enviar
+  const validarRequerimiento = (req: Requerimiento): { valid: boolean; camposFaltantes: string[] } => {
+    const camposFaltantes: string[] = [];
+
+    if (!req.titulo?.trim()) camposFaltantes.push('Título');
+    if (!req.descripcion?.trim()) camposFaltantes.push('Descripción');
+    if (!req.centroCostos) camposFaltantes.push('Centro de costos');
+    if (!req.categoria) camposFaltantes.push('Categoría');
+    if (!req.justificacion?.trim()) camposFaltantes.push('Justificación');
+    if (!req.items || req.items.length === 0 || req.items.every((i) => !i.descripcion)) {
+      camposFaltantes.push('Items');
+    }
+
+    return { valid: camposFaltantes.length === 0, camposFaltantes };
+  };
+
+  // Enviar requerimiento a aprobación desde la grilla
+  const handleEnviarAprobacion = async (req: Requerimiento) => {
+    // Validar campos requeridos
+    const validacion = validarRequerimiento(req);
+    if (!validacion.valid) {
+      toast.error(`Complete los campos requeridos: ${validacion.camposFaltantes.join(', ')}`);
+      // Abrir el modal en modo edición con validación activa para mostrar errores
+      setModalValidateOnOpen(true);
+      setSelectedRequerimiento(req);
+      setModalReadOnly(false);
+      setShowModal(true);
+      return;
+    }
+
+    try {
+      // Actualizar estado localmente
+      actualizarRequerimiento(req.id, { estado: 'PENDIENTE_APROBACION' });
+      toast.success(`Requerimiento ${req.numero} enviado a aprobación`);
+
+      // TODO: Llamar al backend para persistir el cambio
+      // await fetch(`/api/purchase-requests/${req.id}/submit`, { method: 'PUT' });
+    } catch (error) {
+      toast.error('Error al enviar a aprobación');
+      console.error('Error:', error);
+    }
+  };
+
+  // Eliminar requerimiento
+  const handleEliminarRequerimiento = async (req: Requerimiento) => {
+    if (!confirm(`¿Está seguro de eliminar el requerimiento ${req.numero}?`)) {
+      return;
+    }
+
+    try {
+      // TODO: Llamar al backend para eliminar
+      // await fetch(`/api/purchase-requests/${req.id}`, { method: 'DELETE' });
+      toast.success(`Requerimiento ${req.numero} eliminado`);
+      refreshRequerimientos();
+    } catch (error) {
+      toast.error('Error al eliminar requerimiento');
+      console.error('Error:', error);
+    }
+  };
 
   // Abrir modal para nuevo requerimiento
   const handleNuevoRequerimiento = () => {
+    setModalValidateOnOpen(false);
     setSelectedRequerimiento(null);
     setModalReadOnly(false);
     setShowModal(true);
@@ -617,6 +188,7 @@ export default function RequerimientosPage() {
 
   // Abrir modal para ver requerimiento (solo lectura)
   const handleVerRequerimiento = (req: Requerimiento) => {
+    setModalValidateOnOpen(false);
     setSelectedRequerimiento(req);
     setModalReadOnly(true);
     setShowModal(true);
@@ -624,6 +196,7 @@ export default function RequerimientosPage() {
 
   // Abrir modal para editar requerimiento
   const handleEditarRequerimiento = (req: Requerimiento) => {
+    setModalValidateOnOpen(false);
     setSelectedRequerimiento(req);
     setModalReadOnly(false);
     setShowModal(true);
@@ -634,6 +207,7 @@ export default function RequerimientosPage() {
     setShowModal(false);
     setSelectedRequerimiento(null);
     setModalReadOnly(false);
+    setModalValidateOnOpen(false);
   };
 
   // Toggle estado en filtro
@@ -649,6 +223,8 @@ export default function RequerimientosPage() {
 
   // Filtrar solo los requerimientos del usuario actual
   const misRequerimientos = useMemo(() => {
+    console.log('🔍 [RequerimientosPage] usuarioActual.id:', usuarioActual.id);
+    console.log('🔍 [RequerimientosPage] requerimientos:', requerimientos.map(r => ({ id: r.id, solicitanteId: r.solicitanteId, titulo: r.titulo })));
     return requerimientos.filter((r) => r.solicitanteId === usuarioActual.id);
   }, [requerimientos, usuarioActual.id]);
 
@@ -688,14 +264,18 @@ export default function RequerimientosPage() {
     return config[estado];
   };
 
-  const getPrioridadBadge = (prioridad: Prioridad) => {
-    const config: Record<Prioridad, { label: string; className: string }> = {
+  const getPrioridadBadge = (prioridad: Prioridad | string) => {
+    const config: Record<string, { label: string; className: string }> = {
       BAJA: { label: 'Baja', className: 'bg-gray-100 text-gray-600' },
+      baja: { label: 'Baja', className: 'bg-gray-100 text-gray-600' },
       NORMAL: { label: 'Normal', className: 'bg-blue-100 text-blue-600' },
+      normal: { label: 'Normal', className: 'bg-blue-100 text-blue-600' },
       ALTA: { label: 'Alta', className: 'bg-orange-100 text-orange-600' },
+      alta: { label: 'Alta', className: 'bg-orange-100 text-orange-600' },
       URGENTE: { label: 'Urgente', className: 'bg-red-100 text-red-600' },
+      urgente: { label: 'Urgente', className: 'bg-red-100 text-red-600' },
     };
-    return config[prioridad];
+    return config[prioridad] || { label: prioridad, className: 'bg-gray-100 text-gray-600' };
   };
 
   const formatDate = (date: Date) => {
@@ -851,14 +431,24 @@ export default function RequerimientosPage() {
                 {requerimientosFiltrados.map((req) => {
                   const estadoBadge = getEstadoBadge(req.estado);
                   const prioridadBadge = getPrioridadBadge(req.prioridad);
-                  const canEdit = req.estado === 'BORRADOR';
+                  const canEdit = req.estado === 'BORRADOR' || req.estado === 'PENDIENTE_APROBACION';
                   const canSend = req.estado === 'BORRADOR';
-                  const canDelete = req.estado === 'BORRADOR';
+                  const canDelete = req.estado === 'BORRADOR' || req.estado === 'PENDIENTE_APROBACION';
 
                   return (
                     <tr key={req.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-palette-purple">
-                        {req.numero}
+                        <div className="flex items-center gap-2">
+                          {req.numero}
+                          {req.creadoPorIA && (
+                            <span
+                              className="inline-flex items-center justify-center w-5 h-5 bg-purple-100 rounded-full"
+                              title="Generado por IA"
+                            >
+                              <Sparkles className="w-3 h-3 text-purple-600" />
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-text-primary max-w-xs truncate">
                         {req.titulo}
@@ -893,6 +483,15 @@ export default function RequerimientosPage() {
                             <Eye className="w-4 h-4" />
                           </button>
 
+                          {/* Ver circuito */}
+                          <button
+                            onClick={() => circuitoModal.openFromRequerimiento(req.id)}
+                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Ver circuito de compra"
+                          >
+                            <GitBranch className="w-4 h-4" />
+                          </button>
+
                           {/* Editar */}
                           {canEdit && (
                             <button
@@ -907,10 +506,7 @@ export default function RequerimientosPage() {
                           {/* Enviar a aprobación */}
                           {canSend && (
                             <button
-                              onClick={() => {
-                                // TODO: implementar envío a aprobación
-                                console.log('Enviar a aprobación:', req.id);
-                              }}
+                              onClick={() => handleEnviarAprobacion(req)}
                               className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                               title="Enviar a aprobación"
                             >
@@ -921,10 +517,7 @@ export default function RequerimientosPage() {
                           {/* Eliminar */}
                           {canDelete && (
                             <button
-                              onClick={() => {
-                                // TODO: implementar eliminación
-                                console.log('Eliminar:', req.id);
-                              }}
+                              onClick={() => handleEliminarRequerimiento(req)}
                               className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Eliminar"
                             >
@@ -966,6 +559,16 @@ export default function RequerimientosPage() {
         onSuccess={() => {}}
         requerimiento={selectedRequerimiento}
         readOnly={modalReadOnly}
+        validateOnOpen={modalValidateOnOpen}
+      />
+
+      {/* Modal circuito de compra */}
+      <CircuitoCompraModal
+        isOpen={circuitoModal.modalState.isOpen}
+        onClose={circuitoModal.close}
+        requerimientoId={circuitoModal.modalState.requerimientoId}
+        ordenCompraId={circuitoModal.modalState.ordenCompraId}
+        recepcionId={circuitoModal.modalState.recepcionId}
       />
     </div>
   );

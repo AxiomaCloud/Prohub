@@ -125,7 +125,8 @@ class ActionExecutorService {
               especificaciones: item.especificaciones
                 ? JSON.stringify(item.especificaciones)
                 : null,
-              unidadMedida: 'unidad'
+              unidadMedida: 'unidad',
+              precioEstimado: item.precioEstimado ? parseFloat(item.precioEstimado.toString()) : 0
             }))
           }
         },

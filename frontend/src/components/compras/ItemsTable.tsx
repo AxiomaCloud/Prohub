@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
-interface Item {
-  id?: string;
+export interface Item {
+  id: string;
   descripcion: string;
   cantidad: number;
   unidad: string;
@@ -104,7 +104,7 @@ export function ItemsTable({
           </thead>
           <tbody className="divide-y divide-gray-200">
             {items.map((item, index) => (
-              <tr key={item.id || index}>
+              <tr key={item.id}>
                 <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">
                   {item.descripcion}
@@ -168,7 +168,7 @@ export function ItemsTable({
           </thead>
           <tbody className="divide-y divide-gray-200">
             {items.map((item, index) => (
-              <tr key={item.id || index}>
+              <tr key={item.id}>
                 <td className="px-3 py-2 text-sm text-gray-500">{index + 1}</td>
                 <td className="px-3 py-2">
                   <input

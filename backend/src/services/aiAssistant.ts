@@ -137,12 +137,14 @@ Para "crear_requerimiento":
       {
         "descripcion": "Descripción clara del producto/servicio",
         "cantidad": número entero positivo,
+        "precioEstimado": número (precio unitario sugerido por el usuario, 0 si no lo indica),
         "especificaciones": ["spec1", "spec2"] (opcional)
       }
     ],
     "categoria": "Tecnología" | "Oficina" | "Servicios" | "Insumos" | "Otros",
     "urgencia": "baja" | "normal" | "alta" | "urgente",
     "presupuesto": número (monto estimado total, opcional),
+    "proveedorSugerido": "Nombre del proveedor si el usuario lo menciona" (opcional),
     "justificacion": "Razón clara de la necesidad"
   }
 }
@@ -176,7 +178,21 @@ REGLAS IMPORTANTES:
 - Si el usuario no especifica cantidad, asume 1
 - Si no especifica categoría, intenta inferirla del contexto
 - Si no puedes determinar la urgencia, usa "normal"
-- La justificación debe ser clara y profesional
+- PRECIOS:
+  * Si el usuario menciona un precio por unidad (ej: "$500 cada uno", "a $1000 c/u"), usa ese valor en precioEstimado del item
+  * Si menciona un presupuesto total, ponlo en el campo "presupuesto" y calcula el precio unitario si es posible
+  * Si no menciona precio, usa precioEstimado: 0
+- PROVEEDOR SUGERIDO:
+  * Si el usuario menciona un proveedor específico (ej: "comprarlo en MercadoLibre", "de la empresa X", "en Staples"),
+    extráelo y ponlo en proveedorSugerido
+  * Si menciona proveedor, agrégalo también a la justificación: "Proveedor sugerido: [nombre]"
+- La justificación es MUY IMPORTANTE: debe explicar POR QUÉ se necesita la compra
+  * Extrae del mensaje cualquier razón, motivo o contexto que el usuario mencione
+  * Si dice "para el equipo de desarrollo" -> justificación incluye: "Equipamiento necesario para el equipo de desarrollo"
+  * Si dice "porque se rompió" -> justificación incluye: "Reemplazo de equipo dañado/averiado"
+  * Si dice "para el proyecto X" -> justificación incluye: "Recursos necesarios para el proyecto X"
+  * Si menciona proveedor, agregar al final: "Proveedor sugerido: [nombre]"
+  * Si no hay contexto claro, genera una justificación profesional basada en el tipo de item
 - Si el mensaje es ambiguo o falta información crítica, usa accion "unknown"
 
 EJEMPLOS:
@@ -189,17 +205,18 @@ Respuesta:
       {
         "descripcion": "Notebook para diseño gráfico",
         "cantidad": 1,
+        "precioEstimado": 2000,
         "especificaciones": ["GPU dedicada", "16GB RAM mínimo", "Pantalla >15 pulgadas"]
       }
     ],
     "categoria": "Tecnología",
     "urgencia": "urgente",
     "presupuesto": 2000,
-    "justificacion": "Herramienta de trabajo para diseño gráfico"
+    "justificacion": "Herramienta de trabajo requerida para tareas de diseño gráfico. Se necesita equipo con capacidad de procesamiento gráfico para software de diseño profesional."
   }
 }
 
-Usuario: "Haceme un requerimiento de 5 sillas de oficina ergonómicas"
+Usuario: "Haceme un requerimiento de 5 sillas de oficina ergonómicas a $15000 cada una para los nuevos empleados, las vi en Staples"
 Respuesta:
 {
   "accion": "crear_requerimiento",
@@ -208,12 +225,55 @@ Respuesta:
       {
         "descripcion": "Silla de oficina ergonómica",
         "cantidad": 5,
+        "precioEstimado": 15000,
         "especificaciones": ["Respaldo ajustable", "Soporte lumbar", "Apoyabrazos regulables"]
       }
     ],
     "categoria": "Oficina",
     "urgencia": "normal",
-    "justificacion": "Equipamiento para puestos de trabajo"
+    "presupuesto": 75000,
+    "proveedorSugerido": "Staples",
+    "justificacion": "Equipamiento necesario para los nuevos puestos de trabajo. Se incorporan nuevos empleados y se requiere mobiliario ergonómico para sus estaciones de trabajo. Proveedor sugerido: Staples."
+  }
+}
+
+Usuario: "Necesito comprar 3 monitores Samsung de 27 pulgadas a $200000 c/u en Mercado Libre porque los actuales están fallando"
+Respuesta:
+{
+  "accion": "crear_requerimiento",
+  "entidades": {
+    "items": [
+      {
+        "descripcion": "Monitor Samsung 27 pulgadas",
+        "cantidad": 3,
+        "precioEstimado": 200000,
+        "especificaciones": ["27 pulgadas", "Marca Samsung"]
+      }
+    ],
+    "categoria": "Tecnología",
+    "urgencia": "alta",
+    "presupuesto": 600000,
+    "proveedorSugerido": "Mercado Libre",
+    "justificacion": "Reemplazo de equipamiento defectuoso. Los monitores actuales presentan fallas y es necesario sustituirlos para mantener la productividad. Proveedor sugerido: Mercado Libre."
+  }
+}
+
+Usuario: "Necesito comprar toner para la impresora porque se terminó y no podemos imprimir facturas"
+Respuesta:
+{
+  "accion": "crear_requerimiento",
+  "entidades": {
+    "items": [
+      {
+        "descripcion": "Toner para impresora",
+        "cantidad": 1,
+        "precioEstimado": 0,
+        "especificaciones": []
+      }
+    ],
+    "categoria": "Insumos",
+    "urgencia": "alta",
+    "justificacion": "Reposición urgente de insumo agotado. El toner actual se terminó y está afectando la operación normal del área, impidiendo la impresión de facturas y documentación crítica."
   }
 }
 

@@ -47,7 +47,7 @@ export function RequerimientoCard({
       case 'RECHAZADO':
         return `Rechazado: "${requerimiento.comentarioAprobacion}"`;
       case 'OC_GENERADA':
-        return `${requerimiento.ordenCompra?.numero} generada - Entrega estimada: ${formatFecha(requerimiento.ordenCompra!.fechaEntregaEstimada)}`;
+        return `${requerimiento.ordenCompra?.numero} generada${requerimiento.ordenCompra?.fechaEntregaEstimada ? ` - Entrega estimada: ${formatFecha(requerimiento.ordenCompra.fechaEntregaEstimada)}` : ''}`;
       case 'RECIBIDO':
         return `Recibido el ${formatFecha(requerimiento.recepcion!.fechaRecepcion)}`;
       default:

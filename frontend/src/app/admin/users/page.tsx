@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Users, UserPlus, Edit, Trash2, X, Search, Mail, CheckCircle2, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -92,6 +92,33 @@ export default function UsersPage() {
     }
   });
 
+  // Definir loadUsers ANTES del useEffect y el return condicional
+  const loadUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      if (currentTenant?.id) {
+        const response = await get<{ users: User[], availableRoles: AvailableRole[] }>(`/api/users/with-roles?tenantId=${currentTenant.id}`);
+        setUsers(response.users || []);
+        setAvailableRoles(response.availableRoles || []);
+      } else {
+        const response = await get<{ users: User[] }>('/api/users');
+        setUsers(response.users || []);
+      }
+    } catch (error) {
+      toast.error('Error al cargar usuarios');
+      console.error('Error loading users:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentTenant?.id, get]);
+
+  // useEffect debe estar ANTES de cualquier return condicional
+  useEffect(() => {
+    if (isSuperuser) {
+      loadUsers();
+    }
+  }, [isSuperuser, loadUsers]);
+
   // Solo superusers pueden gestionar usuarios
   if (!isSuperuser) {
     return (
@@ -109,29 +136,6 @@ export default function UsersPage() {
       </ProtectedRoute>
     );
   }
-
-  useEffect(() => {
-    loadUsers();
-  }, [currentTenant]);
-
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      if (currentTenant?.id) {
-        const response = await get<{ users: User[], availableRoles: AvailableRole[] }>(`/api/users/with-roles?tenantId=${currentTenant.id}`);
-        setUsers(response.users || []);
-        setAvailableRoles(response.availableRoles || []);
-      } else {
-        const response = await get<{ users: User[] }>('/api/users');
-        setUsers(response.users || []);
-      }
-    } catch (error) {
-      toast.error('Error al cargar usuarios');
-      console.error('Error loading users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreateUser = () => {
     setEditingUser(null);

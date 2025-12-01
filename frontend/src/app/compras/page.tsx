@@ -3,7 +3,9 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import toast from 'react-hot-toast';
 import { useCompras } from '@/lib/compras-context';
+import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Requerimiento, EstadoRequerimiento } from '@/types/compras';
@@ -75,12 +77,12 @@ function mapEstadoToKanban(estado: EstadoRequerimiento): EstadoKanban {
 
 // Mapeo de estado Kanban a estado del requerimiento
 function getNextEstadoRequerimiento(currentEstado: EstadoRequerimiento, targetKanban: EstadoKanban): EstadoRequerimiento | null {
-  // Definir transiciones validas
+  // Definir transiciones validas (sin permitir ir directo a FINALIZADO desde requerimiento)
   const transitions: Record<EstadoRequerimiento, Partial<Record<EstadoKanban, EstadoRequerimiento>>> = {
     'BORRADOR': { 'PENDIENTE': 'PENDIENTE_APROBACION' },
     'PENDIENTE_APROBACION': { 'APROBADO': 'APROBADO', 'RECHAZADO': 'RECHAZADO', 'BORRADOR': 'BORRADOR' },
     'APROBADO': { 'APROBADO': 'OC_GENERADA' },
-    'OC_GENERADA': { 'FINALIZADO': 'RECIBIDO' },
+    'OC_GENERADA': {}, // La transición a FINALIZADO solo ocurre mediante recepción de OC
     'RECHAZADO': { 'BORRADOR': 'BORRADOR' },
     'RECIBIDO': {},
   };
@@ -159,16 +161,17 @@ function getNextState(doc: DocumentoKanban): { kanban: EstadoKanban; label: stri
         return { kanban: 'APROBADO', label: 'Aprobar' };
       case 'APROBADO':
         return { kanban: 'APROBADO', label: 'Generar OC' };
-      case 'OC_GENERADA':
-        return { kanban: 'FINALIZADO', label: 'Confirmar Recepcion' };
       default:
         return null;
     }
   } else if (doc.tipo === 'ORDEN_COMPRA') {
-    if (doc.estadoOriginal === 'EN_PROCESO') {
-      return { kanban: 'FINALIZADO', label: 'Marcar Entregada' };
+    // OC en proceso puede ser recepcionada
+    const estadosRecepcionables = ['APROBADA', 'EN_PROCESO', 'PARCIALMENTE_RECIBIDA'];
+    if (estadosRecepcionables.includes(doc.estadoOriginal)) {
+      return { kanban: 'FINALIZADO', label: 'Ir a Recepcion' };
     }
   }
+  // Recepción ya está finalizada, no hay siguiente estado
   return null;
 }
 
@@ -432,13 +435,13 @@ function KanbanColumn({
         </span>
       </div>
 
-      {/* Lista de tarjetas con Droppable */}
+      {/* Lista de tarjetas con Droppable - sin overflow para evitar nested scroll containers */}
       <Droppable droppableId={columna.id}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 border border-t-0 border-border rounded-b-lg p-3 space-y-3 min-h-[400px] max-h-[calc(100vh-300px)] overflow-y-auto ${
+            className={`flex-1 border border-t-0 border-border rounded-b-lg p-3 space-y-3 min-h-[400px] ${
               snapshot.isDraggingOver ? 'bg-primary/5' : 'bg-gray-50'
             }`}
           >
@@ -595,8 +598,12 @@ function FiltroEstadosModal({
 
 export default function ComprasKanbanPage() {
   const router = useRouter();
-  const { usuarioActual, requerimientos, actualizarRequerimiento } = useCompras();
+  const { usuarioActual, requerimientos, actualizarRequerimiento, refreshRequerimientos } = useCompras();
+  const { user, token } = useAuth();
   const [selectedDoc, setSelectedDoc] = useState<DocumentoKanban | null>(null);
+
+  // Verificar si es superadmin (puede arrastrar para cambiar estados)
+  const isSuperAdmin = user?.superuser === true;
 
   // Filtros
   const [filtroTipos, setFiltroTipos] = useState<TipoDocumento[]>(allTiposDocumento);
@@ -638,7 +645,48 @@ export default function ComprasKanbanPage() {
     );
 
     misRequerimientos.forEach((req) => {
-      // Agregar el requerimiento
+      // Determinar si la OC está finalizada
+      const ocFinalizada = req.ordenCompra?.estado === 'FINALIZADA';
+
+      // Si la OC está finalizada, NO mostrar el requerimiento ni la OC en el Kanban
+      // Solo mostrar la recepción en FINALIZADO
+      if (ocFinalizada) {
+        // Mostrar solo la recepción como documento finalizado
+        docs.push({
+          id: req.ordenCompra!.id,
+          tipo: 'RECEPCION',
+          numero: req.ordenCompra!.numero,
+          titulo: req.titulo,
+          monto: req.ordenCompra!.total,
+          moneda: req.ordenCompra!.moneda,
+          fecha: req.ordenCompra!.recepciones?.[0]?.fechaRecepcion || new Date(),
+          solicitante: req.solicitante.nombre,
+          estadoOriginal: 'FINALIZADA',
+          requerimientoId: req.id,
+          items: req.ordenCompra!.items,
+        });
+        return; // No agregar más documentos para este requerimiento
+      }
+
+      // Si tiene OC generada pero NO está finalizada, mostrar solo la OC (no el requerimiento)
+      if (req.ordenCompra && !ocFinalizada) {
+        docs.push({
+          id: req.ordenCompra.id,
+          tipo: 'ORDEN_COMPRA',
+          numero: req.ordenCompra.numero,
+          titulo: req.titulo,
+          monto: req.ordenCompra.total,
+          moneda: req.ordenCompra.moneda,
+          fecha: req.ordenCompra.fechaEmision,
+          solicitante: req.solicitante.nombre,
+          estadoOriginal: req.ordenCompra.estado,
+          requerimientoId: req.id,
+          items: req.ordenCompra.items,
+        });
+        return; // No agregar el requerimiento si ya tiene OC
+      }
+
+      // Si NO tiene OC, mostrar el requerimiento
       docs.push({
         id: req.id,
         tipo: 'REQUERIMIENTO',
@@ -655,43 +703,28 @@ export default function ComprasKanbanPage() {
         categoria: req.categoria,
         items: req.items,
       });
-
-      // Si tiene OC generada, agregar la OC
-      if (req.ordenCompra) {
-        docs.push({
-          id: req.ordenCompra.id,
-          tipo: 'ORDEN_COMPRA',
-          numero: req.ordenCompra.numero,
-          titulo: req.titulo,
-          monto: req.ordenCompra.total,
-          moneda: req.ordenCompra.moneda,
-          fecha: req.ordenCompra.fechaEmision,
-          solicitante: req.solicitante.nombre,
-          estadoOriginal: req.ordenCompra.estado,
-          requerimientoId: req.id,
-          items: req.ordenCompra.items,
-        });
-      }
-
-      // Si tiene recepcion, agregar la recepcion
-      if (req.recepcion) {
-        docs.push({
-          id: req.recepcion.id,
-          tipo: 'RECEPCION',
-          numero: `REC-${req.numero.replace('REQ-', '')}`,
-          titulo: req.titulo,
-          monto: req.montoEstimado,
-          moneda: req.moneda,
-          fecha: req.recepcion.fechaRecepcion,
-          solicitante: req.solicitante.nombre,
-          estadoOriginal: req.recepcion.conformidad,
-          requerimientoId: req.id,
-        });
-      }
     });
 
     return docs;
   }, [requerimientos, usuarioActual.id]);
+
+  // Función para determinar el estado Kanban de un documento
+  const getEstadoKanban = useCallback((doc: DocumentoKanban): EstadoKanban => {
+    if (doc.tipo === 'REQUERIMIENTO') {
+      return mapEstadoToKanban(doc.estadoOriginal as EstadoRequerimiento);
+    } else if (doc.tipo === 'ORDEN_COMPRA') {
+      // Estados de OC que van a APROBADO (en proceso de recepción)
+      const estadosEnProceso = ['APROBADA', 'EN_PROCESO', 'PARCIALMENTE_RECIBIDA'];
+      if (estadosEnProceso.includes(doc.estadoOriginal)) {
+        return 'APROBADO';
+      }
+      // OC entregada o finalizada va a FINALIZADO
+      return 'FINALIZADO';
+    } else {
+      // Recepción siempre va a FINALIZADO
+      return 'FINALIZADO';
+    }
+  }, []);
 
   // Filtrar documentos segun filtros seleccionados
   const documentosFiltrados = useMemo(() => {
@@ -700,21 +733,14 @@ export default function ComprasKanbanPage() {
       if (!filtroTipos.includes(doc.tipo)) return false;
 
       // Determinar el estado Kanban del documento
-      let estadoKanban: EstadoKanban;
-      if (doc.tipo === 'REQUERIMIENTO') {
-        estadoKanban = mapEstadoToKanban(doc.estadoOriginal as EstadoRequerimiento);
-      } else if (doc.tipo === 'ORDEN_COMPRA') {
-        estadoKanban = doc.estadoOriginal === 'ENTREGADA' ? 'FINALIZADO' : 'APROBADO';
-      } else {
-        estadoKanban = 'FINALIZADO';
-      }
+      const estadoKanban = getEstadoKanban(doc);
 
       // Filtrar por estado
       if (!filtroEstados.includes(estadoKanban)) return false;
 
       return true;
     });
-  }, [documentosKanban, filtroTipos, filtroEstados]);
+  }, [documentosKanban, filtroTipos, filtroEstados, getEstadoKanban]);
 
   // Agrupar documentos por estado Kanban
   const documentosPorColumna = useMemo(() => {
@@ -727,19 +753,7 @@ export default function ComprasKanbanPage() {
     };
 
     documentosFiltrados.forEach((doc) => {
-      // Determinar el estado Kanban segun el tipo de documento
-      let estadoKanban: EstadoKanban;
-
-      if (doc.tipo === 'REQUERIMIENTO') {
-        estadoKanban = mapEstadoToKanban(doc.estadoOriginal as EstadoRequerimiento);
-      } else if (doc.tipo === 'ORDEN_COMPRA') {
-        // OC: EN_PROCESO = Aprobado, ENTREGADA = Finalizado
-        estadoKanban = doc.estadoOriginal === 'ENTREGADA' ? 'FINALIZADO' : 'APROBADO';
-      } else {
-        // Recepcion: siempre Finalizado
-        estadoKanban = 'FINALIZADO';
-      }
-
+      const estadoKanban = getEstadoKanban(doc);
       grupos[estadoKanban].push(doc);
     });
 
@@ -751,7 +765,7 @@ export default function ComprasKanbanPage() {
     });
 
     return grupos;
-  }, [documentosFiltrados]);
+  }, [documentosFiltrados, getEstadoKanban]);
 
   // Funcion para avanzar estado del documento
   const advanceDocumentState = useCallback((doc: DocumentoKanban) => {
@@ -790,43 +804,62 @@ export default function ComprasKanbanPage() {
               moneda: doc.moneda,
               fechaEmision: new Date(),
               fechaEntregaEstimada: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-              estado: 'EN_PROCESO',
+              estado: 'APROBADA',
               creadoPorId: usuarioActual.id,
               creadoPor: usuarioActual,
             },
           });
           break;
-        case 'OC_GENERADA':
+        case 'APROBADO':
+          // Generar OC
           actualizarRequerimiento(doc.id, {
-            estado: 'RECIBIDO',
-            recepcion: {
-              id: `rec-${Date.now()}`,
+            estado: 'OC_GENERADA',
+            ordenCompra: {
+              id: `oc-${Date.now()}`,
+              numero: `OC-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`,
               requerimientoId: doc.id,
-              ordenCompraId: doc.requerimientoId || doc.id,
-              receptorId: usuarioActual.id,
-              receptor: usuarioActual,
-              fechaRecepcion: new Date(),
-              conformidad: 'CONFORME',
-              observaciones: 'Recepcion confirmada desde Kanban',
-              itemsRecibidos: (doc.items || []).map(item => ({
+              proveedorId: 'prov-demo',
+              proveedor: { id: 'prov-demo', nombre: 'Proveedor Demo S.A.', cuit: '30-99999999-9' },
+              items: (doc.items || []).map((item, idx) => ({
+                id: `item-oc-${idx}`,
                 descripcion: item.descripcion,
-                cantidadEsperada: item.cantidad,
-                cantidadRecibida: item.cantidad,
+                cantidad: item.cantidad,
+                unidad: item.unidad,
+                precioUnitario: (item as { precioUnitario?: number }).precioUnitario || (item.total / item.cantidad) || 0,
+                total: item.total,
               })),
+              subtotal: doc.monto,
+              impuestos: doc.monto * 0.21,
+              total: doc.monto * 1.21,
+              moneda: doc.moneda,
+              fechaEmision: new Date(),
+              fechaEntregaEstimada: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              estado: 'APROBADA',
+              creadoPorId: usuarioActual.id,
+              creadoPor: usuarioActual,
             },
           });
           break;
       }
+    } else if (doc.tipo === 'ORDEN_COMPRA') {
+      // Para OC, navegar a la página de recepción
+      router.push('/compras/recepcion');
     }
     setSelectedDoc(null);
-  }, [actualizarRequerimiento, usuarioActual]);
+  }, [actualizarRequerimiento, usuarioActual, router]);
 
   // Manejar drag and drop
-  const handleDragEnd = useCallback((result: DropResult) => {
+  const handleDragEnd = useCallback(async (result: DropResult) => {
     const { draggableId, destination, source } = result;
 
     if (!destination) return;
     if (destination.droppableId === source.droppableId) return;
+
+    // Solo superadmin puede arrastrar para cambiar estados
+    if (!isSuperAdmin) {
+      toast.error('Solo el superadministrador puede cambiar estados arrastrando');
+      return;
+    }
 
     // Parsear el draggableId para obtener tipo e id
     const [tipo, ...idParts] = draggableId.split('-');
@@ -837,85 +870,70 @@ export default function ComprasKanbanPage() {
 
     if (!doc) return;
 
-    // Solo permitir transiciones de requerimientos
-    if (doc.tipo !== 'REQUERIMIENTO') return;
+    // Solo permitir transiciones de requerimientos (no OC ni recepciones)
+    if (doc.tipo !== 'REQUERIMIENTO') {
+      toast.error('Solo se pueden arrastrar requerimientos');
+      return;
+    }
+
+    // No permitir arrastrar a FINALIZADO (eso solo ocurre al recepcionar una OC)
+    if (targetKanban === 'FINALIZADO') {
+      toast.error('No se puede arrastrar directamente a Finalizado');
+      return;
+    }
 
     const currentEstado = doc.estadoOriginal as EstadoRequerimiento;
     const newEstado = getNextEstadoRequerimiento(currentEstado, targetKanban);
 
-    if (newEstado) {
-      if (newEstado === 'BORRADOR') {
-        actualizarRequerimiento(doc.id, {
-          estado: 'BORRADOR',
-          aprobadorId: undefined,
-          aprobador: undefined,
-          fechaAprobacion: undefined,
-          comentarioAprobacion: undefined,
-        });
-      } else if (newEstado === 'PENDIENTE_APROBACION') {
-        actualizarRequerimiento(doc.id, { estado: 'PENDIENTE_APROBACION' });
-      } else if (newEstado === 'APROBADO' || newEstado === 'OC_GENERADA') {
-        actualizarRequerimiento(doc.id, {
-          estado: 'OC_GENERADA',
-          aprobadorId: usuarioActual.id,
-          aprobador: usuarioActual,
-          fechaAprobacion: new Date(),
-          comentarioAprobacion: 'Aprobado desde Kanban',
-          ordenCompra: {
-            id: `oc-${Date.now()}`,
-            numero: `OC-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`,
-            requerimientoId: doc.id,
-            proveedorId: 'prov-demo',
-            proveedor: { id: 'prov-demo', nombre: 'Proveedor Demo S.A.', cuit: '30-99999999-9' },
-            items: (doc.items || []).map((item, idx) => ({
-              id: `item-oc-${idx}`,
-              descripcion: item.descripcion,
-              cantidad: item.cantidad,
-              unidad: item.unidad,
-              precioUnitario: (item as { precioUnitario?: number }).precioUnitario || (item.total / item.cantidad) || 0,
-              total: item.total,
-            })),
-            subtotal: doc.monto,
-            impuestos: doc.monto * 0.21,
-            total: doc.monto * 1.21,
-            moneda: doc.moneda,
-            fechaEmision: new Date(),
-            fechaEntregaEstimada: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            estado: 'EN_PROCESO',
-            creadoPorId: usuarioActual.id,
-            creadoPor: usuarioActual,
-          },
-        });
-      } else if (newEstado === 'RECHAZADO') {
-        actualizarRequerimiento(doc.id, {
-          estado: 'RECHAZADO',
-          aprobadorId: usuarioActual.id,
-          aprobador: usuarioActual,
-          fechaAprobacion: new Date(),
-          comentarioAprobacion: 'Rechazado desde Kanban',
-        });
-      } else if (newEstado === 'RECIBIDO') {
-        actualizarRequerimiento(doc.id, {
-          estado: 'RECIBIDO',
-          recepcion: {
-            id: `rec-${Date.now()}`,
-            requerimientoId: doc.id,
-            ordenCompraId: doc.requerimientoId || doc.id,
-            receptorId: usuarioActual.id,
-            receptor: usuarioActual,
-            fechaRecepcion: new Date(),
-            conformidad: 'CONFORME',
-            observaciones: 'Recepcion confirmada desde Kanban',
-            itemsRecibidos: (doc.items || []).map(item => ({
-              descripcion: item.descripcion,
-              cantidadEsperada: item.cantidad,
-              cantidadRecibida: item.cantidad,
-            })),
-          },
-        });
-      }
+    if (!newEstado) {
+      toast.error('Transición de estado no permitida');
+      return;
     }
-  }, [documentosKanban, actualizarRequerimiento, usuarioActual]);
+
+    // Llamar al backend para cambiar el estado
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+    try {
+      let endpoint = '';
+      let body: any = {};
+
+      if (newEstado === 'BORRADOR') {
+        endpoint = `/api/purchase-requests/${doc.id}`;
+        body = { estado: 'BORRADOR' };
+      } else if (newEstado === 'PENDIENTE_APROBACION') {
+        endpoint = `/api/purchase-requests/${doc.id}/submit`;
+        body = {};
+      } else if (newEstado === 'APROBADO') {
+        endpoint = `/api/purchase-requests/${doc.id}/approve`;
+        body = { comentario: 'Aprobado desde Kanban (superadmin)' };
+      } else if (newEstado === 'RECHAZADO') {
+        endpoint = `/api/purchase-requests/${doc.id}/reject`;
+        body = { comentario: 'Rechazado desde Kanban (superadmin)' };
+      }
+
+      if (endpoint) {
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Error al cambiar estado');
+        }
+
+        toast.success(`Estado cambiado a ${newEstado.replace(/_/g, ' ')}`);
+        await refreshRequerimientos();
+      }
+    } catch (error: any) {
+      console.error('Error cambiando estado:', error);
+      toast.error(error.message || 'Error al cambiar el estado');
+    }
+  }, [documentosKanban, isSuperAdmin, token, refreshRequerimientos]);
 
   // Navegar al detalle completo
   const navigateToDetail = useCallback((doc: DocumentoKanban) => {
@@ -1051,7 +1069,9 @@ export default function ComprasKanbanPage() {
       {/* Leyenda */}
       <div className="bg-white rounded-lg shadow-sm border border-border p-4">
         <p className="text-xs text-text-secondary">
-          Arrastra las tarjetas entre columnas para cambiar el estado del documento.
+          {isSuperAdmin
+            ? 'Arrastra las tarjetas entre columnas para cambiar el estado del documento.'
+            : 'Solo el superadministrador puede arrastrar tarjetas para cambiar estados.'}
         </p>
       </div>
 

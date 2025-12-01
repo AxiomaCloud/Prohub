@@ -16,7 +16,7 @@ export type EstadoRequerimiento =
 
 export type Prioridad = 'BAJA' | 'NORMAL' | 'ALTA' | 'URGENTE';
 
-export type EstadoOC = 'PENDIENTE' | 'EN_PROCESO' | 'ENTREGADA';
+export type EstadoOC = 'PENDIENTE_APROBACION' | 'APROBADA' | 'RECHAZADA' | 'EN_PROCESO' | 'PARCIALMENTE_RECIBIDA' | 'ENTREGADA' | 'FINALIZADA';
 
 export type Conformidad = 'CONFORME' | 'PARCIAL' | 'NO_CONFORME';
 
@@ -39,13 +39,9 @@ export interface Adjunto {
   tipo: string; // MIME type
   tamanio: number; // bytes
   url: string;
-  fechaSubida: Date;
-  // Estado de aprobacion del adjunto
+  fechaSubida?: Date;
   estado: EstadoAdjunto;
-  aprobadorId?: string;
-  aprobador?: Usuario;
-  fechaAprobacion?: Date;
-  comentarioAprobacion?: string;
+  esEspecificacion?: boolean;
 }
 
 export interface ItemRequerimiento {
@@ -61,6 +57,7 @@ export interface ItemOC {
   id: string;
   descripcion: string;
   cantidad: number;
+  cantidadRecibida?: number; // Para tracking de recepciones parciales
   unidad: string;
   precioUnitario: number;
   total: number;
@@ -98,6 +95,14 @@ export interface Requerimiento {
   // Adjuntos
   adjuntos: Adjunto[];
 
+  // Especificaciones - indica si los adjuntos son especificaciones que requieren aprobación separada
+  requiereAprobacionEspecificaciones?: boolean;
+  especificacionesAprobadas?: boolean;
+  aprobadorEspecificacionesId?: string;
+  aprobadorEspecificaciones?: Usuario;
+  fechaAprobacionEspecificaciones?: Date;
+  comentarioAprobacionEspecificaciones?: string;
+
   // Justificacion
   justificacion: string;
 
@@ -115,6 +120,10 @@ export interface Requerimiento {
 
   // Recepcion (si aplica)
   recepcion?: Recepcion;
+
+  // Metadata del chatbot (si fue creado por IA)
+  creadoPorIA?: boolean;
+  promptOriginal?: string;
 }
 
 export interface Proveedor {
@@ -161,12 +170,23 @@ export interface OrdenCompra {
   // Creador
   creadoPorId: string;
   creadoPor?: Usuario;
+
+  // Aprobación de OC
+  aprobadorOCId?: string;
+  aprobadorOC?: Usuario;
+  fechaAprobacionOC?: Date;
+  comentarioAprobacionOC?: string;
+
+  // Recepciones (puede haber múltiples si son parciales)
+  recepciones?: Recepcion[];
 }
 
 export interface Recepcion {
   id: string;
+  numero: string; // REC-2025-00001
   requerimientoId: string;
   ordenCompraId: string;
+  ordenCompra?: OrdenCompra;
 
   // Receptor
   receptorId: string;
@@ -174,7 +194,7 @@ export interface Recepcion {
 
   // Datos
   fechaRecepcion: Date;
-  conformidad: Conformidad;
+  tipoRecepcion: 'TOTAL' | 'PARCIAL';
   observaciones?: string;
 
   // Items recibidos
@@ -182,9 +202,13 @@ export interface Recepcion {
 }
 
 export interface ItemRecibido {
+  id: string;
+  itemOCId: string;
   descripcion: string;
+  unidad: string;
   cantidadEsperada: number;
   cantidadRecibida: number;
+  cantidadPendiente: number;
 }
 
 // --- Interfaces para Formularios ---

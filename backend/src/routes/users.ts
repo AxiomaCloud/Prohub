@@ -18,6 +18,80 @@ const AVAILABLE_ROLES = [
   { value: 'PURCHASE_ADMIN', label: 'Admin Compras', description: 'Gestión completa del circuito de compras' },
 ];
 
+// ============================================
+// RUTAS SIN PARAMETROS (deben ir ANTES de /:id)
+// ============================================
+
+/**
+ * GET /api/users/with-roles
+ * Get all users with their roles for a specific tenant
+ */
+router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.query.tenantId as string;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatar: true,
+        emailVerified: true,
+        superuser: true,
+        createdAt: true,
+        tenantMemberships: {
+          where: {
+            tenantId: tenantId,
+          },
+          select: {
+            id: true,
+            roles: true,
+            isActive: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    // Transform to include roles directly
+    const usersWithRoles = users.map(user => ({
+      ...user,
+      roles: user.tenantMemberships[0]?.roles || [],
+      membershipActive: user.tenantMemberships[0]?.isActive ?? false,
+      hasMembership: user.tenantMemberships.length > 0,
+    }));
+
+    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES });
+  } catch (error) {
+    console.error('Error fetching users with roles:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/users/roles/available
+ * Get list of available roles
+ */
+router.get('/roles/available', authenticate, async (req: Request, res: Response) => {
+  try {
+    res.json({ roles: AVAILABLE_ROLES });
+  } catch (error) {
+    console.error('Error fetching available roles:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// RUTAS BASE
+// ============================================
+
 /**
  * GET /api/users
  * Get all users

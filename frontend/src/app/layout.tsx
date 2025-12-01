@@ -6,7 +6,7 @@ import { ConfirmProvider } from '@/hooks/useConfirm'
 import { ChatWidgetWrapper } from '@/components/chat/ChatWidgetWrapper'
 
 export const metadata: Metadata = {
-  title: 'HUB - Portal de Proveedores AXIOMA',
+  title: 'Axioma - Hub',
   description: 'Portal de proveedores con IA para gestión de documentos, facturas y pagos',
 }
 

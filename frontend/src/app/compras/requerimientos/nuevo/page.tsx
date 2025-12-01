@@ -5,19 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompras } from '@/lib/compras-context';
 import { useParametros } from '@/hooks/compras';
-import { AdjuntosUpload } from '@/components/compras/AdjuntosUpload';
+import { AdjuntosUpload, AdjuntoFile } from '@/components/compras/AdjuntosUpload';
 import { ItemsTable } from '@/components/compras/ItemsTable';
 import { Button } from '@/components/ui/Button';
 import { Prioridad, Requerimiento, ItemRequerimiento, Adjunto } from '@/types/compras';
 import { ChevronLeft, Save, Send } from 'lucide-react';
-
-interface AdjuntoFile {
-  id: string;
-  file: File;
-  nombre: string;
-  tamanio: number;
-  tipo: string;
-}
 
 export default function NuevoRequerimientoPage() {
   const router = useRouter();

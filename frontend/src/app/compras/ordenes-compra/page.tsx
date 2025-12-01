@@ -21,8 +21,13 @@ import {
   DollarSign,
   X,
   ChevronDown,
-  Filter
+  Filter,
+  ShieldCheck,
+  AlertTriangle,
+  GitBranch,
 } from 'lucide-react';
+import CircuitoCompraModal, { useCircuitoCompraModal } from '@/components/compras/CircuitoCompraModal';
+import { ProveedorSelector } from '@/components/ui/ProveedorSelector';
 
 function formatMonto(monto: number, moneda: string = 'ARS'): string {
   return new Intl.NumberFormat('es-AR', {
@@ -42,9 +47,13 @@ function formatFecha(fecha: Date): string {
 }
 
 const estadosOC = [
-  { id: 'PENDIENTE', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  { id: 'PENDIENTE_APROBACION', label: 'Pendiente Aprobacion', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  { id: 'APROBADA', label: 'Aprobada', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  { id: 'RECHAZADA', label: 'Rechazada', color: 'bg-red-100 text-red-700', icon: Clock },
   { id: 'EN_PROCESO', label: 'En Proceso', color: 'bg-blue-100 text-blue-700', icon: Truck },
-  { id: 'ENTREGADA', label: 'Entregada', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  { id: 'PARCIALMENTE_RECIBIDA', label: 'Parcialmente Recibida', color: 'bg-orange-100 text-orange-700', icon: Package },
+  { id: 'ENTREGADA', label: 'Entregada', color: 'bg-teal-100 text-teal-700', icon: Package },
+  { id: 'FINALIZADA', label: 'Finalizada', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
 ];
 
 // Modal para crear nueva OC
@@ -59,7 +68,7 @@ function NuevaOCModal({
   onClose: () => void;
   requerimientosAprobados: Requerimiento[];
   proveedores: Proveedor[];
-  onCrear: (oc: OrdenCompra) => void;
+  onCrear: (oc: Omit<OrdenCompra, 'id' | 'numero'>) => void;
 }) {
   const { usuarioActual } = useCompras();
   const [requerimientoId, setRequerimientoId] = useState('');
@@ -72,6 +81,11 @@ function NuevaOCModal({
 
   const requerimientoSeleccionado = requerimientosAprobados.find(r => r.id === requerimientoId);
   const proveedorSeleccionado = proveedores.find(p => p.id === proveedorId);
+
+  // Verificar si el requerimiento requiere aprobación de especificaciones
+  const requiereAprobacionEspec = requerimientoSeleccionado?.requiereAprobacionEspecificaciones || false;
+  const especificacionesAprobadas = requerimientoSeleccionado?.especificacionesAprobadas || false;
+  const puedeGenerarOC = !requiereAprobacionEspec || especificacionesAprobadas;
 
   // Cargar items del requerimiento
   const handleRequerimientoChange = (id: string) => {
@@ -106,13 +120,12 @@ function NuevaOCModal({
       return;
     }
 
-    const year = new Date().getFullYear();
-    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(5, '0');
-    const numero = `OC-${year}-${randomNum}`;
+    if (!puedeGenerarOC) {
+      alert('No se puede generar la OC: las especificaciones técnicas aún no han sido aprobadas');
+      return;
+    }
 
-    const nuevaOC: OrdenCompra = {
-      id: `oc-${Date.now()}`,
-      numero,
+    const nuevaOC: Omit<OrdenCompra, 'id' | 'numero'> = {
       requerimientoId,
       proveedorId,
       proveedor: proveedorSeleccionado!,
@@ -126,7 +139,7 @@ function NuevaOCModal({
       observaciones,
       fechaEmision: new Date(),
       fechaEntregaEstimada: fechaEntrega ? new Date(fechaEntrega) : undefined,
-      estado: 'PENDIENTE',
+      estado: 'PENDIENTE_APROBACION',
       creadoPorId: usuarioActual.id,
       creadoPor: usuarioActual,
     };
@@ -175,6 +188,41 @@ function NuevaOCModal({
 
           {requerimientoSeleccionado && (
             <>
+              {/* Alerta si requiere aprobación de especificaciones */}
+              {requiereAprobacionEspec && (
+                <div className={`rounded-lg p-4 flex items-start gap-3 ${
+                  especificacionesAprobadas
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-amber-50 border border-amber-200'
+                }`}>
+                  {especificacionesAprobadas ? (
+                    <>
+                      <ShieldCheck className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-green-800">
+                          Especificaciones técnicas aprobadas
+                        </p>
+                        <p className="text-xs text-green-600 mt-0.5">
+                          Este requerimiento tiene sus especificaciones aprobadas y puede generar OC
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">
+                          Especificaciones técnicas pendientes de aprobación
+                        </p>
+                        <p className="text-xs text-amber-600 mt-0.5">
+                          No se puede generar la OC hasta que las especificaciones sean aprobadas
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Info del requerimiento */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-medium text-text-primary mb-2">Detalle del Requerimiento</h4>
@@ -207,18 +255,12 @@ function NuevaOCModal({
                 <label className="block text-sm font-medium text-text-primary mb-2">
                   Proveedor <span className="text-red-500">*</span>
                 </label>
-                <select
+                <ProveedorSelector
+                  proveedores={proveedores}
                   value={proveedorId}
-                  onChange={(e) => setProveedorId(e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
-                >
-                  <option value="">Seleccione un proveedor...</option>
-                  {proveedores.map((prov) => (
-                    <option key={prov.id} value={prov.id}>
-                      {prov.nombre} - CUIT: {prov.cuit}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setProveedorId}
+                  placeholder="Buscar proveedor por nombre, ID o CUIT..."
+                />
               </div>
 
               {proveedorSeleccionado && (
@@ -381,7 +423,8 @@ function NuevaOCModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!requerimientoId || !proveedorId || items.length === 0}
+            disabled={!requerimientoId || !proveedorId || items.length === 0 || !puedeGenerarOC}
+            title={!puedeGenerarOC ? 'Las especificaciones técnicas deben ser aprobadas primero' : ''}
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
             Generar OC
@@ -556,6 +599,9 @@ export default function OrdenesCompraPage() {
   const [showNuevaOCModal, setShowNuevaOCModal] = useState(false);
   const [selectedOC, setSelectedOC] = useState<OrdenCompra | null>(null);
 
+  // Hook para el modal de circuito de compra
+  const circuitoModal = useCircuitoCompraModal();
+
   // Requerimientos aprobados disponibles para generar OC
   const requerimientosAprobados = useMemo(() => {
     return requerimientos.filter(r => r.estado === 'APROBADO');
@@ -575,8 +621,23 @@ export default function OrdenesCompraPage() {
     });
   }, [ordenesCompra, searchQuery, filtroEstado]);
 
-  const handleCrearOC = (oc: OrdenCompra) => {
-    agregarOrdenCompra(oc);
+  const [creandoOC, setCreandoOC] = useState(false);
+
+  const handleCrearOC = async (ocData: Omit<OrdenCompra, 'id' | 'numero'>) => {
+    setCreandoOC(true);
+    try {
+      const result = await agregarOrdenCompra(ocData);
+      if (result) {
+        console.log('OC creada exitosamente:', result.numero);
+      } else {
+        alert('Error al crear la orden de compra');
+      }
+    } catch (error) {
+      console.error('Error creando OC:', error);
+      alert('Error al crear la orden de compra');
+    } finally {
+      setCreandoOC(false);
+    }
   };
 
   // Verificar permisos
@@ -711,13 +772,20 @@ export default function OrdenesCompraPage() {
                         {formatMonto(oc.total, oc.moneda)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => setSelectedOC(oc)}
                             className="p-1.5 text-gray-500 hover:text-palette-purple hover:bg-palette-purple/10 rounded-lg transition-colors"
                             title="Ver detalle"
                           >
                             <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => circuitoModal.openFromOrdenCompra(oc.id)}
+                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Ver circuito de compra"
+                          >
+                            <GitBranch className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -743,6 +811,15 @@ export default function OrdenesCompraPage() {
         isOpen={!!selectedOC}
         onClose={() => setSelectedOC(null)}
         ordenCompra={selectedOC}
+      />
+
+      {/* Modal circuito de compra */}
+      <CircuitoCompraModal
+        isOpen={circuitoModal.modalState.isOpen}
+        onClose={circuitoModal.close}
+        requerimientoId={circuitoModal.modalState.requerimientoId}
+        ordenCompraId={circuitoModal.modalState.ordenCompraId}
+        recepcionId={circuitoModal.modalState.recepcionId}
       />
     </div>
   );
