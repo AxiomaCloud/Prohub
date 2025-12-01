@@ -131,13 +131,19 @@ export function useRequerimientos(usuarioId?: string) {
             id: `oc-${Date.now()}`,
             numero: `OC-${new Date().getFullYear()}-${Math.random().toString().substr(2, 5)}`,
             requerimientoId: id,
+            proveedorId: 'prov-demo',
             proveedor: {
+              id: 'prov-demo',
               nombre: 'Proveedor Demo S.A.',
               cuit: '30-99999999-9',
             },
             items: r.items.map((item) => ({
-              ...item,
               id: `oc-item-${item.id}`,
+              descripcion: item.descripcion,
+              cantidad: item.cantidad,
+              unidad: item.unidad,
+              precioUnitario: item.precioUnitario,
+              total: item.total,
             })),
             subtotal: r.montoEstimado,
             impuestos: r.montoEstimado * 0.21,
@@ -146,6 +152,8 @@ export function useRequerimientos(usuarioId?: string) {
             fechaEmision: new Date(),
             fechaEntregaEstimada: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // +7 dias
             estado: 'EN_PROCESO' as const,
+            creadoPorId: usuarioActualMock.id,
+            creadoPor: usuarioActualMock,
           };
 
           return {

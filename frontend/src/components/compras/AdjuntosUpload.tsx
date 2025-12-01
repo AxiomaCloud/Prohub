@@ -17,6 +17,7 @@ interface AdjuntosUploadProps {
   maxFiles?: number;
   maxFileSize?: number; // bytes
   acceptedTypes?: string[];
+  readonly?: boolean;
 }
 
 function formatFileSize(bytes: number): string {
@@ -41,6 +42,7 @@ export function AdjuntosUpload({
     'image/jpeg',
     'image/png',
   ],
+  readonly = false,
 }: AdjuntosUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +122,41 @@ export function AdjuntosUpload({
     if (tipo.includes('image')) return <Image className="w-5 h-5 text-purple-500" />;
     return <Paperclip className="w-5 h-5 text-gray-500" />;
   };
+
+  // Vista de solo lectura
+  if (readonly) {
+    return (
+      <div className="space-y-4">
+        {adjuntos.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Paperclip className="w-8 h-8 mx-auto mb-2" />
+            <p className="text-sm">No hay documentos adjuntos</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {adjuntos.map((adj) => (
+              <div
+                key={adj.id}
+                className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
+              >
+                <div className="flex items-center gap-3">
+                  {getFileIcon(adj.tipo)}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {adj.nombre}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {formatFileSize(adj.tamanio)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

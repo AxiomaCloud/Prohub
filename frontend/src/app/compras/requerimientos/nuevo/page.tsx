@@ -111,6 +111,7 @@ export default function NuevoRequerimientoPage() {
         tamanio: adj.tamanio,
         url: `/mock/${adj.nombre}`, // URL mock
         fechaSubida: new Date(),
+        estado: 'PENDIENTE' as const,
       }));
 
       // Calcular monto total

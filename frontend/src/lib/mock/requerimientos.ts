@@ -1,9 +1,58 @@
-import { Requerimiento, OrdenCompra, Recepcion } from '@/types/compras';
+import { Requerimiento, OrdenCompra, Recepcion, Proveedor } from '@/types/compras';
 import { usuariosMock } from './usuarios';
 
 const juan = usuariosMock[0];
 const maria = usuariosMock[1];
 const carlos = usuariosMock[2];
+
+// Proveedores Mock
+export const proveedoresMock: Proveedor[] = [
+  {
+    id: 'prov-1',
+    nombre: 'Dell Argentina S.A.',
+    cuit: '30-11111111-1',
+    direccion: 'Av. Libertador 1234, CABA',
+    telefono: '011-4567-8900',
+    email: 'ventas@dell.com.ar',
+    contacto: 'Roberto Fernandez',
+  },
+  {
+    id: 'prov-2',
+    nombre: 'Adobe Systems Argentina S.A.',
+    cuit: '30-12345678-9',
+    direccion: 'Av. Corrientes 567, CABA',
+    telefono: '011-5555-1234',
+    email: 'enterprise@adobe.com.ar',
+    contacto: 'Laura Martinez',
+  },
+  {
+    id: 'prov-3',
+    nombre: 'Staples Argentina S.A.',
+    cuit: '30-98765432-1',
+    direccion: 'Av. San Martin 890, CABA',
+    telefono: '011-4321-0987',
+    email: 'corporativo@staples.com.ar',
+    contacto: 'Miguel Torres',
+  },
+  {
+    id: 'prov-4',
+    nombre: 'Logitech Argentina S.R.L.',
+    cuit: '30-22222222-2',
+    direccion: 'Av. Belgrano 456, CABA',
+    telefono: '011-6789-0123',
+    email: 'ventas@logitech.com.ar',
+    contacto: 'Ana Garcia',
+  },
+  {
+    id: 'prov-5',
+    nombre: 'Limpiatodo S.A.',
+    cuit: '30-33333333-3',
+    direccion: 'Av. Rivadavia 789, CABA',
+    telefono: '011-9876-5432',
+    email: 'pedidos@limpiatodo.com.ar',
+    contacto: 'Pedro Sanchez',
+  },
+];
 
 // Ordenes de Compra Mock
 export const ordenesCompraMock: OrdenCompra[] = [
@@ -11,10 +60,8 @@ export const ordenesCompraMock: OrdenCompra[] = [
     id: 'oc-1',
     numero: 'OC-2025-00015',
     requerimientoId: 'req-3',
-    proveedor: {
-      nombre: 'Adobe Systems Argentina S.A.',
-      cuit: '30-12345678-9',
-    },
+    proveedorId: 'prov-2',
+    proveedor: proveedoresMock[1], // Adobe
     items: [
       {
         id: 'oc-item-1',
@@ -29,18 +76,19 @@ export const ordenesCompraMock: OrdenCompra[] = [
     impuestos: 37800,
     total: 217800,
     moneda: 'ARS',
+    condicionPago: '30 días',
     fechaEmision: new Date('2025-11-22'),
     fechaEntregaEstimada: new Date('2025-12-05'),
     estado: 'EN_PROCESO',
+    creadoPorId: maria.id,
+    creadoPor: maria,
   },
   {
     id: 'oc-2',
     numero: 'OC-2025-00016',
     requerimientoId: 'req-4',
-    proveedor: {
-      nombre: 'Staples Argentina S.A.',
-      cuit: '30-98765432-1',
-    },
+    proveedorId: 'prov-3',
+    proveedor: proveedoresMock[2], // Staples
     items: [
       {
         id: 'oc-item-2',
@@ -63,9 +111,13 @@ export const ordenesCompraMock: OrdenCompra[] = [
     impuestos: 9450,
     total: 54450,
     moneda: 'ARS',
+    condicionPago: 'Contado',
+    lugarEntrega: 'Oficina Central - Piso 3',
     fechaEmision: new Date('2025-11-26'),
     fechaEntregaEstimada: new Date('2025-12-01'),
     estado: 'ENTREGADA',
+    creadoPorId: maria.id,
+    creadoPor: maria,
   },
 ];
 
@@ -148,6 +200,7 @@ export const requerimientosMock: Requerimiento[] = [
         tamanio: 2411724, // ~2.3MB
         url: '/mock/especificaciones-dell-xps.pdf',
         fechaSubida: new Date('2025-11-28'),
+        estado: 'PENDIENTE',
       },
       {
         id: 'adj-2',
@@ -156,6 +209,7 @@ export const requerimientosMock: Requerimiento[] = [
         tamanio: 148480, // ~145KB
         url: '/mock/comparativo-precios.xlsx',
         fechaSubida: new Date('2025-11-28'),
+        estado: 'PENDIENTE',
       },
     ],
     justificacion:

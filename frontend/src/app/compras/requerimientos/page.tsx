@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompras } from '@/lib/compras-context';
 import { useParametros } from '@/hooks/compras';
@@ -121,18 +121,25 @@ const tabs: { id: TabId; label: string }[] = [
   { id: 'justificacion', label: 'Justificacion' },
 ];
 
-// Modal de Nuevo Requerimiento
-function NuevoRequerimientoModal({
+// Modal de Requerimiento (Nuevo / Ver / Editar)
+function RequerimientoModal({
   isOpen,
   onClose,
   onSuccess,
+  requerimiento,
+  readOnly = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  requerimiento?: Requerimiento | null;
+  readOnly?: boolean;
 }) {
-  const { usuarioActual, agregarRequerimiento } = useCompras();
+  const { usuarioActual, agregarRequerimiento, actualizarRequerimiento } = useCompras();
   const { centrosCostos, categorias, prioridades } = useParametros();
+
+  const isEditing = !!requerimiento;
+  const isReadOnly = readOnly || (isEditing && !['BORRADOR', 'PENDIENTE_APROBACION'].includes(requerimiento?.estado || ''));
 
   const [activeTab, setActiveTab] = useState<TabId>('general');
   const [formData, setFormData] = useState({
@@ -159,6 +166,41 @@ function NuevoRequerimientoModal({
   const [adjuntos, setAdjuntos] = useState<AdjuntoFile[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Cargar datos del requerimiento cuando se abre el modal
+  useEffect(() => {
+    if (isOpen && requerimiento) {
+      setFormData({
+        titulo: requerimiento.titulo,
+        descripcion: requerimiento.descripcion,
+        centroCostos: requerimiento.centroCostos,
+        categoria: requerimiento.categoria,
+        prioridad: requerimiento.prioridad,
+        fechaNecesaria: requerimiento.fechaNecesaria
+          ? new Date(requerimiento.fechaNecesaria).toISOString().split('T')[0]
+          : '',
+        justificacion: requerimiento.justificacion,
+      });
+      setItems(requerimiento.items.length > 0 ? requerimiento.items : [{
+        id: 'item-1',
+        descripcion: '',
+        cantidad: 1,
+        unidad: 'Unidad',
+        precioUnitario: 0,
+        total: 0,
+      }]);
+      // Convertir adjuntos existentes al formato del modal
+      setAdjuntos(requerimiento.adjuntos.map(adj => ({
+        id: adj.id,
+        file: new File([], adj.nombre),
+        nombre: adj.nombre,
+        tamanio: adj.tamanio,
+        tipo: adj.tipo,
+      })));
+    } else if (isOpen && !requerimiento) {
+      resetForm();
+    }
+  }, [isOpen, requerimiento]);
 
   const resetForm = () => {
     setActiveTab('general');
@@ -227,10 +269,6 @@ function NuevoRequerimientoModal({
     setSubmitting(true);
 
     try {
-      const year = new Date().getFullYear();
-      const randomNum = Math.floor(Math.random() * 10000).toString().padStart(5, '0');
-      const numero = `REQ-${year}-${randomNum}`;
-
       const adjuntosFinal: Adjunto[] = adjuntos.map((adj) => ({
         id: adj.id,
         nombre: adj.nombre,
@@ -238,39 +276,65 @@ function NuevoRequerimientoModal({
         tamanio: adj.tamanio,
         url: `/mock/${adj.nombre}`,
         fechaSubida: new Date(),
+        estado: 'PENDIENTE' as const,
       }));
 
       const montoTotal = items.reduce((sum, item) => sum + item.total, 0);
 
-      const nuevoRequerimiento: Requerimiento = {
-        id: `req-${Date.now()}`,
-        numero,
-        titulo: formData.titulo,
-        descripcion: formData.descripcion,
-        solicitanteId: usuarioActual.id,
-        solicitante: usuarioActual,
-        departamento: usuarioActual.departamento,
-        centroCostos: formData.centroCostos,
-        categoria: formData.categoria,
-        prioridad: formData.prioridad,
-        items: items.filter((i) => i.descripcion.trim() !== ''),
-        montoEstimado: montoTotal,
-        moneda: 'ARS',
-        fechaCreacion: new Date(),
-        fechaNecesaria: formData.fechaNecesaria ? new Date(formData.fechaNecesaria) : undefined,
-        adjuntos: adjuntosFinal,
-        justificacion: formData.justificacion,
-        estado: enviar ? 'PENDIENTE_APROBACION' : 'BORRADOR',
-      };
+      if (isEditing && requerimiento) {
+        // Actualizar requerimiento existente
+        const datosActualizados: Partial<Requerimiento> = {
+          titulo: formData.titulo,
+          descripcion: formData.descripcion,
+          centroCostos: formData.centroCostos,
+          categoria: formData.categoria,
+          prioridad: formData.prioridad,
+          items: items.filter((i) => i.descripcion.trim() !== ''),
+          montoEstimado: montoTotal,
+          fechaNecesaria: formData.fechaNecesaria ? new Date(formData.fechaNecesaria) : undefined,
+          adjuntos: adjuntosFinal,
+          justificacion: formData.justificacion,
+          estado: enviar ? 'PENDIENTE_APROBACION' : requerimiento.estado,
+        };
 
-      agregarRequerimiento(nuevoRequerimiento);
+        actualizarRequerimiento(requerimiento.id, datosActualizados);
+      } else {
+        // Crear nuevo requerimiento
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(Math.random() * 10000).toString().padStart(5, '0');
+        const numero = `REQ-${year}-${randomNum}`;
+
+        const nuevoRequerimiento: Requerimiento = {
+          id: `req-${Date.now()}`,
+          numero,
+          titulo: formData.titulo,
+          descripcion: formData.descripcion,
+          solicitanteId: usuarioActual.id,
+          solicitante: usuarioActual,
+          departamento: usuarioActual.departamento,
+          centroCostos: formData.centroCostos,
+          categoria: formData.categoria,
+          prioridad: formData.prioridad,
+          items: items.filter((i) => i.descripcion.trim() !== ''),
+          montoEstimado: montoTotal,
+          moneda: 'ARS',
+          fechaCreacion: new Date(),
+          fechaNecesaria: formData.fechaNecesaria ? new Date(formData.fechaNecesaria) : undefined,
+          adjuntos: adjuntosFinal,
+          justificacion: formData.justificacion,
+          estado: enviar ? 'PENDIENTE_APROBACION' : 'BORRADOR',
+        };
+
+        agregarRequerimiento(nuevoRequerimiento);
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       resetForm();
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Error al crear requerimiento:', error);
+      console.error('Error al guardar requerimiento:', error);
     } finally {
       setSubmitting(false);
     }
@@ -297,30 +361,48 @@ function NuevoRequerimientoModal({
         <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-text-primary">Nuevo Requerimiento</h2>
-              <p className="text-sm text-text-secondary">Complete los datos del requerimiento</p>
+              <h2 className="text-xl font-semibold text-text-primary">
+                {isReadOnly
+                  ? `Requerimiento ${requerimiento?.numero || ''}`
+                  : isEditing
+                    ? 'Editar Requerimiento'
+                    : 'Nuevo Requerimiento'}
+              </h2>
+              <p className="text-sm text-text-secondary">
+                {isReadOnly
+                  ? 'Vista de solo lectura'
+                  : isEditing
+                    ? 'Modifique los datos del requerimiento'
+                    : 'Complete los datos del requerimiento'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleSubmit(false)}
-              disabled={submitting}
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Borrador
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => handleSubmit(true)}
-              disabled={submitting}
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Enviar
-            </Button>
+            {!isReadOnly && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSubmit(false)}
+                  disabled={submitting}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isEditing ? 'Guardar' : 'Borrador'}
+                </Button>
+                {(!isEditing || requerimiento?.estado === 'BORRADOR') && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleSubmit(true)}
+                    disabled={submitting}
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar
+                  </Button>
+                )}
+              </>
+            )}
             <button
               onClick={handleClose}
               className="p-2 text-text-secondary hover:text-text-primary hover:bg-gray-100 rounded-lg"
@@ -358,17 +440,18 @@ function NuevoRequerimientoModal({
               {/* Titulo */}
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">
-                  Titulo <span className="text-red-500">*</span>
+                  Titulo {!isReadOnly && <span className="text-red-500">*</span>}
                 </label>
                 <input
                   type="text"
                   name="titulo"
                   value={formData.titulo}
                   onChange={handleChange}
+                  disabled={isReadOnly}
                   placeholder="Ej: Notebooks Dell XPS para equipo de desarrollo"
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
                     errors.titulo ? 'border-red-500' : 'border-border'
-                  }`}
+                  } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
                 />
                 {errors.titulo && <p className="text-sm text-red-500 mt-1">{errors.titulo}</p>}
               </div>
@@ -376,17 +459,18 @@ function NuevoRequerimientoModal({
               {/* Descripcion */}
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">
-                  Descripcion <span className="text-red-500">*</span>
+                  Descripcion {!isReadOnly && <span className="text-red-500">*</span>}
                 </label>
                 <textarea
                   name="descripcion"
                   value={formData.descripcion}
                   onChange={handleChange}
+                  disabled={isReadOnly}
                   rows={3}
                   placeholder="Describa brevemente que necesita y por que"
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
                     errors.descripcion ? 'border-red-500' : 'border-border'
-                  }`}
+                  } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
                 />
                 {errors.descripcion && <p className="text-sm text-red-500 mt-1">{errors.descripcion}</p>}
               </div>
@@ -395,15 +479,16 @@ function NuevoRequerimientoModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">
-                    Centro de Costos <span className="text-red-500">*</span>
+                    Centro de Costos {!isReadOnly && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     name="centroCostos"
                     value={formData.centroCostos}
                     onChange={handleChange}
+                    disabled={isReadOnly}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
                       errors.centroCostos ? 'border-red-500' : 'border-border'
-                    }`}
+                    } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
                   >
                     <option value="">Seleccione...</option>
                     {centrosCostos.map((cc) => (
@@ -415,15 +500,16 @@ function NuevoRequerimientoModal({
 
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">
-                    Categoria <span className="text-red-500">*</span>
+                    Categoria {!isReadOnly && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     name="categoria"
                     value={formData.categoria}
                     onChange={handleChange}
+                    disabled={isReadOnly}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
                       errors.categoria ? 'border-red-500' : 'border-border'
-                    }`}
+                    } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
                   >
                     <option value="">Seleccione...</option>
                     {categorias.map((cat) => (
@@ -438,13 +524,14 @@ function NuevoRequerimientoModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">
-                    Prioridad <span className="text-red-500">*</span>
+                    Prioridad {!isReadOnly && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     name="prioridad"
                     value={formData.prioridad}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
+                    disabled={isReadOnly}
+                    className={`w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
                   >
                     {prioridades.map((p) => (
                       <option key={p.valor} value={p.valor}>{p.nombre}</option>
@@ -461,8 +548,9 @@ function NuevoRequerimientoModal({
                     name="fechaNecesaria"
                     value={formData.fechaNecesaria}
                     onChange={handleChange}
+                    disabled={isReadOnly}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
+                    className={`w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>
@@ -472,7 +560,7 @@ function NuevoRequerimientoModal({
           {/* Tab: Items */}
           {activeTab === 'items' && (
             <div className="space-y-4">
-              <ItemsTable items={items} onItemsChange={setItems} />
+              <ItemsTable items={items} onItemsChange={setItems} readonly={isReadOnly} />
               {errors.items && <p className="text-sm text-red-500">{errors.items}</p>}
             </div>
           )}
@@ -480,22 +568,26 @@ function NuevoRequerimientoModal({
           {/* Tab: Documentacion Adjunta */}
           {activeTab === 'adjuntos' && (
             <div className="space-y-4">
-              <AdjuntosUpload adjuntos={adjuntos} onAdjuntosChange={setAdjuntos} />
+              <AdjuntosUpload adjuntos={adjuntos} onAdjuntosChange={setAdjuntos} readonly={isReadOnly} />
             </div>
           )}
 
           {/* Tab: Justificacion */}
           {activeTab === 'justificacion' && (
             <div className="space-y-4">
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                Justificacion {!isReadOnly && <span className="text-red-500">*</span>}
+              </label>
               <textarea
                 name="justificacion"
                 value={formData.justificacion}
                 onChange={handleChange}
+                disabled={isReadOnly}
                 rows={8}
                 placeholder="Explique por que es necesaria esta compra, que problema resuelve, etc."
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
                   errors.justificacion ? 'border-red-500' : 'border-border'
-                }`}
+                } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}
               />
               {errors.justificacion && <p className="text-sm text-red-500 mt-1">{errors.justificacion}</p>}
             </div>
@@ -512,7 +604,37 @@ export default function RequerimientosPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroEstados, setFiltroEstados] = useState<EstadoRequerimiento[]>(allEstados);
   const [showFiltroEstados, setShowFiltroEstados] = useState(false);
-  const [showNuevoModal, setShowNuevoModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedRequerimiento, setSelectedRequerimiento] = useState<Requerimiento | null>(null);
+  const [modalReadOnly, setModalReadOnly] = useState(false);
+
+  // Abrir modal para nuevo requerimiento
+  const handleNuevoRequerimiento = () => {
+    setSelectedRequerimiento(null);
+    setModalReadOnly(false);
+    setShowModal(true);
+  };
+
+  // Abrir modal para ver requerimiento (solo lectura)
+  const handleVerRequerimiento = (req: Requerimiento) => {
+    setSelectedRequerimiento(req);
+    setModalReadOnly(true);
+    setShowModal(true);
+  };
+
+  // Abrir modal para editar requerimiento
+  const handleEditarRequerimiento = (req: Requerimiento) => {
+    setSelectedRequerimiento(req);
+    setModalReadOnly(false);
+    setShowModal(true);
+  };
+
+  // Cerrar modal
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedRequerimiento(null);
+    setModalReadOnly(false);
+  };
 
   // Toggle estado en filtro
   const toggleEstadoFiltro = (estado: EstadoRequerimiento) => {
@@ -597,7 +719,7 @@ export default function RequerimientosPage() {
         title="Mis Requerimientos"
         subtitle={`${misRequerimientos.length} requerimiento${misRequerimientos.length !== 1 ? 's' : ''} en total`}
         action={
-          <Button onClick={() => setShowNuevoModal(true)}>
+          <Button onClick={handleNuevoRequerimiento}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Requerimiento
           </Button>
@@ -685,7 +807,7 @@ export default function RequerimientosPage() {
                   Comienza creando tu primer requerimiento
                 </p>
                 <Button
-                  onClick={() => setShowNuevoModal(true)}
+                  onClick={handleNuevoRequerimiento}
                   className="mt-4"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -764,7 +886,7 @@ export default function RequerimientosPage() {
                         <div className="flex items-center justify-center space-x-2">
                           {/* Ver detalle */}
                           <button
-                            onClick={() => router.push(`/compras/requerimientos/${req.id}`)}
+                            onClick={() => handleVerRequerimiento(req)}
                             className="p-1.5 text-gray-500 hover:text-palette-purple hover:bg-palette-purple/10 rounded-lg transition-colors"
                             title="Ver detalle"
                           >
@@ -774,7 +896,7 @@ export default function RequerimientosPage() {
                           {/* Editar */}
                           {canEdit && (
                             <button
-                              onClick={() => router.push(`/compras/requerimientos/${req.id}/editar`)}
+                              onClick={() => handleEditarRequerimiento(req)}
                               className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Editar"
                             >
@@ -837,11 +959,13 @@ export default function RequerimientosPage() {
         onToggle={toggleEstadoFiltro}
       />
 
-      {/* Modal nuevo requerimiento */}
-      <NuevoRequerimientoModal
-        isOpen={showNuevoModal}
-        onClose={() => setShowNuevoModal(false)}
+      {/* Modal requerimiento (nuevo / ver / editar) */}
+      <RequerimientoModal
+        isOpen={showModal}
+        onClose={handleCloseModal}
         onSuccess={() => {}}
+        requerimiento={selectedRequerimiento}
+        readOnly={modalReadOnly}
       />
     </div>
   );

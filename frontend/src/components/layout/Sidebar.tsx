@@ -98,7 +98,9 @@ const IconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ShoppingCart,
   ClipboardList,
   PackageCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  Menu,
+  Network
 };
 
 // Helper para obtener el componente de ícono desde el nombre

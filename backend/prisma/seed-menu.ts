@@ -20,27 +20,27 @@ async function seedMenu() {
     },
     {
       id: '2',
-      title: 'Documentos',
-      icon: 'FileText',
-      url: '/dashboard/documents',
+      title: 'Compras',
+      icon: 'ShoppingCart',
+      url: null,
       orderIndex: 2,
-      description: 'Gestión de documentos y facturas',
+      description: 'Gestión del circuito de compras',
     },
     {
       id: '3',
-      title: 'Pagos',
-      icon: 'CreditCard',
-      url: '/dashboard/payments',
+      title: 'Documentos',
+      icon: 'FileText',
+      url: '/documentos',
       orderIndex: 3,
-      description: 'Seguimiento de pagos y facturación',
+      description: 'Gestión de documentos y facturas',
     },
     {
       id: '4',
-      title: 'Órdenes de Compra',
-      icon: 'ShoppingCart',
-      url: '/dashboard/purchase-orders',
+      title: 'Pagos',
+      icon: 'CreditCard',
+      url: '/pagos',
       orderIndex: 4,
-      description: 'Gestión de órdenes de compra',
+      description: 'Seguimiento de pagos y facturación',
     },
     {
       id: '5',
@@ -52,13 +52,53 @@ async function seedMenu() {
     },
   ];
 
+  // Sub-items de Compras
+  const comprasSubItems = [
+    {
+      id: '2-1',
+      parentId: '2',
+      title: 'Dashboard',
+      icon: 'LayoutDashboard',
+      url: '/compras',
+      orderIndex: 1,
+      description: 'Vista general del circuito de compras',
+    },
+    {
+      id: '2-2',
+      parentId: '2',
+      title: 'Requerimientos',
+      icon: 'ClipboardList',
+      url: '/compras/requerimientos',
+      orderIndex: 2,
+      description: 'Gestión de requerimientos de compra',
+    },
+    {
+      id: '2-3',
+      parentId: '2',
+      title: 'Aprobaciones',
+      icon: 'CheckCircle',
+      url: '/compras/aprobaciones',
+      orderIndex: 3,
+      description: 'Aprobación de requerimientos pendientes',
+    },
+    {
+      id: '2-4',
+      parentId: '2',
+      title: 'Órdenes de Compra',
+      icon: 'ShoppingCart',
+      url: '/compras/ordenes-compra',
+      orderIndex: 4,
+      description: 'Gestión de órdenes de compra',
+    },
+  ];
+
   const adminSubItems = [
     {
       id: '5-1',
       parentId: '5',
       title: 'Menú',
       icon: 'Menu',
-      url: '/dashboard/admin/menu',
+      url: '/admin/menu',
       orderIndex: 1,
       description: 'Editar y configurar el menú de navegación',
     },
@@ -67,7 +107,7 @@ async function seedMenu() {
       parentId: '5',
       title: 'Empresas',
       icon: 'Building2',
-      url: '/dashboard/admin/tenants',
+      url: '/admin/tenants',
       orderIndex: 2,
       description: 'Gestión de empresas/tenants del sistema',
     },
@@ -76,7 +116,7 @@ async function seedMenu() {
       parentId: '5',
       title: 'Usuarios',
       icon: 'Users',
-      url: '/dashboard/admin/usuarios',
+      url: '/admin/users',
       orderIndex: 3,
       description: 'Gestión de usuarios del sistema',
     },
@@ -85,7 +125,7 @@ async function seedMenu() {
       parentId: '5',
       title: 'Planes',
       icon: 'Package',
-      url: '/dashboard/admin/planes',
+      url: '/admin/planes',
       orderIndex: 4,
       description: 'Gestión de planes y suscripciones',
     },
@@ -94,7 +134,7 @@ async function seedMenu() {
       parentId: '5',
       title: 'Preferencias',
       icon: 'Settings',
-      url: '/dashboard/settings',
+      url: '/admin/settings',
       orderIndex: 5,
       description: 'Configuración de cuenta y preferencias',
     },
@@ -107,11 +147,18 @@ async function seedMenu() {
     console.log(`✅ Created menu item: ${item.title}`);
   }
 
+  for (const item of comprasSubItems) {
+    await prisma.menuItem.create({
+      data: item,
+    });
+    console.log(`✅ Created compras sub-item: ${item.title}`);
+  }
+
   for (const item of adminSubItems) {
     await prisma.menuItem.create({
       data: item,
     });
-    console.log(`✅ Created sub-item: ${item.title}`);
+    console.log(`✅ Created admin sub-item: ${item.title}`);
   }
 
   console.log('✅ Menu seeding completed!');

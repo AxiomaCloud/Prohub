@@ -774,8 +774,16 @@ export default function ComprasKanbanPage() {
               id: `oc-${Date.now()}`,
               numero: `OC-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`,
               requerimientoId: doc.id,
-              proveedor: { nombre: 'Proveedor Demo S.A.', cuit: '30-99999999-9' },
-              items: doc.items || [],
+              proveedorId: 'prov-demo',
+              proveedor: { id: 'prov-demo', nombre: 'Proveedor Demo S.A.', cuit: '30-99999999-9' },
+              items: (doc.items || []).map((item, idx) => ({
+                id: `item-oc-${idx}`,
+                descripcion: item.descripcion,
+                cantidad: item.cantidad,
+                unidad: item.unidad,
+                precioUnitario: (item as { precioUnitario?: number }).precioUnitario || (item.total / item.cantidad) || 0,
+                total: item.total,
+              })),
               subtotal: doc.monto,
               impuestos: doc.monto * 0.21,
               total: doc.monto * 1.21,
@@ -783,6 +791,8 @@ export default function ComprasKanbanPage() {
               fechaEmision: new Date(),
               fechaEntregaEstimada: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
               estado: 'EN_PROCESO',
+              creadoPorId: usuarioActual.id,
+              creadoPor: usuarioActual,
             },
           });
           break;
@@ -791,11 +801,18 @@ export default function ComprasKanbanPage() {
             estado: 'RECIBIDO',
             recepcion: {
               id: `rec-${Date.now()}`,
+              requerimientoId: doc.id,
               ordenCompraId: doc.requerimientoId || doc.id,
+              receptorId: usuarioActual.id,
+              receptor: usuarioActual,
               fechaRecepcion: new Date(),
-              recibidoPor: usuarioActual.nombre,
               conformidad: 'CONFORME',
               observaciones: 'Recepcion confirmada desde Kanban',
+              itemsRecibidos: (doc.items || []).map(item => ({
+                descripcion: item.descripcion,
+                cantidadEsperada: item.cantidad,
+                cantidadRecibida: item.cantidad,
+              })),
             },
           });
           break;
@@ -848,8 +865,16 @@ export default function ComprasKanbanPage() {
             id: `oc-${Date.now()}`,
             numero: `OC-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`,
             requerimientoId: doc.id,
-            proveedor: { nombre: 'Proveedor Demo S.A.', cuit: '30-99999999-9' },
-            items: doc.items || [],
+            proveedorId: 'prov-demo',
+            proveedor: { id: 'prov-demo', nombre: 'Proveedor Demo S.A.', cuit: '30-99999999-9' },
+            items: (doc.items || []).map((item, idx) => ({
+              id: `item-oc-${idx}`,
+              descripcion: item.descripcion,
+              cantidad: item.cantidad,
+              unidad: item.unidad,
+              precioUnitario: (item as { precioUnitario?: number }).precioUnitario || (item.total / item.cantidad) || 0,
+              total: item.total,
+            })),
             subtotal: doc.monto,
             impuestos: doc.monto * 0.21,
             total: doc.monto * 1.21,
@@ -857,6 +882,8 @@ export default function ComprasKanbanPage() {
             fechaEmision: new Date(),
             fechaEntregaEstimada: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             estado: 'EN_PROCESO',
+            creadoPorId: usuarioActual.id,
+            creadoPor: usuarioActual,
           },
         });
       } else if (newEstado === 'RECHAZADO') {
@@ -872,11 +899,18 @@ export default function ComprasKanbanPage() {
           estado: 'RECIBIDO',
           recepcion: {
             id: `rec-${Date.now()}`,
+            requerimientoId: doc.id,
             ordenCompraId: doc.requerimientoId || doc.id,
+            receptorId: usuarioActual.id,
+            receptor: usuarioActual,
             fechaRecepcion: new Date(),
-            recibidoPor: usuarioActual.nombre,
             conformidad: 'CONFORME',
             observaciones: 'Recepcion confirmada desde Kanban',
+            itemsRecibidos: (doc.items || []).map(item => ({
+              descripcion: item.descripcion,
+              cantidadEsperada: item.cantidad,
+              cantidadRecibida: item.cantidad,
+            })),
           },
         });
       }

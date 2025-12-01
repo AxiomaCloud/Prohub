@@ -28,7 +28,8 @@ export const usuariosMock: Usuario[] = [
 ];
 
 // Usuario actual para la sesion (mock)
-export const usuarioActualMock: Usuario = usuariosMock[0]; // Juan Perez - Solicitante
+// Cambia el índice: [0]=Juan(SOLICITANTE), [1]=María(APROBADOR), [2]=Carlos(SOLICITANTE)
+export const usuarioActualMock: Usuario = usuariosMock[1]; // María García - Aprobador
 
 // Funcion para cambiar de usuario (para probar diferentes roles)
 export function getUsuarioById(id: string): Usuario | undefined {

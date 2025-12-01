@@ -110,11 +110,20 @@ export default function DetalleRequerimientoPage() {
         id: `oc-${Date.now()}`,
         numero: `OC-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`,
         requerimientoId: requerimiento.id,
+        proveedorId: 'prov-demo',
         proveedor: {
+          id: 'prov-demo',
           nombre: 'Proveedor Demo S.A.',
           cuit: '30-99999999-9',
         },
-        items: requerimiento.items,
+        items: requerimiento.items.map((item, idx) => ({
+          id: `item-oc-${idx}`,
+          descripcion: item.descripcion,
+          cantidad: item.cantidad,
+          unidad: item.unidad,
+          precioUnitario: item.precioUnitario,
+          total: item.total,
+        })),
         subtotal: requerimiento.montoEstimado,
         impuestos: requerimiento.montoEstimado * 0.21,
         total: requerimiento.montoEstimado * 1.21,
@@ -122,6 +131,8 @@ export default function DetalleRequerimientoPage() {
         fechaEmision: new Date(),
         fechaEntregaEstimada: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         estado: 'EN_PROCESO',
+        creadoPorId: usuarioActual.id,
+        creadoPor: usuarioActual,
       },
     });
     setShowAprobacionModal(false);

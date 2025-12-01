@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Usuario, Requerimiento, EstadoRequerimiento } from '@/types/compras';
-import { usuariosMock, requerimientosMock } from '@/lib/mock';
+import { Usuario, Requerimiento, OrdenCompra, Proveedor, Adjunto, EstadoAdjunto } from '@/types/compras';
+import { usuariosMock, requerimientosMock, ordenesCompraMock, proveedoresMock } from '@/lib/mock';
 
 interface ComprasContextType {
   // Usuario
@@ -14,6 +14,17 @@ interface ComprasContextType {
   requerimientos: Requerimiento[];
   agregarRequerimiento: (req: Requerimiento) => void;
   actualizarRequerimiento: (id: string, data: Partial<Requerimiento>) => void;
+
+  // Ordenes de Compra
+  ordenesCompra: OrdenCompra[];
+  agregarOrdenCompra: (oc: OrdenCompra) => void;
+  actualizarOrdenCompra: (id: string, data: Partial<OrdenCompra>) => void;
+
+  // Proveedores
+  proveedores: Proveedor[];
+
+  // Aprobacion de adjuntos
+  aprobarAdjunto: (requerimientoId: string, adjuntoId: string, aprobado: boolean, comentario?: string) => void;
 
   // Notificaciones (mock)
   notificaciones: Notificacion[];
@@ -37,6 +48,8 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
   const [usuarioActual, setUsuarioActual] = useState<Usuario>(usuariosMock[0]);
   const [requerimientos, setRequerimientos] =
     useState<Requerimiento[]>(requerimientosMock);
+  const [ordenesCompra, setOrdenesCompra] =
+    useState<OrdenCompra[]>(ordenesCompraMock);
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([
     {
       id: 'notif-1',
@@ -148,6 +161,72 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  // Ordenes de Compra
+  const agregarOrdenCompra = useCallback((oc: OrdenCompra) => {
+    setOrdenesCompra((prev) => [oc, ...prev]);
+
+    // Actualizar el requerimiento con la OC
+    setRequerimientos((prev) =>
+      prev.map((r) =>
+        r.id === oc.requerimientoId
+          ? { ...r, estado: 'OC_GENERADA', ordenCompra: oc }
+          : r
+      )
+    );
+
+    // Crear notificacion
+    const req = requerimientos.find((r) => r.id === oc.requerimientoId);
+    if (req) {
+      setNotificaciones((prev) => [
+        {
+          id: `notif-${Date.now()}`,
+          tipo: 'OC_GENERADA',
+          titulo: 'Orden de Compra generada',
+          mensaje: `Se generó la ${oc.numero} para "${req.titulo}"`,
+          fecha: new Date(),
+          leida: false,
+          requerimientoId: req.id,
+        },
+        ...prev,
+      ]);
+    }
+  }, [requerimientos]);
+
+  const actualizarOrdenCompra = useCallback(
+    (id: string, data: Partial<OrdenCompra>) => {
+      setOrdenesCompra((prev) =>
+        prev.map((oc) => (oc.id === id ? { ...oc, ...data } : oc))
+      );
+    },
+    []
+  );
+
+  // Aprobacion de adjuntos individuales
+  const aprobarAdjunto = useCallback(
+    (requerimientoId: string, adjuntoId: string, aprobado: boolean, comentario?: string) => {
+      setRequerimientos((prev) =>
+        prev.map((r) => {
+          if (r.id !== requerimientoId) return r;
+
+          const adjuntosActualizados = r.adjuntos.map((adj) => {
+            if (adj.id !== adjuntoId) return adj;
+            return {
+              ...adj,
+              estado: aprobado ? 'APROBADO' : 'RECHAZADO' as EstadoAdjunto,
+              aprobadorId: usuarioActual.id,
+              aprobador: usuarioActual,
+              fechaAprobacion: new Date(),
+              comentarioAprobacion: comentario,
+            };
+          });
+
+          return { ...r, adjuntos: adjuntosActualizados };
+        })
+      );
+    },
+    [usuarioActual]
+  );
+
   return (
     <ComprasContext.Provider
       value={{
@@ -157,6 +236,11 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
         requerimientos,
         agregarRequerimiento,
         actualizarRequerimiento,
+        ordenesCompra,
+        agregarOrdenCompra,
+        actualizarOrdenCompra,
+        proveedores: proveedoresMock,
+        aprobarAdjunto,
         notificaciones,
         agregarNotificacion,
         marcarLeida,

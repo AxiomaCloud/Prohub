@@ -31,6 +31,8 @@ export interface Usuario {
   avatar?: string;
 }
 
+export type EstadoAdjunto = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+
 export interface Adjunto {
   id: string;
   nombre: string;
@@ -38,6 +40,12 @@ export interface Adjunto {
   tamanio: number; // bytes
   url: string;
   fechaSubida: Date;
+  // Estado de aprobacion del adjunto
+  estado: EstadoAdjunto;
+  aprobadorId?: string;
+  aprobador?: Usuario;
+  fechaAprobacion?: Date;
+  comentarioAprobacion?: string;
 }
 
 export interface ItemRequerimiento {
@@ -109,16 +117,25 @@ export interface Requerimiento {
   recepcion?: Recepcion;
 }
 
+export interface Proveedor {
+  id: string;
+  nombre: string;
+  cuit: string;
+  direccion?: string;
+  telefono?: string;
+  email?: string;
+  contacto?: string;
+}
+
 export interface OrdenCompra {
   id: string;
   numero: string; // OC-2025-00001
   requerimientoId: string;
+  requerimiento?: Requerimiento;
 
-  // Proveedor (mock)
-  proveedor: {
-    nombre: string;
-    cuit: string;
-  };
+  // Proveedor
+  proveedorId: string;
+  proveedor: Proveedor;
 
   // Items
   items: ItemOC[];
@@ -129,12 +146,21 @@ export interface OrdenCompra {
   total: number;
   moneda: string;
 
+  // Condiciones
+  condicionPago?: string; // Ej: "30 dias", "Contado"
+  lugarEntrega?: string;
+  observaciones?: string;
+
   // Fechas
   fechaEmision: Date;
-  fechaEntregaEstimada: Date;
+  fechaEntregaEstimada?: Date;
 
   // Estado
   estado: EstadoOC;
+
+  // Creador
+  creadoPorId: string;
+  creadoPor?: Usuario;
 }
 
 export interface Recepcion {
@@ -178,6 +204,22 @@ export interface NuevoRequerimientoForm {
 export interface AprobacionForm {
   aprobado: boolean;
   comentario?: string;
+}
+
+export interface AprobacionAdjuntoForm {
+  adjuntoId: string;
+  aprobado: boolean;
+  comentario?: string;
+}
+
+export interface NuevaOrdenCompraForm {
+  requerimientoId: string;
+  proveedorId: string;
+  items: Omit<ItemOC, 'id'>[];
+  condicionPago?: string;
+  lugarEntrega?: string;
+  fechaEntregaEstimada?: Date;
+  observaciones?: string;
 }
 
 export interface RecepcionForm {

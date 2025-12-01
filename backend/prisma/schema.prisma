@@ -100,6 +100,10 @@ enum Role {
   CLIENT_APPROVER       // Aprobar/rechazar documentos
   CLIENT_ADMIN          // Gestión completa
   SUPER_ADMIN           // Admin global del sistema
+  // Roles de Compras
+  PURCHASE_REQUESTER    // Puede crear requerimientos de compra
+  PURCHASE_APPROVER     // Puede aprobar requerimientos de compra
+  PURCHASE_ADMIN        // Gestión completa del circuito de compras
 }
 
 // ============================================
