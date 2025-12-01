@@ -8,6 +8,7 @@ import menuRoutes from './routes/menu'
 import usersRoutes from './routes/users'
 import tenantsRoutes from './routes/tenants'
 import documentsRoutes from './routes/documents'
+import chatRoutes from './routes/chat'
 
 // Cargar variables de entorno
 dotenv.config()
@@ -45,6 +46,7 @@ app.use('/api/menu', menuRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/tenants', tenantsRoutes)
 app.use('/api/documents', documentsRoutes)
+app.use('/api/v1/chat', chatRoutes)
 
 // Ruta de prueba
 app.get('/api/test', (req: Request, res: Response) => {

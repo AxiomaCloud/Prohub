@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function createAdmin() {
   console.log('Creating superadmin user...');
 
-  const email = 'admin@prohub.com';
+  const email = 'admin@hub.com';
   const password = '123456';
   const name = 'Super Admin';
 

@@ -7,7 +7,7 @@ async function seedUser() {
   console.log('🌱 Seeding test user...');
 
   // Email y contraseña del usuario de prueba
-  const testEmail = 'test@prohub.com';
+  const testEmail = 'test@hub.com';
   const testPassword = 'test123';
 
   // Verificar si ya existe

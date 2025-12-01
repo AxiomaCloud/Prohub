@@ -53,7 +53,7 @@ export default function DashboardPage() {
           Bienvenido, {user?.name}
         </h1>
         <p className="text-text-secondary">
-          Aquí tienes un resumen de tu actividad en Hub
+          Aquí tienes un resumen de tu actividad en HUB
         </p>
       </div>
 

@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if there's a saved token on mount
     if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('prohub_token');
+      const savedToken = localStorage.getItem('hub_token');
 
       if (savedToken) {
         verifyToken(savedToken);
@@ -84,12 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         setToken(tokenToVerify);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('prohub_token', tokenToVerify);
+          localStorage.setItem('hub_token', tokenToVerify);
         }
       } else {
         // Invalid or expired token
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('prohub_token');
+          localStorage.removeItem('hub_token');
         }
         setUser(null);
         setToken(null);
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error verifying token:', error);
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('prohub_token');
+        localStorage.removeItem('hub_token');
       }
       setUser(null);
       setToken(null);
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setToken(data.token);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('prohub_token', data.token);
+        localStorage.setItem('hub_token', data.token);
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -142,8 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setTenant(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('prohub_token');
-      localStorage.removeItem('prohub_tenant');
+      localStorage.removeItem('hub_token');
+      localStorage.removeItem('hub_tenant');
     }
   };
 
@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTenant(data.tenant);
         console.log('✅ [AuthContext] Tenant state updated to:', data.tenant.id, data.tenant.name);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('prohub_tenant', JSON.stringify(data.tenant));
+          localStorage.setItem('hub_tenant', JSON.stringify(data.tenant));
         }
       } else {
         console.error('❌ [AuthContext] Error response from /api/tenants:', response.status);

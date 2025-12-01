@@ -1,10 +1,10 @@
-# AXIOMA Hub - Portal de Proveedores
+# AXIOMA HUB - Portal de Proveedores
 
 ## 🎯 Visión General
 
-Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar de forma centralizada toda la relación con sus proveedores: documentos, facturas, órdenes de compra, pagos y comunicaciones.
+HUB es el portal de proveedores de AXIOMA que permite a las empresas gestionar de forma centralizada toda la relación con sus proveedores: documentos, facturas, órdenes de compra, pagos y comunicaciones.
 
-**Hub se integra completamente con Axioma Parse** para ofrecer una experiencia superior en la gestión de documentos.
+**HUB se integra completamente con Axioma Parse** para ofrecer una experiencia superior en la gestión de documentos.
 
 ---
 
@@ -12,7 +12,7 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 
 ### 1. **Carga Inteligente de Documentos** (Integración con Parse)
 **❌ Competencia:** El proveedor debe completar múltiples campos requeridos manualmente.
-**✅ AXIOMA Hub:**
+**✅ AXIOMA HUB:**
 - **1 CLICK = 1 DOCUMENTO PROCESADO**
 - El proveedor simplemente arrastra/sube el documento
 - Parse escanea, clasifica y extrae datos automáticamente
@@ -21,7 +21,7 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 
 ### 2. **Multi-Tenant Inteligente**
 **❌ Competencia:** Si trabajás con 3 empresas, necesitás 3 usuarios y 3 contraseñas diferentes.
-**✅ AXIOMA Hub:**
+**✅ AXIOMA HUB:**
 - **1 USUARIO = ACCESO A TODAS TUS EMPRESAS**
 - Login único con selector de empresa
 - Cambio entre tenants sin re-login
@@ -29,7 +29,7 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 
 ### 3. **Formatos de Archivo Flexibles**
 **❌ Competencia:** Solo acepta PDF.
-**✅ AXIOMA Hub:**
+**✅ AXIOMA HUB:**
 - PDF, JPG, PNG, JPEG, WebP
 - Cualquier formato de imagen
 - Conversión automática si es necesario
@@ -37,7 +37,7 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 
 ### 4. **Vista de Estados Visual (Pipeline/Kanban)**
 **❌ Competencia:** Estado mostrado como un campo de texto simple.
-**✅ AXIOMA Hub:**
+**✅ AXIOMA HUB:**
 - Vista tipo Kanban/Pipeline visual
 - Arrastrar y soltar documentos entre estados
 - Timeline de cambios de estado
@@ -46,7 +46,7 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 
 ### 5. **Virtualización de Documentos (Axioma Docs)**
 **❌ Competencia:** PDFs estáticos que hay que descargar.
-**✅ AXIOMA Hub:**
+**✅ AXIOMA HUB:**
 - Visor de documentos integrado
 - Zoom, rotación, anotaciones
 - Descarga opcional
@@ -55,7 +55,7 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 
 ### 6. **Comunicación Omnicanal**
 **❌ Competencia:** Solo mensajes dentro del portal.
-**✅ AXIOMA Hub:**
+**✅ AXIOMA HUB:**
 - WhatsApp integrado
 - Notificaciones push
 - Email automático
@@ -65,7 +65,7 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 
 ### 7. **Roles Duales (Proveedor + Cliente)**
 **❌ Competencia:** Usuario separado si sos proveedor y cliente.
-**✅ AXIOMA Hub:**
+**✅ AXIOMA HUB:**
 - Un usuario puede ser PROVEEDOR y CLIENTE simultáneamente
 - Switch de contexto inteligente
 - Buzón de entrada y salida
@@ -109,7 +109,26 @@ Hub es el portal de proveedores de AXIOMA que permite a las empresas gestionar d
 - Chat interno
 - Historial completo de conversaciones
 
-### **6. Panel de Control (Admin)**
+### **6. 🤖 Chatbot con IA (NUEVO)**
+- **Asistente inteligente con Claude 3.5 Sonnet**
+- Widget flotante estilo WhatsApp/Intercom
+- **Crear requerimientos de compra con lenguaje natural**
+- Consultas sobre estado de documentos
+- Aprobaciones automáticas (próximamente)
+- Disponible 24/7 en todas las pantallas
+
+**Ejemplos de uso:**
+```
+"Necesito una notebook para diseño, presupuesto $2000, urgente"
+"Haceme un requerimiento de 5 sillas de oficina ergonómicas"
+"¿Cuál es el estado de mis requerimientos pendientes?"
+```
+
+El chatbot interpreta el lenguaje natural, extrae información relevante y ejecuta la acción automáticamente.
+
+📚 **Documentación:** Ver `/docs/AI_CHATBOT_SETUP.md`
+
+### **7. Panel de Control (Admin)**
 - Dashboard con métricas clave
 - Aceptar/rechazar facturas
 - Gestión de usuarios ilimitados
@@ -229,7 +248,7 @@ Ver documentación completa en `/docs/DESIGN_SYSTEM.md`
 ## 📁 ESTRUCTURA DEL PROYECTO
 
 ```
-prohub/
+hub/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/

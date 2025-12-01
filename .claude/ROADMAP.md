@@ -1,4 +1,4 @@
-# ROADMAP DE DESARROLLO - ProHub
+# ROADMAP DE DESARROLLO - HUB
 
 Planificación detallada del desarrollo del proyecto.
 

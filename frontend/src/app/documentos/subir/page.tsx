@@ -35,7 +35,7 @@ export default function UploadDocumentPage() {
     };
 
     // Obtener token de localStorage
-    const token = localStorage.getItem('prohub_token');
+    const token = localStorage.getItem('hub_token');
     if (!token) {
       await confirm('No hay sesión activa. Por favor, inicia sesión nuevamente.', 'Error', 'danger');
       router.push('/auth/login');

@@ -1,7 +1,7 @@
 {
-  "name": "@prohub/shared",
+  "name": "@hub/shared",
   "version": "1.0.0",
-  "description": "ProHub Shared - Código compartido entre backend y frontend",
+  "description": "HUB Shared - Código compartido entre backend y frontend",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

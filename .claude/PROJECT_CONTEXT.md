@@ -1,8 +1,8 @@
-# CONTEXTO DEL PROYECTO - ProHub
+# CONTEXTO DEL PROYECTO - HUB
 
 ## 🎯 QUÉ ES PROHUB
 
-ProHub es el **Portal de Proveedores de AXIOMA** que revoluciona la gestión de documentos, facturas, órdenes de compra y pagos entre empresas y sus proveedores.
+HUB es el **Portal de Proveedores de AXIOMA** que revoluciona la gestión de documentos, facturas, órdenes de compra y pagos entre empresas y sus proveedores.
 
 ## 🚀 DIFERENCIADORES CLAVE
 
@@ -152,7 +152,7 @@ Reutilizar de Parse:
 ## 📁 ESTRUCTURA DEL PROYECTO
 
 ```
-prohub/
+hub/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/login/

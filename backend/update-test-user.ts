@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function updateTestUser() {
   console.log('Updating test user password...');
 
-  const email = 'test@prohub.com';
+  const email = 'test@hub.com';
   const password = 'test123';
 
   // Hash the password

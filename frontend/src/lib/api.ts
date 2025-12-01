@@ -19,7 +19,7 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Usar localStorage en lugar de cookies
-    const token = typeof window !== 'undefined' ? localStorage.getItem('prohub_token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('hub_token') : null;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

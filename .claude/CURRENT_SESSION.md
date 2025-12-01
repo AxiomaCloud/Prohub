@@ -1,4 +1,4 @@
-# SESIÓN ACTUAL - ProHub
+# SESIÓN ACTUAL - HUB
 
 **Fecha inicio:** 15 de Noviembre 2025
 **Estado:** Preparación inicial completada
@@ -45,7 +45,7 @@
 
 ### Entendimiento del Proyecto
 
-ProHub es un portal de proveedores innovador con 7 diferenciadores clave:
+HUB es un portal de proveedores innovador con 7 diferenciadores clave:
 
 1. **IA-First**: Integración con Parse para carga automática de documentos
 2. **Multi-Tenant Inteligente**: 1 usuario, N empresas

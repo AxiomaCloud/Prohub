@@ -1,4 +1,4 @@
-# Propuesta: Chatbot/Asistente IA para ProHub
+# Propuesta: Chatbot/Asistente IA para HUB
 
 ## Resumen Ejecutivo
 
@@ -22,13 +22,13 @@ El sistema interpreta la solicitud, extrae la información relevante y genera au
 > - ✅ **Escalable:** Fácil agregar más funcionalidades sin cambiar la UI principal
 > - ✅ **ROI más alto:** Implementación moderada con máximo impacto en UX
 >
-> *Las otras opciones se presentan para comparación, pero el widget es la opción óptima para ProHub.*
+> *Las otras opciones se presentan para comparación, pero el widget es la opción óptima para HUB.*
 
 ---
 
 ### 1. Chat Widget Integrado (✓ Recomendado)
 
-Widget flotante tipo Intercom/Crisp integrado en la interfaz de ProHub.
+Widget flotante tipo Intercom/Crisp integrado en la interfaz de HUB.
 
 **Características:**
 - Botón flotante accesible desde cualquier pantalla
@@ -390,7 +390,7 @@ if (action.tipo === "aprobar" && user.role !== "Admin") {
 
 ### Diferenciación Competitiva
 - ✨ **Innovación:** Pocos ERP tienen IA conversacional
-- 🚀 **Marketing:** "ProHub con Asistente IA"
+- 🚀 **Marketing:** "HUB con Asistente IA"
 - 💎 **Premium:** Justifica pricing más alto
 
 ---
@@ -446,4 +446,4 @@ if (action.tipo === "aprobar" && user.role !== "Admin") {
 
 **Documento creado:** 2025-11-30
 **Versión:** 1.0
-**Autores:** Equipo ProHub + Claude Code
+**Autores:** Equipo HUB + Claude Code

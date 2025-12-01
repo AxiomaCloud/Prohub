@@ -3,9 +3,10 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { SidebarProvider } from '@/contexts/SidebarContext'
 import { ConfirmProvider } from '@/hooks/useConfirm'
+import { ChatWidgetWrapper } from '@/components/chat/ChatWidgetWrapper'
 
 export const metadata: Metadata = {
-  title: 'Hub - Portal de Proveedores AXIOMA',
+  title: 'HUB - Portal de Proveedores AXIOMA',
   description: 'Portal de proveedores con IA para gestión de documentos, facturas y pagos',
 }
 
@@ -21,6 +22,7 @@ export default function RootLayout({
           <SidebarProvider>
             <ConfirmProvider>
               {children}
+              <ChatWidgetWrapper />
             </ConfirmProvider>
           </SidebarProvider>
         </AuthProvider>

@@ -204,7 +204,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
  */
 router.get('/profiles', authenticate, async (req: Request, res: Response) => {
   try {
-    // ProHub uses Role enum instead of Profile model
+    // HUB uses Role enum instead of Profile model
     // Return hardcoded profiles based on the Role enum
     const profiles = [
       {
