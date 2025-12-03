@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
@@ -44,7 +44,6 @@ export default function Home() {
     handleAuth();
   }, [user, isLoading, router, searchParams, isAuthenticating]);
 
-  // Mostrar un loader mientras se verifica la autenticación
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
@@ -54,5 +53,22 @@ export default function Home() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-palette-purple mx-auto"></div>
+            <p className="mt-4 text-text-secondary">Cargando...</p>
+          </div>
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }
