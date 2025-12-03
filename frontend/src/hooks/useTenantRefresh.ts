@@ -17,7 +17,7 @@ export function useTenantRefresh(
 
   useEffect(() => {
     // Solo ejecutar si hay un tenant (para evitar llamadas innecesarias)
-    console.log('🎯 [useTenantRefresh] Tenant changed:', tenant?.id, tenant?.nombre);
+    console.log('🎯 [useTenantRefresh] Tenant changed:', tenant?.id, (tenant?.name || (tenant as any)?.nombre));
     if (tenant?.id) {
       console.log('🔄 [useTenantRefresh] Executing refresh callback...');
       memoizedRefresh();

@@ -107,7 +107,7 @@ function FiltroEstadosModal({
 export default function RequerimientosPage() {
   const router = useRouter();
   const { usuarioActual, requerimientos, actualizarRequerimiento, refreshRequerimientos, ordenesCompra } = useCompras();
-  const { token, currentTenant } = useAuth();
+  const { token, tenant } = useAuth();
 
   // Calcular progreso de OC para un requerimiento
   const calcularProgresoOC = (req: Requerimiento) => {
@@ -180,7 +180,7 @@ export default function RequerimientosPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ tenantId: currentTenant?.id }),
+        body: JSON.stringify({ tenantId: tenant?.id }),
       });
 
       if (!response.ok) {

@@ -2,7 +2,14 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { Usuario, Requerimiento, OrdenCompra, Proveedor, Adjunto, EstadoAdjunto, RolUsuario, Recepcion, ItemRecibido } from '@/types/compras';
-import { usuariosMock } from '@/lib/mock';
+// Usuario por defecto cuando no hay usuario autenticado
+const defaultUsuario: Usuario = {
+  id: 'default',
+  nombre: 'Usuario',
+  email: 'usuario@ejemplo.com',
+  rol: 'SOLICITANTE',
+  departamento: 'General',
+};
 import { useAuth } from '@/contexts/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -95,7 +102,7 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
         avatar: undefined,
       };
     }
-    return usuariosMock[0];
+    return defaultUsuario;
   }, [authUser, currentTenant]);
 
   // Estados
@@ -561,7 +568,7 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
       value={{
         usuarioActual,
         cambiarUsuario,
-        usuarios: usuariosMock,
+        usuarios: [defaultUsuario],
         requerimientos: requerimientosConOC,
         loadingRequerimientos,
         agregarRequerimiento,

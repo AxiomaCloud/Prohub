@@ -43,11 +43,11 @@ export default function ProtectedRoute({
     // Los superusers tienen acceso a todo
     if (user?.superuser) {
       console.log('🔍 [ProtectedRoute] Superuser access granted');
-    } else if (user?.profile) {
-      const hasRequiredRole = requiredRoles.includes(user.profile.codigo);
+    } else if ((user as any)?.profile) {
+      const hasRequiredRole = requiredRoles.includes((user as any).profile.codigo);
       console.log('🔍 [ProtectedRoute] Role check:', {
         requiredRoles,
-        userProfileCodigo: user.profile.codigo,
+        userProfileCodigo: (user as any).profile.codigo,
         hasRequiredRole
       });
       if (!hasRequiredRole) {
@@ -97,7 +97,7 @@ export default function ProtectedRoute({
   }
 
   // Verificar tenant activo (excepto para superusers)
-  if (!user?.superuser && (!tenant || !tenant.nombre)) {
+  if (!user?.superuser && (!tenant || !(tenant?.name || (tenant as any)?.nombre))) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

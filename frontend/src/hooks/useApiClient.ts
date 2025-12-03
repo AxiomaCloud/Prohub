@@ -74,8 +74,7 @@ export function useApiClient() {
 
   // Métodos de conveniencia
   const get = useCallback(
-    (url: string, headers?: Record<string, string>) =>
-      apiCall(url, { method: 'GET', headers }),
+    <T = any>(url: string, headers?: Record<string, string>): Promise<T> => apiCall(url, { method: 'GET', headers }),
     [apiCall]
   );
 
