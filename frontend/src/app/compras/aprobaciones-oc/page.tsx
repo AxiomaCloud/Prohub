@@ -517,6 +517,9 @@ export default function AprobacionesOCPage() {
               <thead className="bg-gray-50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Numero</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Titulo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Categoria</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Prioridad</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Proveedor</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Creado por</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Estado</th>
@@ -533,6 +536,18 @@ export default function AprobacionesOCPage() {
                   return (
                     <tr key={oc.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-palette-purple">{oc.numero}</td>
+                      <td className="px-4 py-3 text-sm text-text-primary">{oc.requerimiento?.titulo || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{oc.requerimiento?.categoria || "-"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                          oc.requerimiento?.prioridad === "URGENTE" ? "bg-red-100 text-red-700" :
+                          oc.requerimiento?.prioridad === "ALTA" ? "bg-orange-100 text-orange-700" :
+                          oc.requerimiento?.prioridad === "NORMAL" ? "bg-blue-100 text-blue-700" :
+                          "bg-gray-100 text-gray-700"
+                        }`}>
+                          {oc.requerimiento?.prioridad || "-"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-text-primary">{oc.proveedor.nombre}</p>
                         {oc.proveedor.cuit && !oc.proveedor.cuit.startsWith('TEMP-') && (
@@ -544,10 +559,24 @@ export default function AprobacionesOCPage() {
                         <p className="text-xs text-text-secondary">{oc.creadoPor?.departamento || ''}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${estadoConfig?.color}`}>
-                          <Icon className="w-3 h-3" />
-                          {estadoConfig?.label}
-                        </span>
+                        <div className="relative group">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${estadoConfig?.color} ${oc.estado === 'RECHAZADA' && oc.comentarioAprobacionOC ? 'cursor-help' : ''}`}>
+                            <Icon className="w-3 h-3" />
+                            {estadoConfig?.label}
+                          </span>
+                          {oc.estado === 'RECHAZADA' && oc.comentarioAprobacionOC && (
+                            <div className="absolute z-50 bottom-full left-0 mb-2 hidden group-hover:block w-64">
+                              <div className="bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg">
+                                <p className="font-semibold mb-1">Motivo del rechazo:</p>
+                                <p>{oc.comentarioAprobacionOC}</p>
+                                {oc.aprobadorOC && (
+                                  <p className="mt-2 text-gray-400 text-[10px]">Por: {oc.aprobadorOC.nombre}</p>
+                                )}
+                                <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-text-secondary">{formatFecha(oc.fechaEmision)}</td>
                       <td className="px-4 py-3 text-sm font-medium text-text-primary text-right">

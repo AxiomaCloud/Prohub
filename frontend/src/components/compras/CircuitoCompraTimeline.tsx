@@ -47,6 +47,7 @@ const ESTADO_CONFIG: Record<string, { color: string; bgColor: string; icon: Reac
   PARCIALMENTE_RECIBIDA: { color: 'text-orange-600', bgColor: 'bg-orange-100', icon: Package, label: 'Parcialmente Recibida' },
   ENTREGADA: { color: 'text-teal-600', bgColor: 'bg-teal-100', icon: PackageCheck, label: 'Entregada' },
   APROBADA: { color: 'text-green-600', bgColor: 'bg-green-100', icon: CheckCircle, label: 'Aprobada' },
+  RECHAZADA: { color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle, label: 'Rechazada' },
   FINALIZADA: { color: 'text-emerald-600', bgColor: 'bg-emerald-100', icon: CheckCircle, label: 'Finalizada' },
 };
 
@@ -285,6 +286,29 @@ function DetalleDocumento({
               <Truck className="w-4 h-4 text-gray-400" />
               <span className="text-gray-600">Entrega: {oc.lugarEntrega}</span>
             </div>
+          </div>
+        )}
+
+        {/* Info de aprobación/rechazo de OC */}
+        {oc.aprobadorOC && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-sm">
+              {oc.estado === 'RECHAZADA' ? (
+                <XCircle className="w-4 h-4 text-red-500" />
+              ) : (
+                <CheckCircle className="w-4 h-4 text-green-500" />
+              )}
+              <span className="text-gray-600">
+                {oc.estado === 'RECHAZADA' ? 'Rechazada' : 'Aprobada'} por{' '}
+                <span className="font-medium">{oc.aprobadorOC.nombre}</span>
+                {oc.fechaAprobacionOC && ` el ${formatFecha(oc.fechaAprobacionOC)}`}
+              </span>
+            </div>
+            {oc.comentarioAprobacionOC && (
+              <p className={`mt-1 text-xs italic ml-6 ${oc.estado === 'RECHAZADA' ? 'text-red-600' : 'text-gray-500'}`}>
+                "{oc.comentarioAprobacionOC}"
+              </p>
+            )}
           </div>
         )}
       </div>

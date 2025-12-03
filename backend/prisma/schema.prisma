@@ -663,7 +663,7 @@ enum NotificationType {
 
 model PurchaseRequest {
   id          String                @id @default(cuid())
-  numero      String                @unique // REQ-2025-XXXXX
+  numero      String                // REQ-2025-XXXXX (único por tenant)
   titulo      String                // Título corto generado del primer item
 
   // Estado
@@ -721,7 +721,7 @@ model PurchaseRequest {
 
   @@index([tenantId, estado])
   @@index([solicitanteId])
-  @@index([numero])
+  @@unique([tenantId, numero])
 }
 
 model PurchaseRequestItem {

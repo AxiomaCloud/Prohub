@@ -120,11 +120,19 @@ export default function RequerimientosPage() {
       return sum + oc.items.reduce((s, item) => s + Number(item.cantidad || 0), 0);
     }, 0);
 
+    // Obtener la última OC (más reciente)
+    const ultimaOC = ocsDelRequerimiento.length > 0
+      ? ocsDelRequerimiento.sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime())[0]
+      : null;
+
     return {
       porcentaje: totalItems > 0 ? Math.round((itemsEnOC / totalItems) * 100) : 0,
       enOC: Math.round(itemsEnOC * 100) / 100,
       total: Math.round(totalItems * 100) / 100,
       tieneOC: ocsDelRequerimiento.length > 0,
+      ultimaOC,
+      ocRechazada: ultimaOC?.estado === 'RECHAZADA',
+      motivoRechazo: ultimaOC?.comentarioAprobacionOC,
     };
   };
   const [searchQuery, setSearchQuery] = useState('');
@@ -509,6 +517,28 @@ export default function RequerimientosPage() {
                           if (req.estado === 'BORRADOR' || req.estado === 'PENDIENTE_APROBACION' || req.estado === 'RECHAZADO') {
                             return <span className="text-xs text-gray-400">-</span>;
                           }
+
+                          // Mostrar si la última OC fue rechazada
+                          if (progresoOC.ocRechazada) {
+                            return (
+                              <div className="relative group">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 cursor-help">
+                                  <XCircle className="w-3 h-3" />
+                                  Rechazada
+                                </span>
+                                {progresoOC.motivoRechazo && (
+                                  <div className="absolute z-50 bottom-full left-0 mb-2 hidden group-hover:block w-56">
+                                    <div className="bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg">
+                                      <p className="font-semibold mb-1">OC Rechazada:</p>
+                                      <p>{progresoOC.motivoRechazo}</p>
+                                      <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
                           return (
                             <div className="w-16">
                               <div className="flex items-center justify-center text-xs mb-1">
