@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { Sparkles, X, Send, Loader2 } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { chatService, ChatMessage as ChatMessageType } from '@/lib/chatService';
 
@@ -143,7 +143,7 @@ Puedo ayudarte a:
           className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-50"
           aria-label="Abrir chat de IA"
         >
-          <MessageCircle className="w-6 h-6" />
+          <Sparkles className="w-6 h-6" />
           {!isAvailable && (
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
           )}

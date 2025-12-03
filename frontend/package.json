@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "sh -c 'source .env 2>/dev/null; next start -p ${PORT:-3000}'",
+    "start": "next start -p 8089",
     "lint": "next lint"
   },
   "dependencies": {
