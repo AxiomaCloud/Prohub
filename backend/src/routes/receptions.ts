@@ -204,7 +204,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
               cantidadRecibida: itemRec.cantidadRecibida,
               cantidadPendiente: Math.max(
                 0,
-                ocItem.cantidad - ocItem.cantidadRecibida - itemRec.cantidadRecibida
+                Number(ocItem.cantidad) - Number(ocItem.cantidadRecibida) - itemRec.cantidadRecibida
               ),
             },
           });
@@ -317,8 +317,8 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
       });
 
       if (oc) {
-        const todosRecibidos = oc.items.every((i) => i.cantidadRecibida >= i.cantidad);
-        const algunoRecibido = oc.items.some((i) => i.cantidadRecibida > 0);
+        const todosRecibidos = oc.items.every((i) => Number(i.cantidadRecibida) >= Number(i.cantidad));
+        const algunoRecibido = oc.items.some((i) => Number(i.cantidadRecibida) > 0);
 
         let nuevoEstado: PurchaseOrderCircuitStatus;
         if (todosRecibidos) {

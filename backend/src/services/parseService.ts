@@ -93,7 +93,7 @@ export class ParseService {
         headers: {
           'X-API-Key': PARSE_API_KEY,
         },
-        body: formData,
+        body: formData as any,
       });
 
       if (!response.ok) {
@@ -102,7 +102,7 @@ export class ParseService {
         throw new Error(`Parse API error: ${response.status} - ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as ParseDocumentResponse;
 
       if (!result.success) {
         throw new Error('Parse returned success: false');
@@ -143,7 +143,7 @@ export class ParseService {
         throw new Error(`Parse API error: ${response.status}`);
       }
 
-      return await response.json();
+      return await response.json() as ParseDocumentResponse;
     } catch (error) {
       console.error('❌ [PARSE] Error fetching document:', error);
       throw error;
@@ -174,7 +174,7 @@ export class ParseService {
         throw new Error(`Parse API error: ${response.status}`);
       }
 
-      return await response.json();
+      return await response.json() as ParseDocumentResponse;
     } catch (error) {
       console.error('❌ [PARSE] Error updating document:', error);
       throw error;

@@ -112,7 +112,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         unidadMedida: item.unidadMedida || 'unidad',
         precioUnitario: item.precioEstimado ? Number(item.precioEstimado) : 0,
         precioEstimado: item.precioEstimado ? Number(item.precioEstimado) : 0,
-        total: (item.cantidad || 1) * (item.precioEstimado ? Number(item.precioEstimado) : 0),
+        total: (Number(item.cantidad) || 1) * (item.precioEstimado ? Number(item.precioEstimado) : 0),
         especificaciones: item.especificaciones ? JSON.parse(item.especificaciones) : []
       })),
       adjuntos: req.adjuntos?.map(adj => ({
@@ -209,7 +209,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
         unidadMedida: item.unidadMedida || 'unidad',
         precioUnitario: item.precioEstimado ? Number(item.precioEstimado) : 0,
         precioEstimado: item.precioEstimado ? Number(item.precioEstimado) : null,
-        total: (item.cantidad || 1) * (item.precioEstimado ? Number(item.precioEstimado) : 0),
+        total: (Number(item.cantidad) || 1) * (item.precioEstimado ? Number(item.precioEstimado) : 0),
         especificaciones: item.especificaciones ? JSON.parse(item.especificaciones) : []
       })),
       adjuntos: requerimiento.adjuntos?.map(adj => ({
