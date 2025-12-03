@@ -1,9 +1,9 @@
 # 🗓️ Roadmap de Implementación - Circuitos de Compras
 
 **Proyecto**: Hub - Sistema de Gestión de Compras
-**Versión**: 2.0
-**Fecha**: 29 Noviembre 2025
-**Estado**: 📋 Planificación
+**Versión**: 2.1
+**Fecha**: 02 Diciembre 2025
+**Estado**: 🚧 En Desarrollo (MVP Fase 2)
 
 ---
 
@@ -39,6 +39,54 @@
 |------------|----------|---------|
 | **MVP** | 8 semanas | Circuitos 1 + 4 + 6 básico |
 | **Full** | +10 semanas | Circuitos 2, 3, 5, Portal, ERP |
+
+---
+
+## ✅ ESTADO ACTUAL DE IMPLEMENTACIÓN (v1.2.0)
+
+### Circuito 1: Requerimientos ✅ COMPLETADO
+- ✅ Modelo PurchaseRequest y PurchaseRequestItem
+- ✅ CRUD completo de requerimientos
+- ✅ Sistema de aprobación multinivel
+- ✅ Estados: BORRADOR → EN_REVISION → APROBADO/RECHAZADO → OC_GENERADA → RECIBIDO
+- ✅ Vista lista con filtros y búsqueda
+- ✅ Modal de creación/edición con items
+- ✅ Vista Kanban con drag & drop
+- ✅ Indicador de progreso OC (% items cubiertos)
+- ✅ Soporte para múltiples OCs por requerimiento
+
+### Circuito 4: Órdenes de Compra ✅ COMPLETADO
+- ✅ Modelo PurchaseOrder y PurchaseOrderItem
+- ✅ Generación de OC desde requerimiento aprobado
+- ✅ OCs parciales (selección de items específicos)
+- ✅ Cálculo de cantidades pendientes
+- ✅ Campos editables (cantidad, precio unitario)
+- ✅ Soporte de decimales (Decimal(18,4))
+- ✅ Sistema de aprobación de OC
+- ✅ Vista detalle de OC con timeline
+- ✅ Indicador de progreso recepción (% recibido)
+
+### Circuito 6: Recepciones ✅ COMPLETADO (Básico)
+- ✅ Modelo Reception y ReceptionItem
+- ✅ Recepción total y parcial
+- ✅ Múltiples recepciones por OC
+- ✅ Trazabilidad completa (modal con todas las recepciones)
+- ✅ Indicador de progreso (% completado)
+- ✅ Columnas: Título, Creado Por, Prioridad, Categoría
+
+### Funcionalidades Transversales ✅
+- ✅ Chatbot con IA (Claude) para crear requerimientos
+- ✅ Toast notifications
+- ✅ Multi-tenancy con aislamiento de datos
+- ✅ Roles y permisos (SOLICITANTE, APROBADOR, COMPRADOR)
+- ✅ Numeración automática (REQ-YYYY-XXXXX, OC-YYYY-XXXXX)
+
+### Próximos Pasos (v1.3.0)
+- 🔲 Generador PDF de OC
+- 🔲 Integración con proveedores (envío de OC)
+- 🔲 Portal de proveedores básico
+- 🔲 Validación tripartita (OC + Factura + Conforme)
+- 🔲 Sistema de facturas
 
 ---
 

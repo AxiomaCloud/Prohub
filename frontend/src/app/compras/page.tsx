@@ -30,6 +30,7 @@ import {
   FileEdit,
   Filter,
   Check,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // Tipos de documentos en el circuito
@@ -76,18 +77,49 @@ function mapEstadoToKanban(estado: EstadoRequerimiento): EstadoKanban {
 }
 
 // Mapeo de estado Kanban a estado del requerimiento
-function getNextEstadoRequerimiento(currentEstado: EstadoRequerimiento, targetKanban: EstadoKanban): EstadoRequerimiento | null {
-  // Definir transiciones validas (sin permitir ir directo a FINALIZADO desde requerimiento)
-  const transitions: Record<EstadoRequerimiento, Partial<Record<EstadoKanban, EstadoRequerimiento>>> = {
+// Para superadmin: permitir transiciones más flexibles
+function getNextEstadoRequerimiento(currentEstado: EstadoRequerimiento, targetKanban: EstadoKanban, isSuperAdmin: boolean = false): EstadoRequerimiento | null {
+  // Transiciones estrictas para usuarios normales
+  const strictTransitions: Record<EstadoRequerimiento, Partial<Record<EstadoKanban, EstadoRequerimiento>>> = {
     'BORRADOR': { 'PENDIENTE': 'PENDIENTE_APROBACION' },
     'PENDIENTE_APROBACION': { 'APROBADO': 'APROBADO', 'RECHAZADO': 'RECHAZADO', 'BORRADOR': 'BORRADOR' },
     'APROBADO': { 'APROBADO': 'OC_GENERADA' },
-    'OC_GENERADA': {}, // La transición a FINALIZADO solo ocurre mediante recepción de OC
+    'OC_GENERADA': {},
     'RECHAZADO': { 'BORRADOR': 'BORRADOR' },
     'RECIBIDO': {},
   };
 
+  // Transiciones flexibles para superadmin (puede mover a cualquier estado excepto FINALIZADO)
+  const superAdminTransitions: Record<EstadoRequerimiento, Partial<Record<EstadoKanban, EstadoRequerimiento>>> = {
+    'BORRADOR': { 'PENDIENTE': 'PENDIENTE_APROBACION', 'APROBADO': 'APROBADO', 'RECHAZADO': 'RECHAZADO' },
+    'PENDIENTE_APROBACION': { 'BORRADOR': 'BORRADOR', 'APROBADO': 'APROBADO', 'RECHAZADO': 'RECHAZADO' },
+    'APROBADO': { 'BORRADOR': 'BORRADOR', 'PENDIENTE': 'PENDIENTE_APROBACION', 'RECHAZADO': 'RECHAZADO' },
+    'OC_GENERADA': { 'BORRADOR': 'BORRADOR', 'PENDIENTE': 'PENDIENTE_APROBACION', 'APROBADO': 'APROBADO' },
+    'RECHAZADO': { 'BORRADOR': 'BORRADOR', 'PENDIENTE': 'PENDIENTE_APROBACION', 'APROBADO': 'APROBADO' },
+    'RECIBIDO': {},
+  };
+
+  const transitions = isSuperAdmin ? superAdminTransitions : strictTransitions;
   return transitions[currentEstado]?.[targetKanban] || null;
+}
+
+// Tipo de estado de OC
+type EstadoOC = 'PENDIENTE' | 'PENDIENTE_APROBACION' | 'APROBADA' | 'RECHAZADA' | 'EN_PROCESO' | 'PARCIALMENTE_RECIBIDA' | 'ENTREGADA' | 'FINALIZADA' | 'CANCELADA';
+
+// Mapeo de estado Kanban a estado de OC para superadmin
+function getNextEstadoOC(currentEstado: string, targetKanban: EstadoKanban, isSuperAdmin: boolean = false): EstadoOC | null {
+  if (!isSuperAdmin) return null;
+
+  // Mapear columnas Kanban a estados de OC
+  const kanbanToOC: Record<EstadoKanban, EstadoOC> = {
+    'BORRADOR': 'PENDIENTE_APROBACION',
+    'PENDIENTE': 'PENDIENTE_APROBACION',
+    'APROBADO': 'APROBADA',
+    'RECHAZADO': 'RECHAZADA',
+    'FINALIZADO': 'FINALIZADA',
+  };
+
+  return kanbanToOC[targetKanban] || null;
 }
 
 // Configuracion de columnas Kanban
@@ -598,7 +630,7 @@ function FiltroEstadosModal({
 
 export default function ComprasKanbanPage() {
   const router = useRouter();
-  const { usuarioActual, requerimientos, actualizarRequerimiento, refreshRequerimientos } = useCompras();
+  const { usuarioActual, requerimientos, ordenesCompra, actualizarRequerimiento, refreshRequerimientos, refreshOrdenesCompra } = useCompras();
   const { user, token } = useAuth();
   const [selectedDoc, setSelectedDoc] = useState<DocumentoKanban | null>(null);
 
@@ -852,6 +884,8 @@ export default function ComprasKanbanPage() {
   const handleDragEnd = useCallback(async (result: DropResult) => {
     const { draggableId, destination, source } = result;
 
+    console.log('[KANBAN] handleDragEnd:', { draggableId, destination, source, isSuperAdmin, user });
+
     if (!destination) return;
     if (destination.droppableId === source.droppableId) return;
 
@@ -870,9 +904,9 @@ export default function ComprasKanbanPage() {
 
     if (!doc) return;
 
-    // Solo permitir transiciones de requerimientos (no OC ni recepciones)
-    if (doc.tipo !== 'REQUERIMIENTO') {
-      toast.error('Solo se pueden arrastrar requerimientos');
+    // No permitir arrastrar recepciones
+    if (doc.tipo === 'RECEPCION') {
+      toast.error('Las recepciones no se pueden arrastrar');
       return;
     }
 
@@ -882,36 +916,29 @@ export default function ComprasKanbanPage() {
       return;
     }
 
-    const currentEstado = doc.estadoOriginal as EstadoRequerimiento;
-    const newEstado = getNextEstadoRequerimiento(currentEstado, targetKanban);
-
-    if (!newEstado) {
-      toast.error('Transición de estado no permitida');
-      return;
-    }
-
-    // Llamar al backend para cambiar el estado
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-    try {
-      let endpoint = '';
-      let body: any = {};
+    // Manejar según el tipo de documento
+    if (doc.tipo === 'REQUERIMIENTO') {
+      const currentEstado = doc.estadoOriginal as EstadoRequerimiento;
+      const newEstado = getNextEstadoRequerimiento(currentEstado, targetKanban, isSuperAdmin);
 
-      if (newEstado === 'BORRADOR') {
-        endpoint = `/api/purchase-requests/${doc.id}`;
-        body = { estado: 'BORRADOR' };
-      } else if (newEstado === 'PENDIENTE_APROBACION') {
-        endpoint = `/api/purchase-requests/${doc.id}/submit`;
-        body = {};
-      } else if (newEstado === 'APROBADO') {
-        endpoint = `/api/purchase-requests/${doc.id}/approve`;
-        body = { comentario: 'Aprobado desde Kanban (superadmin)' };
-      } else if (newEstado === 'RECHAZADO') {
-        endpoint = `/api/purchase-requests/${doc.id}/reject`;
-        body = { comentario: 'Rechazado desde Kanban (superadmin)' };
+      console.log('[KANBAN] Transición Requerimiento:', { currentEstado, targetKanban, newEstado, isSuperAdmin });
+
+      if (!newEstado) {
+        toast.error('Transición de estado no permitida');
+        return;
       }
 
-      if (endpoint) {
+      try {
+        const endpoint = `/api/purchase-requests/${doc.id}`;
+        const body: any = {
+          estado: newEstado,
+          comentarioAprobador: `Estado cambiado desde Kanban por superadmin`,
+        };
+
+        console.log('[KANBAN] Enviando cambio de estado:', { endpoint, body });
+
         const response = await fetch(`${apiUrl}${endpoint}`, {
           method: 'PUT',
           headers: {
@@ -928,12 +955,50 @@ export default function ComprasKanbanPage() {
 
         toast.success(`Estado cambiado a ${newEstado.replace(/_/g, ' ')}`);
         await refreshRequerimientos();
+      } catch (error: any) {
+        console.error('Error cambiando estado:', error);
+        toast.error(error.message || 'Error al cambiar el estado');
       }
-    } catch (error: any) {
-      console.error('Error cambiando estado:', error);
-      toast.error(error.message || 'Error al cambiar el estado');
+    } else if (doc.tipo === 'ORDEN_COMPRA') {
+      const newEstado = getNextEstadoOC(doc.estadoOriginal, targetKanban, isSuperAdmin);
+
+      console.log('[KANBAN] Transición OC:', { currentEstado: doc.estadoOriginal, targetKanban, newEstado, isSuperAdmin });
+
+      if (!newEstado) {
+        toast.error('Transición de estado no permitida para OC');
+        return;
+      }
+
+      try {
+        const endpoint = `/api/purchase-orders/${doc.id}`;
+        const body: any = {
+          estado: newEstado,
+        };
+
+        console.log('[KANBAN] Enviando cambio de estado OC:', { endpoint, body });
+
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Error al cambiar estado de OC');
+        }
+
+        toast.success(`Estado de OC cambiado a ${newEstado.replace(/_/g, ' ')}`);
+        await refreshOrdenesCompra();
+      } catch (error: any) {
+        console.error('Error cambiando estado OC:', error);
+        toast.error(error.message || 'Error al cambiar el estado de la OC');
+      }
     }
-  }, [documentosKanban, isSuperAdmin, token, refreshRequerimientos]);
+  }, [documentosKanban, isSuperAdmin, token, refreshRequerimientos, refreshOrdenesCompra, user]);
 
   // Navegar al detalle completo
   const navigateToDetail = useCallback((doc: DocumentoKanban) => {
@@ -966,10 +1031,11 @@ export default function ComprasKanbanPage() {
   }, [filtroEstados]);
 
   return (
-    <div className="p-6 space-y-6 h-full">
+    <div className="p-6 space-y-6">
       <PageHeader
         title="Circuito de Compras"
         subtitle={`${stats.total} documento${stats.total !== 1 ? 's' : ''} en el circuito`}
+        icon={LayoutDashboard}
         action={
           <Button onClick={() => router.push('/compras/requerimientos/nuevo')}>
             <Plus className="w-4 h-4 mr-2" />
@@ -1052,8 +1118,8 @@ export default function ComprasKanbanPage() {
 
       {/* Tablero Kanban con DragDropContext */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="bg-white rounded-lg shadow-sm border border-border p-4 overflow-hidden">
-          <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="bg-white rounded-lg shadow-sm border border-border p-4">
+          <div className="flex gap-4 pb-4" style={{ minWidth: 'max-content' }}>
             {columnasVisibles.map((columna) => (
               <KanbanColumn
                 key={columna.id}

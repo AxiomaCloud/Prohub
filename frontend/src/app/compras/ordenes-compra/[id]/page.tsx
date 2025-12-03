@@ -256,9 +256,11 @@ export default function OrdenCompraPage() {
                   <p className="text-sm font-medium text-gray-900">
                     {ordenCompra.proveedor.nombre}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    CUIT: {ordenCompra.proveedor.cuit}
-                  </p>
+                  {ordenCompra.proveedor.cuit && !ordenCompra.proveedor.cuit.startsWith('TEMP-') && (
+                    <p className="text-sm text-gray-500">
+                      CUIT: {ordenCompra.proveedor.cuit}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

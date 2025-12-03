@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { OrdenCompra, ItemRecibido } from '@/types/compras';
 import { X, PackageCheck, PackageMinus } from 'lucide-react';
 
@@ -54,7 +55,7 @@ export function RecepcionModal({
   const handleSubmit = () => {
     const itemsConRecepcion = itemsRecibidos.filter(item => item.cantidadRecibida > 0);
     if (itemsConRecepcion.length === 0) {
-      alert('Debe indicar al menos una cantidad recibida');
+      toast.error('Debe indicar al menos una cantidad recibida');
       return;
     }
     onConfirm({

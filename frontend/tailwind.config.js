@@ -45,6 +45,7 @@ module.exports = {
           primary: '#1F2937',
           secondary: '#6B7280',
           muted: '#9CA3AF',
+          light: '#94a3b8',
           white: '#FFFFFF',
         },
         // Bordes y fondos
@@ -55,9 +56,9 @@ module.exports = {
         },
         // Sidebar
         sidebar: {
-          DEFAULT: '#2D1B4E',
-          hover: '#3D2B5E',
-          active: '#4D3B6E',
+          DEFAULT: '#352151',
+          hover: '#4a2d6b',
+          active: '#8E6AAA',
         },
       },
       fontFamily: {

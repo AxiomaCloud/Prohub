@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Plus, X, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { atributosApi, valoresAtributoApi, userAtributosApi } from '@/lib/api';
@@ -107,9 +108,10 @@ export function UserAtributosManager({ userId }: UserAtributosManagerProps) {
       setSelectedAtributoId('');
       setSelectedValorId('');
       setValores([]);
+      toast.success('Atributo asignado correctamente');
     } catch (error) {
       console.error('Error adding atributo:', error);
-      alert('Error al asignar atributo');
+      toast.error('Error al asignar atributo');
     } finally {
       setLoading(false);
     }
@@ -122,9 +124,10 @@ export function UserAtributosManager({ userId }: UserAtributosManagerProps) {
     try {
       await userAtributosApi.delete(id);
       await loadUserAtributos();
+      toast.success('Atributo eliminado');
     } catch (error) {
       console.error('Error deleting atributo:', error);
-      alert('Error al eliminar atributo');
+      toast.error('Error al eliminar atributo');
     } finally {
       setLoading(false);
     }

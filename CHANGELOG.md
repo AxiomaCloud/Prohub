@@ -7,6 +7,110 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.0] - 2025-12-02
+
+### 🛒 Mejoras en Circuito de Compras
+
+#### OCs Parciales - Múltiples OC por Requerimiento
+
+Ahora es posible generar múltiples Órdenes de Compra para un mismo Requerimiento, permitiendo dividir los items entre diferentes proveedores.
+
+**Cambios en Backend:**
+- `backend/prisma/schema.prisma` - Removido `@unique` de `purchaseRequestId` en PurchaseOrder
+- Agregado `purchaseRequestItemId` en PurchaseOrderItem para trazabilidad item por item
+- Backend permite crear OC cuando estado es APROBADO o OC_GENERADA
+
+**Cambios en Frontend:**
+- `frontend/src/app/compras/ordenes-compra/page.tsx`:
+  - Checkboxes para seleccionar items específicos
+  - Cálculo de cantidades pendientes (no incluidas en OCs anteriores)
+  - Badge "Parcial (X/Y)" para items con OC parcial
+  - Campos editables de cantidad y precio unitario
+
+#### Soporte de Decimales
+
+Agregado soporte completo para cantidades y precios con decimales.
+
+**Schema Prisma actualizado:**
+```prisma
+PurchaseRequestItem:
+  cantidad          Decimal @db.Decimal(18,4)
+  precioEstimado    Decimal? @db.Decimal(18,4)
+
+PurchaseOrderItem:
+  cantidad            Decimal @db.Decimal(18,4)
+  cantidadRecibida    Decimal @db.Decimal(18,4) @default(0)
+  precioUnitario      Decimal @db.Decimal(18,4)
+  total               Decimal @db.Decimal(18,4)
+
+ReceptionItem:
+  cantidadEsperada  Decimal @db.Decimal(18,4)
+  cantidadRecibida  Decimal @db.Decimal(18,4)
+  cantidadPendiente Decimal @db.Decimal(18,4)
+```
+
+**Frontend:**
+- Inputs numéricos con `step="0.01"` para decimales
+- Removidos spinners de campos numéricos
+- Conversión con `Number()` para cálculos con Decimal de Prisma
+
+#### Indicadores de Progreso
+
+Agregados indicadores visuales de porcentaje completado en las grillas.
+
+**Páginas actualizadas:**
+- `requerimientos/page.tsx` - % de items cubiertos con OC
+- `ordenes-compra/page.tsx` - % de items recibidos
+- `recepcion/page.tsx` - % de recepción completada
+
+**Características:**
+- Barra de progreso visual con colores según estado
+- Porcentaje numérico
+- Colores: rojo (0-25%), naranja (25-50%), amarillo (50-75%), verde (75-100%)
+
+#### Múltiples Recepciones en Trazabilidad
+
+El modal de trazabilidad ahora muestra todas las recepciones realizadas para una OC.
+
+**Archivos modificados:**
+- `frontend/src/components/compras/CircuitoCompraModal.tsx`
+- `frontend/src/components/compras/CircuitoCompraTimeline.tsx`
+
+#### Columnas Adicionales en Recepciones
+
+Agregadas columnas faltantes en la página de recepciones:
+- Título del requerimiento
+- Creado Por (solicitante)
+- Prioridad (con badge de colores)
+- Categoría
+
+### 📝 Modificado
+
+**Textos y Labels:**
+- `RequerimientoModal.tsx` - "Justificación" → "Observaciones"
+- `requerimientos/page.tsx` - Título "Mis Requerimientos" → "Requerimientos"
+- `aprobaciones/page.tsx` - Título → "Aprobaciones de Requerimientos"
+- `aprobaciones-oc/page.tsx` - Título → "Aprobaciones de Ordenes de Compra"
+
+**Display de CUIT:**
+- Se oculta el CUIT si comienza con "TEMP-" (dato temporal)
+- Archivos: `ordenes-compra/page.tsx`, `recepcion/page.tsx`, `aprobaciones-oc/page.tsx`, `ordenes-compra/[id]/page.tsx`
+
+### 🔧 Correcciones
+
+- Fix: Números extraños en indicadores (ej: "01129/02450") - Causado por Decimal de Prisma concatenado como string
+- Fix: Campos no editables en modal de creación de OC
+- Fix: Cantidad total mostrada en lugar de pendiente al crear segunda OC parcial
+
+### 📋 Migración Requerida
+
+```bash
+cd backend
+npx prisma migrate dev --name decimal_support
+```
+
+---
+
 ## [1.1.0] - 2025-11-30
 
 ### 🤖 Agregado - Chatbot con IA (Claude)

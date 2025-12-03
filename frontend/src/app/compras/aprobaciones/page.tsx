@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { AprobacionModal } from '@/components/compras/AprobacionModal';
+import { EspecificacionesModal } from '@/components/compras/EspecificacionesModal';
 import { RequerimientoModal } from '@/components/compras/RequerimientoModal';
 import { EstadoRequerimiento, Prioridad, Requerimiento } from '@/types/compras';
 import {
@@ -116,6 +117,8 @@ export default function AprobacionesPage() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [showAprobacionModal, setShowAprobacionModal] = useState(false);
   const [modalTipo, setModalTipo] = useState<'aprobar' | 'rechazar'>('aprobar');
+  const [showEspecificacionesModal, setShowEspecificacionesModal] = useState(false);
+  const [especificacionesTipo, setEspecificacionesTipo] = useState<'aprobar' | 'rechazar'>('aprobar');
 
   // Hook para el modal de circuito de compra
   const circuitoModal = useCircuitoCompraModal();
@@ -229,7 +232,18 @@ export default function AprobacionesPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al aprobar');
+        const errorData = await response.json();
+        // Mostrar mensaje de error específico según el código
+        if (errorData.code === 'NO_ATTACHMENTS') {
+          toast.error('El requerimiento requiere aprobación de especificaciones pero no tiene documentos adjuntos');
+        } else if (errorData.code === 'NO_SPEC_ATTACHMENTS') {
+          toast.error('El requerimiento no tiene documentos marcados como especificación técnica');
+        } else if (errorData.code === 'SPECS_NOT_APPROVED') {
+          toast.error('Debe aprobar las especificaciones técnicas antes de aprobar el requerimiento');
+        } else {
+          toast.error(errorData.error || 'Error al aprobar el requerimiento');
+        }
+        return;
       }
 
       toast.success(`Requerimiento ${selectedRequerimiento.numero} aprobado`);
@@ -284,27 +298,67 @@ export default function AprobacionesPage() {
     setShowAprobacionModal(true);
   };
 
-  // Aprobar especificaciones técnicas
-  const handleAprobarEspecificaciones = async (req: Requerimiento) => {
+  // Abrir modal para aprobar especificaciones
+  const handleOpenAprobarEspecificaciones = (req: Requerimiento) => {
+    setSelectedRequerimiento(req);
+    setEspecificacionesTipo('aprobar');
+    setShowEspecificacionesModal(true);
+  };
+
+  // Abrir modal para rechazar especificaciones
+  const handleOpenRechazarEspecificaciones = (req: Requerimiento) => {
+    setSelectedRequerimiento(req);
+    setEspecificacionesTipo('rechazar');
+    setShowEspecificacionesModal(true);
+  };
+
+  // Confirmar acción de especificaciones
+  const handleConfirmEspecificaciones = async (comentario: string) => {
+    if (!selectedRequerimiento) return;
+
+    const endpoint = especificacionesTipo === 'aprobar' ? 'approve-specs' : 'reject-specs';
+
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/api/purchase-requests/${req.id}/approve-specs`, {
+      const response = await fetch(`${apiUrl}/api/purchase-requests/${selectedRequerimiento.id}/${endpoint}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ comentario }),
       });
 
       if (!response.ok) {
-        throw new Error('Error al aprobar especificaciones');
+        const errorData = await response.json();
+        // Cerrar modal primero
+        setShowEspecificacionesModal(false);
+        setSelectedRequerimiento(null);
+
+        // Mostrar toast después de cerrar el modal
+        setTimeout(() => {
+          if (errorData.code === 'NO_ATTACHMENTS') {
+            toast.error('El requerimiento no tiene documentos adjuntos. Debe subir al menos un archivo.');
+          } else {
+            toast.error(errorData.error || `Error al ${especificacionesTipo === 'aprobar' ? 'aprobar' : 'rechazar'} las especificaciones`);
+          }
+        }, 100);
+        return;
       }
 
-      toast.success(`Especificaciones de ${req.numero} aprobadas`);
+      if (especificacionesTipo === 'aprobar') {
+        toast.success(`Especificaciones de ${selectedRequerimiento.numero} aprobadas`);
+      } else {
+        toast.success(`Especificaciones de ${selectedRequerimiento.numero} rechazadas. Requerimiento devuelto a borrador.`);
+      }
       await refreshRequerimientos();
+      setShowEspecificacionesModal(false);
+      setSelectedRequerimiento(null);
     } catch (error) {
-      console.error('Error aprobando especificaciones:', error);
-      toast.error('Error al aprobar las especificaciones');
+      console.error(`Error ${especificacionesTipo === 'aprobar' ? 'aprobando' : 'rechazando'} especificaciones:`, error);
+      toast.error(`Error al ${especificacionesTipo === 'aprobar' ? 'aprobar' : 'rechazar'} las especificaciones`);
+      setShowEspecificacionesModal(false);
+      setSelectedRequerimiento(null);
     }
   };
 
@@ -336,8 +390,9 @@ export default function AprobacionesPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Aprobaciones"
+        title="Aprobaciones de Requerimientos"
         subtitle={`${pendientesCount} requerimiento${pendientesCount !== 1 ? 's' : ''} pendiente${pendientesCount !== 1 ? 's' : ''} de aprobación`}
+        icon={CheckCircle}
       />
 
       {/* Filters and Search */}
@@ -540,13 +595,22 @@ export default function AprobacionesPage() {
 
                           {/* Aprobar especificaciones */}
                           {canApprove && tieneEspecificaciones && !req.especificacionesAprobadas && (
-                            <button
-                              onClick={() => handleAprobarEspecificaciones(req)}
-                              className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                              title="Aprobar especificaciones técnicas"
-                            >
-                              <ShieldCheck className="w-4 h-4" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleOpenAprobarEspecificaciones(req)}
+                                className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                title="Aprobar especificaciones técnicas"
+                              >
+                                <ShieldCheck className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleOpenRechazarEspecificaciones(req)}
+                                className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Rechazar especificaciones técnicas"
+                              >
+                                <ShieldAlert className="w-4 h-4" />
+                              </button>
+                            </>
                           )}
 
                           {/* Aprobar */}
@@ -634,6 +698,20 @@ export default function AprobacionesPage() {
         ordenCompraId={circuitoModal.modalState.ordenCompraId}
         recepcionId={circuitoModal.modalState.recepcionId}
       />
+
+      {/* Modal especificaciones */}
+      {selectedRequerimiento && showEspecificacionesModal && (
+        <EspecificacionesModal
+          isOpen={showEspecificacionesModal}
+          onClose={() => {
+            setShowEspecificacionesModal(false);
+            setSelectedRequerimiento(null);
+          }}
+          onConfirm={handleConfirmEspecificaciones}
+          requerimiento={selectedRequerimiento}
+          tipo={especificacionesTipo}
+        />
+      )}
     </div>
   );
 }

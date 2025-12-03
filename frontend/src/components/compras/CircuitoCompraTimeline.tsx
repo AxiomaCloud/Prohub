@@ -77,6 +77,7 @@ function NodoCircuito({
   data,
   isHighlighted,
   onClick,
+  cantidadRecepciones,
 }: {
   tipo: 'requerimiento' | 'ordenCompra' | 'recepcion';
   activo: boolean;
@@ -84,6 +85,7 @@ function NodoCircuito({
   data: Requerimiento | OrdenCompra | Recepcion | null;
   isHighlighted: boolean;
   onClick?: () => void;
+  cantidadRecepciones?: number;
 }) {
   if (!data && !activo) {
     // Nodo pendiente/futuro
@@ -143,13 +145,15 @@ function NodoCircuito({
       <span className={`mt-2 text-xs font-medium ${isHighlighted ? config.color : 'text-gray-700'}`}>
         {tipo === 'requerimiento' && 'Requerimiento'}
         {tipo === 'ordenCompra' && 'Orden de Compra'}
-        {tipo === 'recepcion' && 'Recepción'}
+        {tipo === 'recepcion' && (cantidadRecepciones && cantidadRecepciones > 1 ? `${cantidadRecepciones} Recepciones` : 'Recepción')}
       </span>
       {data && (
         <span className={`text-xs ${config.color}`}>
           {tipo === 'requerimiento' && (data as Requerimiento).numero}
           {tipo === 'ordenCompra' && (data as OrdenCompra).numero}
-          {tipo === 'recepcion' && (data as Recepcion).numero}
+          {tipo === 'recepcion' && (cantidadRecepciones && cantidadRecepciones > 1
+            ? 'Ver detalle'
+            : (data as Recepcion).numero)}
         </span>
       )}
     </div>
@@ -358,10 +362,15 @@ export default function CircuitoCompraTimeline({
   const tieneOC = !!ordenCompra;
   const tieneRecepcion = !!recepcion || !!(ordenCompra?.recepciones && ordenCompra.recepciones.length > 0);
 
-  // Obtener todas las recepciones
-  const recepciones = useMemo(() => {
+  // Obtener todas las recepciones - priorizar las de la OC que pueden ser múltiples
+  const todasLasRecepciones = useMemo(() => {
+    // Primero intentar obtener de la OC (pueden ser múltiples)
+    if (ordenCompra?.recepciones && ordenCompra.recepciones.length > 0) {
+      return ordenCompra.recepciones;
+    }
+    // Si hay una recepción individual pasada
     if (recepcion) return [recepcion];
-    if (ordenCompra?.recepciones) return ordenCompra.recepciones;
+    // Si hay una recepción en el requerimiento
     if (requerimiento?.recepcion) return [requerimiento.recepcion];
     return [];
   }, [recepcion, ordenCompra, requerimiento]);
@@ -402,8 +411,9 @@ export default function CircuitoCompraTimeline({
           tipo="recepcion"
           activo={tieneRecepcion}
           completado={tieneRecepcion}
-          data={recepciones[0] || null}
+          data={todasLasRecepciones[0] || null}
           isHighlighted={origen === 'recepcion'}
+          cantidadRecepciones={todasLasRecepciones.length}
         />
       </div>
 
@@ -443,14 +453,15 @@ export default function CircuitoCompraTimeline({
         )}
 
         {/* Recepciones */}
-        {recepciones.length > 0 && (
+        {todasLasRecepciones.length > 0 && (
           <div className="space-y-3">
-            {recepciones.length > 1 && (
-              <p className="text-sm font-medium text-gray-700">
-                {recepciones.length} recepciones registradas:
+            {todasLasRecepciones.length > 1 && (
+              <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Package className="w-4 h-4 text-emerald-600" />
+                {todasLasRecepciones.length} recepciones registradas:
               </p>
             )}
-            {recepciones.map((rec, idx) => (
+            {todasLasRecepciones.map((rec, idx) => (
               <DetalleDocumento
                 key={rec.id || idx}
                 tipo="recepcion"

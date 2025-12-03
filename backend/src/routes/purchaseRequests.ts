@@ -126,11 +126,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         fechaSubida: adj.createdAt
       })) || [],
       requiereAprobacionEspecificaciones: req.requiresSpecApproval || false,
-      // Especificaciones aprobadas si todos los adjuntos con esEspecificacion=true tienen estado=APROBADO
-      especificacionesAprobadas: req.requiresSpecApproval
-        ? (req.adjuntos?.filter(a => a.esEspecificacion).length > 0 &&
-           req.adjuntos?.filter(a => a.esEspecificacion).every(a => a.estado === 'APROBADO'))
-        : false,
+      especificacionesAprobadas: req.specsApproved || false,
       creadoPorIA: req.creadoPorIA,
       promptOriginal: req.promptOriginal
     }));
@@ -227,11 +223,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
         fechaSubida: adj.createdAt
       })) || [],
       requiereAprobacionEspecificaciones: requerimiento.requiresSpecApproval || false,
-      // Especificaciones aprobadas si todos los adjuntos con esEspecificacion=true tienen estado=APROBADO
-      especificacionesAprobadas: requerimiento.requiresSpecApproval
-        ? (requerimiento.adjuntos?.filter(a => a.esEspecificacion).length > 0 &&
-           requerimiento.adjuntos?.filter(a => a.esEspecificacion).every(a => a.estado === 'APROBADO'))
-        : false,
+      especificacionesAprobadas: requerimiento.specsApproved || false,
       creadoPorIA: requerimiento.creadoPorIA,
       promptOriginal: requerimiento.promptOriginal
     });
@@ -470,16 +462,27 @@ router.put('/:id/submit', authenticate, async (req: Request, res: Response) => {
     const { id } = req.params;
     const tenantId = req.body.tenantId || req.query.tenantId as string;
 
-    // Obtener el requerimiento actual
+    // Obtener el requerimiento actual con adjuntos
     const currentReq = await prisma.purchaseRequest.findUnique({
       where: { id },
       include: {
-        solicitante: { select: { name: true, email: true } }
+        solicitante: { select: { name: true, email: true } },
+        adjuntos: true,
       }
     });
 
     if (!currentReq) {
       return res.status(404).json({ error: 'Requerimiento no encontrado' });
+    }
+
+    // Validar que si requiere aprobación de especificaciones, tenga adjuntos
+    if (currentReq.requiresSpecApproval) {
+      if (!currentReq.adjuntos || currentReq.adjuntos.length === 0) {
+        return res.status(400).json({
+          error: 'El requerimiento requiere aprobación de especificaciones pero no tiene documentos adjuntos',
+          code: 'NO_ATTACHMENTS_FOR_SPECS'
+        });
+      }
     }
 
     // Actualizar estado a ENVIADO
@@ -548,6 +551,43 @@ router.put('/:id/approve', authenticate, async (req: Request, res: Response) => 
     const { id } = req.params;
     const userId = req.user?.id;
     const { comentario, tenantId } = req.body;
+
+    // Obtener el requerimiento actual con adjuntos para validaciones
+    const currentReq = await prisma.purchaseRequest.findUnique({
+      where: { id },
+      include: {
+        adjuntos: true,
+      }
+    });
+
+    if (!currentReq) {
+      return res.status(404).json({ error: 'Requerimiento no encontrado' });
+    }
+
+    console.log(`📋 [APPROVE] Requerimiento ${currentReq.numero}:`, {
+      requiresSpecApproval: currentReq.requiresSpecApproval,
+      specsApproved: currentReq.specsApproved,
+      adjuntosCount: currentReq.adjuntos?.length || 0,
+    });
+
+    // Validar si requiere aprobación de especificaciones
+    if (currentReq.requiresSpecApproval) {
+      // Debe tener al menos un adjunto
+      if (!currentReq.adjuntos || currentReq.adjuntos.length === 0) {
+        return res.status(400).json({
+          error: 'El requerimiento requiere aprobación de especificaciones pero no tiene documentos adjuntos',
+          code: 'NO_ATTACHMENTS'
+        });
+      }
+
+      // Las especificaciones deben estar aprobadas
+      if (!currentReq.specsApproved) {
+        return res.status(400).json({
+          error: 'Debe aprobar las especificaciones técnicas antes de aprobar el requerimiento',
+          code: 'SPECS_NOT_APPROVED'
+        });
+      }
+    }
 
     // Buscar si hay un workflow activo
     const activeWorkflow = await ApprovalWorkflowService.getActiveWorkflow('PURCHASE_REQUEST', id);
@@ -634,30 +674,41 @@ router.put('/:id/approve-specs', authenticate, async (req: Request, res: Respons
     const { id } = req.params;
     const userId = req.user?.id;
 
-    // Actualizar todos los adjuntos con esEspecificacion=true a estado APROBADO
-    await prisma.purchaseRequestAttachment.updateMany({
-      where: {
-        purchaseRequestId: id,
-        esEspecificacion: true,
-      },
-      data: {
-        estado: 'APROBADO',
-        aprobadorId: userId,
-        fechaAprobacion: new Date(),
-      }
-    });
+    console.log(`[APPROVE-SPECS] Iniciando aprobación para requerimiento ${id}`);
 
-    // Obtener el requerimiento actualizado
-    const requerimiento = await prisma.purchaseRequest.findUnique({
+    // Obtener el requerimiento con adjuntos para validar
+    const currentReq = await prisma.purchaseRequest.findUnique({
       where: { id },
       include: {
         adjuntos: true,
       }
     });
 
-    if (!requerimiento) {
+    if (!currentReq) {
+      console.log(`[APPROVE-SPECS] Requerimiento ${id} no encontrado`);
       return res.status(404).json({ error: 'Requerimiento no encontrado' });
     }
+
+    console.log(`[APPROVE-SPECS] Requerimiento encontrado: ${currentReq.numero}, adjuntos: ${currentReq.adjuntos?.length || 0}`);
+
+    // Validar que tenga adjuntos
+    if (!currentReq.adjuntos || currentReq.adjuntos.length === 0) {
+      console.log(`[APPROVE-SPECS] Sin adjuntos - rechazando`);
+      return res.status(400).json({
+        error: 'El requerimiento no tiene documentos adjuntos',
+        code: 'NO_ATTACHMENTS'
+      });
+    }
+
+    // Marcar el requerimiento como que tiene especificaciones aprobadas
+    console.log(`[APPROVE-SPECS] Actualizando specsApproved a true`);
+    const requerimiento = await prisma.purchaseRequest.update({
+      where: { id },
+      data: {
+        specsApproved: true,
+        updatedAt: new Date(),
+      }
+    });
 
     console.log(`✅ Especificaciones de ${requerimiento.numero} aprobadas por usuario ${userId}`);
 
@@ -668,8 +719,65 @@ router.put('/:id/approve-specs', authenticate, async (req: Request, res: Respons
       especificacionesAprobadas: true
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error aprobando especificaciones:', error);
+    res.status(500).json({ error: error.message || 'Error interno del servidor' });
+  }
+});
+
+/**
+ * PUT /api/purchase-requests/:id/reject-specs
+ * Rechaza las especificaciones técnicas de un requerimiento
+ */
+router.put('/:id/reject-specs', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const { comentario } = req.body;
+
+    // Obtener el requerimiento
+    const currentReq = await prisma.purchaseRequest.findUnique({
+      where: { id },
+      include: {
+        adjuntos: true,
+      }
+    });
+
+    if (!currentReq) {
+      return res.status(404).json({ error: 'Requerimiento no encontrado' });
+    }
+
+    // Validar que tenga adjuntos
+    if (!currentReq.adjuntos || currentReq.adjuntos.length === 0) {
+      return res.status(400).json({
+        error: 'El requerimiento no tiene documentos adjuntos',
+        code: 'NO_ATTACHMENTS'
+      });
+    }
+
+    // Marcar el requerimiento como que tiene especificaciones rechazadas
+    // y devolverlo a estado BORRADOR para que el usuario lo modifique
+    const requerimiento = await prisma.purchaseRequest.update({
+      where: { id },
+      data: {
+        specsApproved: false,
+        estado: 'BORRADOR',
+        comentarioAprobador: comentario || 'Especificaciones rechazadas',
+        updatedAt: new Date(),
+      }
+    });
+
+    console.log(`❌ Especificaciones de ${requerimiento.numero} rechazadas por usuario ${userId}`);
+
+    res.json({
+      id: requerimiento.id,
+      numero: requerimiento.numero,
+      message: `Especificaciones de ${requerimiento.numero} rechazadas. El requerimiento fue devuelto a borrador.`,
+      especificacionesAprobadas: false
+    });
+
+  } catch (error) {
+    console.error('Error rechazando especificaciones:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -761,12 +869,14 @@ router.put('/:id/reject', authenticate, async (req: Request, res: Response) => {
 function mapEstadoToFrontend(estado: string): string {
   const map: Record<string, string> = {
     'BORRADOR': 'BORRADOR',
+    'PENDIENTE_APROBACION': 'PENDIENTE_APROBACION',
     'ENVIADO': 'PENDIENTE_APROBACION',
     'EN_REVISION': 'PENDIENTE_APROBACION',
     'APROBADO': 'APROBADO',
     'RECHAZADO': 'RECHAZADO',
     'CANCELADO': 'RECHAZADO',
-    'OC_GENERADA': 'OC_GENERADA'
+    'OC_GENERADA': 'OC_GENERADA',
+    'RECIBIDO': 'RECIBIDO'
   };
   return map[estado] || estado;
 }
@@ -774,10 +884,14 @@ function mapEstadoToFrontend(estado: string): string {
 function mapEstadoToBackend(estado: string): string {
   const map: Record<string, string> = {
     'BORRADOR': 'BORRADOR',
-    'PENDIENTE_APROBACION': 'ENVIADO',
+    'PENDIENTE_APROBACION': 'PENDIENTE_APROBACION',
+    'ENVIADO': 'ENVIADO',
+    'EN_REVISION': 'EN_REVISION',
     'APROBADO': 'APROBADO',
     'RECHAZADO': 'RECHAZADO',
-    'OC_GENERADA': 'OC_GENERADA'
+    'OC_GENERADA': 'OC_GENERADA',
+    'RECIBIDO': 'RECIBIDO',
+    'CANCELADO': 'CANCELADO'
   };
   return map[estado] || estado;
 }

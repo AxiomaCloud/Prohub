@@ -106,7 +106,27 @@ function FiltroEstadosModal({
 
 export default function RequerimientosPage() {
   const router = useRouter();
-  const { usuarioActual, requerimientos, actualizarRequerimiento, refreshRequerimientos } = useCompras();
+  const { usuarioActual, requerimientos, actualizarRequerimiento, refreshRequerimientos, ordenesCompra } = useCompras();
+  const { token, currentTenant } = useAuth();
+
+  // Calcular progreso de OC para un requerimiento
+  const calcularProgresoOC = (req: Requerimiento) => {
+    // Total de items del requerimiento
+    const totalItems = req.items?.reduce((sum, item) => sum + Number(item.cantidad || 0), 0) || 0;
+
+    // Buscar OCs de este requerimiento y sumar cantidades
+    const ocsDelRequerimiento = ordenesCompra.filter(oc => oc.requerimientoId === req.id);
+    const itemsEnOC = ocsDelRequerimiento.reduce((sum, oc) => {
+      return sum + oc.items.reduce((s, item) => s + Number(item.cantidad || 0), 0);
+    }, 0);
+
+    return {
+      porcentaje: totalItems > 0 ? Math.round((itemsEnOC / totalItems) * 100) : 0,
+      enOC: Math.round(itemsEnOC * 100) / 100,
+      total: Math.round(totalItems * 100) / 100,
+      tieneOC: ocsDelRequerimiento.length > 0,
+    };
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroEstados, setFiltroEstados] = useState<EstadoRequerimiento[]>(allEstados);
   const [showFiltroEstados, setShowFiltroEstados] = useState(false);
@@ -130,6 +150,10 @@ export default function RequerimientosPage() {
     if (!req.items || req.items.length === 0 || req.items.every((i) => !i.descripcion)) {
       camposFaltantes.push('Items');
     }
+    // Si requiere aprobación de especificaciones, debe tener adjuntos
+    if (req.requiereAprobacionEspecificaciones && (!req.adjuntos || req.adjuntos.length === 0)) {
+      camposFaltantes.push('Adjuntos (requeridos para aprobación de especificaciones)');
+    }
 
     return { valid: camposFaltantes.length === 0, camposFaltantes };
   };
@@ -149,12 +173,28 @@ export default function RequerimientosPage() {
     }
 
     try {
-      // Actualizar estado localmente
-      actualizarRequerimiento(req.id, { estado: 'PENDIENTE_APROBACION' });
-      toast.success(`Requerimiento ${req.numero} enviado a aprobación`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/purchase-requests/${req.id}/submit`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tenantId: currentTenant?.id }),
+      });
 
-      // TODO: Llamar al backend para persistir el cambio
-      // await fetch(`/api/purchase-requests/${req.id}/submit`, { method: 'PUT' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.code === 'NO_ATTACHMENTS_FOR_SPECS') {
+          toast.error('El requerimiento requiere aprobación de especificaciones pero no tiene documentos adjuntos');
+        } else {
+          toast.error(errorData.error || 'Error al enviar a aprobación');
+        }
+        return;
+      }
+
+      toast.success(`Requerimiento ${req.numero} enviado a aprobación`);
+      await refreshRequerimientos();
     } catch (error) {
       toast.error('Error al enviar a aprobación');
       console.error('Error:', error);
@@ -296,8 +336,9 @@ export default function RequerimientosPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Mis Requerimientos"
+        title="Requerimientos"
         subtitle={`${misRequerimientos.length} requerimiento${misRequerimientos.length !== 1 ? 's' : ''} en total`}
+        icon={ClipboardList}
         action={
           <Button onClick={handleNuevoRequerimiento}>
             <Plus className="w-4 h-4 mr-2" />
@@ -411,6 +452,9 @@ export default function RequerimientosPage() {
                     Estado
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                    OC
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Prioridad
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
@@ -457,6 +501,38 @@ export default function RequerimientosPage() {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${estadoBadge.className}`}>
                           {estadoBadge.label}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const progresoOC = calcularProgresoOC(req);
+                          // Solo mostrar si el requerimiento está aprobado o tiene OC
+                          if (req.estado === 'BORRADOR' || req.estado === 'PENDIENTE_APROBACION' || req.estado === 'RECHAZADO') {
+                            return <span className="text-xs text-gray-400">-</span>;
+                          }
+                          return (
+                            <div className="w-16">
+                              <div className="flex items-center justify-center text-xs mb-1">
+                                <span className={`font-medium ${
+                                  progresoOC.porcentaje === 100 ? 'text-green-600' :
+                                  progresoOC.porcentaje > 0 ? 'text-orange-600' :
+                                  'text-gray-500'
+                                }`}>
+                                  {progresoOC.porcentaje}%
+                                </span>
+                              </div>
+                              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all ${
+                                    progresoOC.porcentaje === 100 ? 'bg-green-500' :
+                                    progresoOC.porcentaje > 0 ? 'bg-orange-500' :
+                                    'bg-gray-300'
+                                  }`}
+                                  style={{ width: `${progresoOC.porcentaje}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${prioridadBadge.className}`}>

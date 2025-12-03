@@ -29,7 +29,7 @@ const tabs: { id: TabId; label: string }[] = [
   { id: 'general', label: 'Informacion General' },
   { id: 'items', label: 'Items' },
   { id: 'adjuntos', label: 'Documentacion' },
-  { id: 'justificacion', label: 'Justificacion' },
+  { id: 'justificacion', label: 'Observaciones' },
 ];
 
 interface RequerimientoModalProps {
@@ -136,7 +136,7 @@ export function RequerimientoModal({
           if (!requerimiento.descripcion?.trim()) newErrors.descripcion = 'Descripción';
           if (!requerimiento.centroCostos) newErrors.centroCostos = 'Centro de costos';
           if (!requerimiento.categoria) newErrors.categoria = 'Categoría';
-          if (!requerimiento.justificacion?.trim()) newErrors.justificacion = 'Justificación';
+          if (!requerimiento.justificacion?.trim()) newErrors.justificacion = 'Observaciones';
           if (!requerimiento.items || requerimiento.items.length === 0 || requerimiento.items.every((i) => !i.descripcion)) {
             newErrors.items = 'Items';
           }
@@ -201,12 +201,20 @@ export function RequerimientoModal({
       newErrors.categoria = 'Categoría';
     }
     if (!formData.justificacion?.trim()) {
-      newErrors.justificacion = 'Justificación';
+      newErrors.justificacion = 'Observaciones';
     }
     if (items.length === 0 || items.every((i) => !i.descripcion)) {
       newErrors.items = 'Items';
     }
+    // Si requiere aprobación de especificaciones, debe tener al menos un adjunto
+    console.log('[VALIDATE] requiereAprobacionEspecificaciones:', requiereAprobacionEspecificaciones, 'adjuntos:', adjuntos.length);
+    if (requiereAprobacionEspecificaciones) {
+      if (adjuntos.length === 0) {
+        newErrors.adjuntos = 'Debe adjuntar al menos un documento para poder enviar a aprobación';
+      }
+    }
 
+    console.log('[VALIDATE] Errores:', newErrors);
     setErrors(newErrors);
     return { valid: Object.keys(newErrors).length === 0, errors: newErrors };
   };
@@ -241,6 +249,7 @@ export function RequerimientoModal({
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
       if (isEditing && requerimiento) {
+        // Primero guardar los cambios (sin cambiar estado)
         const datosActualizados = {
           titulo: formData.titulo,
           descripcion: formData.descripcion,
@@ -250,7 +259,6 @@ export function RequerimientoModal({
           prioridad: formData.prioridad,
           montoEstimado: montoTotal,
           fechaNecesidad: formData.fechaNecesaria || null,
-          estado: enviar ? 'PENDIENTE_APROBACION' : requerimiento.estado,
           requiresSpecApproval: requiereAprobacionEspecificaciones,
           items: itemsValidos.map(item => ({
             descripcion: item.descripcion,
@@ -284,7 +292,31 @@ export function RequerimientoModal({
           throw new Error(errorData.error || 'Error al actualizar el requerimiento');
         }
 
-        toast.success(enviar ? 'Requerimiento enviado a aprobación' : 'Requerimiento guardado');
+        // Si se quiere enviar, usar el endpoint /submit que tiene las validaciones
+        if (enviar) {
+          const submitResponse = await fetch(`${apiUrl}/api/purchase-requests/${requerimiento.id}/submit`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ tenantId: tenant?.id }),
+          });
+
+          if (!submitResponse.ok) {
+            const errorData = await submitResponse.json().catch(() => ({}));
+            if (errorData.code === 'NO_ATTACHMENTS_FOR_SPECS') {
+              toast.error('El requerimiento requiere aprobación de especificaciones pero no tiene documentos adjuntos');
+            } else {
+              toast.error(errorData.error || 'Error al enviar a aprobación');
+            }
+            setSubmitting(false);
+            return;
+          }
+          toast.success('Requerimiento enviado a aprobación');
+        } else {
+          toast.success('Requerimiento guardado');
+        }
         await refreshRequerimientos();
       } else {
         const nuevoReq = {
@@ -323,13 +355,27 @@ export function RequerimientoModal({
         toast.success(`Requerimiento ${result.numero} creado`);
 
         if (enviar && result.id) {
-          await fetch(`${apiUrl}/api/purchase-requests/${result.id}/submit`, {
+          const submitResponse = await fetch(`${apiUrl}/api/purchase-requests/${result.id}/submit`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ tenantId: tenant?.id }),
           });
+
+          if (!submitResponse.ok) {
+            const errorData = await submitResponse.json().catch(() => ({}));
+            if (errorData.code === 'NO_ATTACHMENTS_FOR_SPECS') {
+              toast.error('El requerimiento requiere aprobación de especificaciones pero no tiene documentos adjuntos');
+            } else {
+              toast.error(errorData.error || 'Error al enviar a aprobación');
+            }
+            // El requerimiento se creó pero no se envió
+            await refreshRequerimientos();
+            setSubmitting(false);
+            return;
+          }
           toast.success('Requerimiento enviado a aprobación');
         }
 
@@ -722,11 +768,11 @@ export function RequerimientoModal({
             </div>
           )}
 
-          {/* Tab: Justificacion */}
+          {/* Tab: Observaciones */}
           {activeTab === 'justificacion' && (
             <div className="space-y-4">
               <label className="block text-sm font-medium text-text-primary mb-1">
-                Justificacion {!isReadOnly && <span className="text-red-500">*</span>}
+                Observaciones {!isReadOnly && <span className="text-red-500">*</span>}
               </label>
               <textarea
                 name="justificacion"
@@ -734,7 +780,7 @@ export function RequerimientoModal({
                 onChange={handleChange}
                 disabled={isReadOnly}
                 rows={8}
-                placeholder="Explique por que es necesaria esta compra, que problema resuelve, etc."
+                placeholder="Ingrese observaciones adicionales sobre este requerimiento..."
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple ${
                   errors.justificacion ? 'border-red-500' : 'border-border'
                 } ${isReadOnly ? 'bg-gray-50 text-text-secondary cursor-not-allowed' : ''}`}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useCompras } from '@/lib/compras-context';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -49,6 +50,18 @@ const estadosOCRecepcion = [
   { id: 'ENTREGADA', label: 'Entregada', color: 'bg-teal-100 text-teal-700', icon: PackageCheck },
   { id: 'FINALIZADA', label: 'Finalizada', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
 ];
+
+// Helper para badge de prioridad
+const getPrioridadBadge = (prioridad?: string) => {
+  const config: Record<string, { label: string; className: string }> = {
+    BAJA: { label: 'Baja', className: 'bg-gray-100 text-gray-600' },
+    NORMAL: { label: 'Normal', className: 'bg-blue-100 text-blue-600' },
+    ALTA: { label: 'Alta', className: 'bg-orange-100 text-orange-600' },
+    URGENTE: { label: 'Urgente', className: 'bg-red-100 text-red-600' },
+  };
+  const key = (prioridad || 'NORMAL').toUpperCase();
+  return config[key] || { label: prioridad || 'Normal', className: 'bg-gray-100 text-gray-600' };
+};
 
 // Modal para registrar recepcion
 function RecepcionModal({
@@ -509,12 +522,13 @@ export default function RecepcionComprasPage() {
       });
       if (result) {
         console.log('Recepción registrada exitosamente:', result.numero);
+        toast.success(`Recepción ${result.numero} registrada exitosamente`);
       } else {
-        alert('Error al registrar la recepción');
+        toast.error('Error al registrar la recepción');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registrando recepción:', error);
-      alert('Error al registrar la recepción');
+      toast.error(error.message || 'Error al registrar la recepción');
     } finally {
       setRegistrandoRecepcion(false);
     }
@@ -522,12 +536,12 @@ export default function RecepcionComprasPage() {
 
   // Calcular progreso de recepcion para una OC
   const calcularProgreso = (oc: OrdenCompra) => {
-    const totalSolicitado = oc.items.reduce((sum, item) => sum + item.cantidad, 0);
-    const totalRecibido = oc.items.reduce((sum, item) => sum + (item.cantidadRecibida || 0), 0);
+    const totalSolicitado = oc.items.reduce((sum, item) => sum + Number(item.cantidad || 0), 0);
+    const totalRecibido = oc.items.reduce((sum, item) => sum + Number(item.cantidadRecibida || 0), 0);
     return {
       porcentaje: totalSolicitado > 0 ? Math.round((totalRecibido / totalSolicitado) * 100) : 0,
-      recibido: totalRecibido,
-      total: totalSolicitado,
+      recibido: Math.round(totalRecibido * 100) / 100,
+      total: Math.round(totalSolicitado * 100) / 100,
     };
   };
 
@@ -536,6 +550,7 @@ export default function RecepcionComprasPage() {
       <PageHeader
         title="Recepcion de Compras"
         subtitle={`${pendientesCount} orden${pendientesCount !== 1 ? 'es' : ''} pendiente${pendientesCount !== 1 ? 's' : ''} de recepcion`}
+        icon={PackageCheck}
       />
 
       {/* Alerta de pendientes */}
@@ -606,10 +621,13 @@ export default function RecepcionComprasPage() {
               <thead className="bg-gray-50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Numero</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Titulo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Proveedor</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Creado Por</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Estado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Progreso</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Fecha OC</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Recepcion</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Prioridad</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Categoria</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase">Total</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase">Acciones</th>
                 </tr>
@@ -619,6 +637,7 @@ export default function RecepcionComprasPage() {
                   const estadoConfig = estadosOCRecepcion.find(e => e.id === oc.estado);
                   const Icon = estadoConfig?.icon || Clock;
                   const progreso = calcularProgreso(oc);
+                  const prioridadBadge = getPrioridadBadge(oc.requerimiento?.prioridad);
                   // No se puede recepcionar si ya está ENTREGADA o FINALIZADA
                   const puedeRecibir = oc.estado !== 'ENTREGADA' && oc.estado !== 'FINALIZADA';
                   const tieneRecepciones = (oc.recepciones?.length || 0) > 0;
@@ -627,8 +646,17 @@ export default function RecepcionComprasPage() {
                     <tr key={oc.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-palette-purple">{oc.numero}</td>
                       <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-text-primary">{oc.requerimiento?.titulo || '-'}</p>
+                        <p className="text-xs text-text-secondary">{oc.requerimiento?.numero || ''}</p>
+                      </td>
+                      <td className="px-4 py-3">
                         <p className="text-sm font-medium text-text-primary">{oc.proveedor.nombre}</p>
-                        <p className="text-xs text-text-secondary">CUIT: {oc.proveedor.cuit}</p>
+                        {oc.proveedor.cuit && !oc.proveedor.cuit.startsWith('TEMP-') && (
+                          <p className="text-xs text-text-secondary">CUIT: {oc.proveedor.cuit}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">
+                        {oc.creadoPor?.nombre || '-'}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${estadoConfig?.color}`}>
@@ -637,9 +665,8 @@ export default function RecepcionComprasPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="w-32">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-text-secondary">{progreso.recibido}/{progreso.total}</span>
+                        <div className="w-16">
+                          <div className="flex items-center justify-center text-xs mb-1">
                             <span className={`font-medium ${
                               progreso.porcentaje === 100 ? 'text-green-600' :
                               progreso.porcentaje > 0 ? 'text-orange-600' :
@@ -648,7 +675,7 @@ export default function RecepcionComprasPage() {
                               {progreso.porcentaje}%
                             </span>
                           </div>
-                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div
                               className={`h-full transition-all ${
                                 progreso.porcentaje === 100 ? 'bg-green-500' :
@@ -660,7 +687,14 @@ export default function RecepcionComprasPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{formatFecha(oc.fechaEmision)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${prioridadBadge.className}`}>
+                          {prioridadBadge.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">
+                        {oc.requerimiento?.categoria || '-'}
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-text-primary text-right">
                         {formatMonto(oc.total, oc.moneda)}
                       </td>

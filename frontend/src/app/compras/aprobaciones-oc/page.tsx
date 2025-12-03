@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useCompras } from '@/lib/compras-context';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +24,7 @@ import {
   FileText,
   User,
   AlertTriangle,
+  ClipboardCheck,
 } from 'lucide-react';
 
 function formatMonto(monto: number, moneda: string = 'ARS'): string {
@@ -394,19 +396,30 @@ export default function AprobacionesOCPage() {
     setConfirmModal({ isOpen: true, tipo: 'rechazar', oc });
   };
 
-  const handleConfirmacion = (comentario: string) => {
+  const handleConfirmacion = async (comentario: string) => {
     if (!confirmModal.oc) return;
 
     const nuevoEstado = confirmModal.tipo === 'aprobar' ? 'APROBADA' : 'RECHAZADA';
-    actualizarOrdenCompra(confirmModal.oc.id, {
-      estado: nuevoEstado,
-      aprobadorOCId: usuarioActual.id,
-      aprobadorOC: usuarioActual,
-      fechaAprobacionOC: new Date(),
-      comentarioAprobacionOC: comentario || undefined,
-    });
+
+    try {
+      await actualizarOrdenCompra(confirmModal.oc.id, {
+        estado: nuevoEstado,
+        aprobadorOCId: usuarioActual.id,
+        aprobadorOC: usuarioActual,
+        fechaAprobacionOC: new Date(),
+        comentarioAprobacionOC: comentario || undefined,
+      });
+
+      toast.success(confirmModal.tipo === 'aprobar'
+        ? `Orden ${confirmModal.oc.numero} aprobada correctamente`
+        : `Orden ${confirmModal.oc.numero} rechazada`
+      );
+    } catch (error: any) {
+      toast.error(error.message || 'Error al actualizar la orden de compra');
+    }
 
     setSelectedOC(null);
+    setConfirmModal({ isOpen: false, tipo: 'aprobar', oc: null });
   };
 
   // Verificar permisos
@@ -429,8 +442,9 @@ export default function AprobacionesOCPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Aprobacion de Ordenes de Compra"
+        title="Aprobaciones de Ordenes de Compra"
         subtitle={`${pendientesCount} orden${pendientesCount !== 1 ? 'es' : ''} pendiente${pendientesCount !== 1 ? 's' : ''} de aprobacion`}
+        icon={ClipboardCheck}
       />
 
       {/* Alerta de pendientes */}
@@ -521,7 +535,9 @@ export default function AprobacionesOCPage() {
                       <td className="px-4 py-3 text-sm font-medium text-palette-purple">{oc.numero}</td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-text-primary">{oc.proveedor.nombre}</p>
-                        <p className="text-xs text-text-secondary">CUIT: {oc.proveedor.cuit}</p>
+                        {oc.proveedor.cuit && !oc.proveedor.cuit.startsWith('TEMP-') && (
+                          <p className="text-xs text-text-secondary">CUIT: {oc.proveedor.cuit}</p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-text-primary">{oc.creadoPor?.nombre || '-'}</p>

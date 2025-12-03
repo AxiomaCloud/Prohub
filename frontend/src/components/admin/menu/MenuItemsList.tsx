@@ -39,7 +39,15 @@ import {
   Key,
   Sparkles,
   ScanText,
-  Package
+  Package,
+  LayoutDashboard,
+  ClipboardList,
+  ClipboardCheck,
+  ShoppingCart,
+  PackageCheck,
+  Menu,
+  Webhook,
+  Lightbulb,
 } from 'lucide-react';
 import { useConfirmDialog } from '@/hooks/useConfirm';
 import axios from 'axios';
@@ -80,7 +88,15 @@ const IconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Key,
   Sparkles,
   ScanText,
-  Package
+  Package,
+  LayoutDashboard,
+  ClipboardList,
+  ClipboardCheck,
+  ShoppingCart,
+  PackageCheck,
+  Menu,
+  Webhook,
+  Lightbulb,
 };
 
 // Helper para obtener el componente de ícono desde el nombre

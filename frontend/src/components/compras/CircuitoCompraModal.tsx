@@ -53,16 +53,19 @@ export default function CircuitoCompraModal({
       requerimiento = requerimientos.find(r => r.id === requerimientoId) || null;
 
       if (requerimiento) {
-        // Buscar OC asociada
+        // Buscar OC asociada (puede haber múltiples, tomamos la primera)
         ordenCompra = requerimiento.ordenCompra ||
           ordenesCompra.find(oc => oc.requerimientoId === requerimientoId) ||
           null;
 
-        // Buscar recepción asociada
+        // Asegurarnos de que la OC tenga todas sus recepciones
         if (ordenCompra) {
-          recepcion = ordenCompra.recepciones?.[0] ||
-            recepciones.find(r => r.ordenCompraId === ordenCompra!.id) ||
-            null;
+          if (!ordenCompra.recepciones || ordenCompra.recepciones.length === 0) {
+            const recepcionesDeOC = recepciones.filter(r => r.ordenCompraId === ordenCompra!.id);
+            if (recepcionesDeOC.length > 0) {
+              ordenCompra = { ...ordenCompra, recepciones: recepcionesDeOC };
+            }
+          }
         } else if (requerimiento.recepcion) {
           recepcion = requerimiento.recepcion;
         }
@@ -77,10 +80,16 @@ export default function CircuitoCompraModal({
         // Buscar requerimiento asociado
         requerimiento = requerimientos.find(r => r.id === ordenCompra!.requerimientoId) || null;
 
-        // Buscar recepción asociada
-        recepcion = ordenCompra.recepciones?.[0] ||
-          recepciones.find(r => r.ordenCompraId === ordenCompraId) ||
-          null;
+        // Las recepciones ya vienen incluidas en ordenCompra.recepciones
+        // No necesitamos buscar una específica, el Timeline las mostrará todas
+        // Solo buscamos si no hay recepciones en la OC
+        if (!ordenCompra.recepciones || ordenCompra.recepciones.length === 0) {
+          const recepcionesDeOC = recepciones.filter(r => r.ordenCompraId === ordenCompraId);
+          if (recepcionesDeOC.length > 0) {
+            // Añadir las recepciones a la OC para que el Timeline las muestre
+            ordenCompra = { ...ordenCompra, recepciones: recepcionesDeOC };
+          }
+        }
       }
     }
     // Si se abrió desde una recepción
@@ -94,9 +103,17 @@ export default function CircuitoCompraModal({
           ordenesCompra.find(oc => oc.id === recepcion!.ordenCompraId) ||
           null;
 
-        // Buscar requerimiento asociado
+        // Asegurarnos de que la OC tenga todas sus recepciones
         if (ordenCompra) {
           requerimiento = requerimientos.find(r => r.id === ordenCompra!.requerimientoId) || null;
+
+          // Añadir todas las recepciones de esta OC
+          if (!ordenCompra.recepciones || ordenCompra.recepciones.length === 0) {
+            const recepcionesDeOC = recepciones.filter(r => r.ordenCompraId === ordenCompra!.id);
+            if (recepcionesDeOC.length > 0) {
+              ordenCompra = { ...ordenCompra, recepciones: recepcionesDeOC };
+            }
+          }
         } else if (recepcion.requerimientoId) {
           requerimiento = requerimientos.find(r => r.id === recepcion!.requerimientoId) || null;
         }

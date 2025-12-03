@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { useCompras } from '@/lib/compras-context';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +26,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   GitBranch,
+  FileCheck,
 } from 'lucide-react';
 import CircuitoCompraModal, { useCircuitoCompraModal } from '@/components/compras/CircuitoCompraModal';
 import { ProveedorSelector } from '@/components/ui/ProveedorSelector';
@@ -56,6 +58,31 @@ const estadosOC = [
   { id: 'FINALIZADA', label: 'Finalizada', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
 ];
 
+const getPrioridadBadge = (prioridad: string | undefined) => {
+  const config: Record<string, { label: string; className: string }> = {
+    BAJA: { label: 'Baja', className: 'bg-gray-100 text-gray-600' },
+    NORMAL: { label: 'Normal', className: 'bg-blue-100 text-blue-600' },
+    ALTA: { label: 'Alta', className: 'bg-orange-100 text-orange-600' },
+    URGENTE: { label: 'Urgente', className: 'bg-red-100 text-red-600' },
+  };
+  const key = (prioridad || 'NORMAL').toUpperCase();
+  return config[key] || { label: prioridad || 'Normal', className: 'bg-gray-100 text-gray-600' };
+};
+
+// Interfaz para item con selección
+interface ItemSeleccionable {
+  id: string; // ID del item del requerimiento
+  descripcion: string;
+  cantidad: number; // Cantidad pendiente disponible para esta OC
+  cantidadOriginal?: number; // Cantidad original del requerimiento
+  cantidadAsignada?: number; // Cantidad ya asignada a otras OCs
+  unidad: string;
+  precioUnitario: number;
+  total: number;
+  seleccionado: boolean;
+  tieneOC: boolean; // Si ya tiene toda la cantidad asignada a OCs
+}
+
 // Modal para crear nueva OC
 function NuevaOCModal({
   isOpen,
@@ -63,12 +90,14 @@ function NuevaOCModal({
   requerimientosAprobados,
   proveedores,
   onCrear,
+  ordenesCompraExistentes,
 }: {
   isOpen: boolean;
   onClose: () => void;
   requerimientosAprobados: Requerimiento[];
   proveedores: Proveedor[];
   onCrear: (oc: Omit<OrdenCompra, 'id' | 'numero'>) => void;
+  ordenesCompraExistentes: OrdenCompra[];
 }) {
   const { usuarioActual } = useCompras();
   const [requerimientoId, setRequerimientoId] = useState('');
@@ -77,7 +106,7 @@ function NuevaOCModal({
   const [lugarEntrega, setLugarEntrega] = useState('');
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [items, setItems] = useState<ItemOC[]>([]);
+  const [itemsSeleccionables, setItemsSeleccionables] = useState<ItemSeleccionable[]>([]);
 
   const requerimientoSeleccionado = requerimientosAprobados.find(r => r.id === requerimientoId);
   const proveedorSeleccionado = proveedores.find(p => p.id === proveedorId);
@@ -87,28 +116,99 @@ function NuevaOCModal({
   const especificacionesAprobadas = requerimientoSeleccionado?.especificacionesAprobadas || false;
   const puedeGenerarOC = !requiereAprobacionEspec || especificacionesAprobadas;
 
-  // Cargar items del requerimiento
+  // Items seleccionados para la OC
+  const items = useMemo(() => {
+    return itemsSeleccionables
+      .filter(item => item.seleccionado)
+      .map(item => ({
+        id: `oc-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        purchaseRequestItemId: item.id,
+        descripcion: item.descripcion,
+        cantidad: item.cantidad,
+        unidad: item.unidad,
+        precioUnitario: item.precioUnitario,
+        total: item.total,
+      }));
+  }, [itemsSeleccionables]);
+
+  // Obtener cantidad ya asignada a OCs para cada item del requerimiento
+  const getCantidadesAsignadas = (reqId: string): Map<string, number> => {
+    const cantidadesAsignadas = new Map<string, number>();
+    ordenesCompraExistentes
+      .filter(oc => oc.requerimientoId === reqId)
+      .forEach(oc => {
+        oc.items.forEach(item => {
+          if (item.purchaseRequestItemId) {
+            const cantidadActual = cantidadesAsignadas.get(item.purchaseRequestItemId) || 0;
+            cantidadesAsignadas.set(item.purchaseRequestItemId, cantidadActual + item.cantidad);
+          }
+        });
+      });
+    return cantidadesAsignadas;
+  };
+
+  // Cargar items del requerimiento con cantidad pendiente
   const handleRequerimientoChange = (id: string) => {
     setRequerimientoId(id);
     const req = requerimientosAprobados.find(r => r.id === id);
     if (req) {
-      setItems(req.items.map(item => ({
-        ...item,
-        id: `oc-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      })));
+      const cantidadesAsignadas = getCantidadesAsignadas(id);
+      setItemsSeleccionables(req.items.map(item => {
+        const cantidadAsignada = cantidadesAsignadas.get(item.id) || 0;
+        const cantidadPendiente = Math.max(0, item.cantidad - cantidadAsignada);
+        const tieneOCCompleta = cantidadPendiente <= 0;
+
+        return {
+          id: item.id,
+          descripcion: item.descripcion,
+          cantidad: cantidadPendiente, // Mostrar solo la cantidad pendiente
+          cantidadOriginal: item.cantidad, // Guardar la cantidad original para referencia
+          cantidadAsignada: cantidadAsignada, // Cantidad ya en OCs
+          unidad: item.unidad,
+          precioUnitario: item.precioUnitario,
+          total: cantidadPendiente * item.precioUnitario,
+          seleccionado: !tieneOCCompleta && cantidadPendiente > 0,
+          tieneOC: tieneOCCompleta,
+        };
+      }));
     } else {
-      setItems([]);
+      setItemsSeleccionables([]);
     }
   };
 
-  const handleItemChange = (index: number, field: keyof ItemOC, value: any) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    if (field === 'cantidad' || field === 'precioUnitario') {
-      newItems[index].total = newItems[index].cantidad * newItems[index].precioUnitario;
-    }
-    setItems(newItems);
+  // Toggle selección de item
+  const toggleItemSeleccion = (itemId: string) => {
+    setItemsSeleccionables(prev => prev.map(item =>
+      item.id === itemId && !item.tieneOC
+        ? { ...item, seleccionado: !item.seleccionado }
+        : item
+    ));
   };
+
+  // Actualizar cantidad o precio de un item
+  const handleItemChange = (itemId: string, field: 'cantidad' | 'precioUnitario', value: number) => {
+    setItemsSeleccionables(prev => prev.map(item => {
+      if (item.id !== itemId || item.tieneOC) return item;
+      const updated = { ...item, [field]: value };
+      updated.total = updated.cantidad * updated.precioUnitario;
+      return updated;
+    }));
+  };
+
+  // Seleccionar/deseleccionar todos los items disponibles
+  const toggleTodosLosItems = () => {
+    const itemsDisponibles = itemsSeleccionables.filter(i => !i.tieneOC);
+    const todosSeleccionados = itemsDisponibles.every(i => i.seleccionado);
+    setItemsSeleccionables(prev => prev.map(item =>
+      !item.tieneOC
+        ? { ...item, seleccionado: !todosSeleccionados }
+        : item
+    ));
+  };
+
+  // Contadores de items
+  const itemsDisponibles = itemsSeleccionables.filter(i => !i.tieneOC);
+  const itemsSeleccionados = itemsSeleccionables.filter(i => i.seleccionado);
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
   const impuestos = subtotal * 0.21;
@@ -116,12 +216,12 @@ function NuevaOCModal({
 
   const handleSubmit = () => {
     if (!requerimientoId || !proveedorId || items.length === 0) {
-      alert('Complete todos los campos requeridos');
+      toast.error('Seleccione un requerimiento, proveedor y al menos un item');
       return;
     }
 
     if (!puedeGenerarOC) {
-      alert('No se puede generar la OC: las especificaciones técnicas aún no han sido aprobadas');
+      toast.error('No se puede generar la OC: las especificaciones técnicas aún no han sido aprobadas');
       return;
     }
 
@@ -329,40 +429,85 @@ function NuevaOCModal({
                 </div>
               </div>
 
-              {/* Items */}
+              {/* Items con selección */}
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-                  Items de la Orden
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-text-primary">
+                    Items del Requerimiento <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-text-secondary">
+                      {itemsSeleccionados.length} de {itemsDisponibles.length} disponibles seleccionados
+                    </span>
+                    {itemsDisponibles.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={toggleTodosLosItems}
+                        className="text-palette-purple hover:underline text-xs"
+                      >
+                        {itemsSeleccionados.length === itemsDisponibles.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Alerta de items con OC existente */}
+                {itemsSeleccionables.some(i => i.tieneOC || (i.cantidadAsignada && i.cantidadAsignada > 0)) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 flex items-start gap-2">
+                    <FileCheck className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700">
+                      Este requerimiento ya tiene OCs generadas. Se muestra solo la cantidad pendiente de cada item.
+                      Los items con cantidad completa aparecen deshabilitados.
+                    </p>
+                  </div>
+                )}
+
                 <div className="border border-border rounded-lg overflow-hidden">
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-text-secondary uppercase w-12">
+                          <input
+                            type="checkbox"
+                            checked={itemsDisponibles.length > 0 && itemsSeleccionados.length === itemsDisponibles.length}
+                            onChange={toggleTodosLosItems}
+                            disabled={itemsDisponibles.length === 0}
+                            className="w-4 h-4 text-palette-purple rounded border-gray-300 focus:ring-palette-purple"
+                          />
+                        </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase">Descripcion</th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-text-secondary uppercase w-24">Cant.</th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-text-secondary uppercase w-24">Unidad</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-text-secondary uppercase w-32">P. Unit.</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-text-secondary uppercase w-32">Total</th>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-text-secondary uppercase w-20">Cant.</th>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-text-secondary uppercase w-20">Unidad</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-text-secondary uppercase w-28">P. Unit.</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-text-secondary uppercase w-28">Total</th>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-text-secondary uppercase w-20">Estado</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {items.map((item, index) => (
-                        <tr key={item.id}>
-                          <td className="px-4 py-2">
+                      {itemsSeleccionables.map((item) => (
+                        <tr
+                          key={item.id}
+                          className={`${item.tieneOC ? 'bg-gray-50 opacity-60' : item.seleccionado ? 'bg-green-50' : ''}`}
+                        >
+                          <td className="px-3 py-2 text-center">
                             <input
-                              type="text"
-                              value={item.descripcion}
-                              onChange={(e) => handleItemChange(index, 'descripcion', e.target.value)}
-                              className="w-full px-2 py-1 border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple text-sm"
+                              type="checkbox"
+                              checked={item.seleccionado}
+                              onChange={() => toggleItemSeleccion(item.id)}
+                              disabled={item.tieneOC}
+                              className="w-4 h-4 text-palette-purple rounded border-gray-300 focus:ring-palette-purple disabled:opacity-50"
                             />
                           </td>
+                          <td className="px-4 py-2 text-sm">{item.descripcion}</td>
                           <td className="px-4 py-2">
                             <input
                               type="number"
-                              min="1"
+                              min="0.01"
+                              step="0.01"
                               value={item.cantidad}
-                              onChange={(e) => handleItemChange(index, 'cantidad', parseInt(e.target.value) || 0)}
-                              className="w-full px-2 py-1 border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple text-sm text-center"
+                              onChange={(e) => handleItemChange(item.id, 'cantidad', parseFloat(e.target.value) || 0)}
+                              disabled={item.tieneOC}
+                              className="w-full px-2 py-1 border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple text-sm text-center disabled:bg-gray-100 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                           </td>
                           <td className="px-4 py-2 text-sm text-center">{item.unidad}</td>
@@ -370,31 +515,57 @@ function NuevaOCModal({
                             <input
                               type="number"
                               min="0"
+                              step="0.01"
                               value={item.precioUnitario}
-                              onChange={(e) => handleItemChange(index, 'precioUnitario', parseFloat(e.target.value) || 0)}
-                              className="w-full px-2 py-1 border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple text-sm text-right"
+                              onChange={(e) => handleItemChange(item.id, 'precioUnitario', parseFloat(e.target.value) || 0)}
+                              disabled={item.tieneOC}
+                              className="w-full px-2 py-1 border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple text-sm text-right disabled:bg-gray-100 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                           </td>
-                          <td className="px-4 py-2 text-sm text-right font-medium">
-                            {formatMonto(item.total)}
+                          <td className="px-4 py-2 text-sm text-right font-medium">{formatMonto(item.total)}</td>
+                          <td className="px-4 py-2 text-center">
+                            {item.tieneOC ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                <FileCheck className="w-3 h-3 mr-1" />
+                                Completo
+                              </span>
+                            ) : item.cantidadAsignada && item.cantidadAsignada > 0 ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700" title={`${item.cantidadAsignada} de ${item.cantidadOriginal} ya asignados`}>
+                                Parcial ({item.cantidadAsignada}/{item.cantidadOriginal})
+                              </span>
+                            ) : item.seleccionado ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Incluido
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                Disponible
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="bg-gray-50">
-                      <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right text-sm font-medium">Subtotal:</td>
-                        <td className="px-4 py-2 text-right text-sm font-medium">{formatMonto(subtotal)}</td>
-                      </tr>
-                      <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right text-sm font-medium">IVA (21%):</td>
-                        <td className="px-4 py-2 text-right text-sm font-medium">{formatMonto(impuestos)}</td>
-                      </tr>
-                      <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right text-sm font-bold">Total:</td>
-                        <td className="px-4 py-2 text-right text-sm font-bold text-palette-purple">{formatMonto(total)}</td>
-                      </tr>
-                    </tfoot>
+                    {items.length > 0 && (
+                      <tfoot className="bg-gray-50">
+                        <tr>
+                          <td colSpan={5} className="px-4 py-2 text-right text-sm font-medium">Subtotal seleccionado:</td>
+                          <td className="px-4 py-2 text-right text-sm font-medium">{formatMonto(subtotal)}</td>
+                          <td></td>
+                        </tr>
+                        <tr>
+                          <td colSpan={5} className="px-4 py-2 text-right text-sm font-medium">IVA (21%):</td>
+                          <td className="px-4 py-2 text-right text-sm font-medium">{formatMonto(impuestos)}</td>
+                          <td></td>
+                        </tr>
+                        <tr>
+                          <td colSpan={5} className="px-4 py-2 text-right text-sm font-bold">Total OC:</td>
+                          <td className="px-4 py-2 text-right text-sm font-bold text-palette-purple">{formatMonto(total)}</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               </div>
@@ -602,10 +773,29 @@ export default function OrdenesCompraPage() {
   // Hook para el modal de circuito de compra
   const circuitoModal = useCircuitoCompraModal();
 
-  // Requerimientos aprobados disponibles para generar OC
+  // Requerimientos disponibles para generar OC (aprobados o con OC parcial)
   const requerimientosAprobados = useMemo(() => {
-    return requerimientos.filter(r => r.estado === 'APROBADO');
-  }, [requerimientos]);
+    return requerimientos.filter(r => {
+      // Incluir APROBADO y OC_GENERADA para permitir OCs parciales
+      if (r.estado !== 'APROBADO' && r.estado !== 'OC_GENERADA') return false;
+
+      // Verificar si aún tiene items sin OC
+      const itemsConOC = new Set<string>();
+      ordenesCompra
+        .filter(oc => oc.requerimientoId === r.id)
+        .forEach(oc => {
+          oc.items.forEach(item => {
+            if (item.purchaseRequestItemId) {
+              itemsConOC.add(item.purchaseRequestItemId);
+            }
+          });
+        });
+
+      // Solo incluir si tiene al menos un item sin OC
+      const tieneItemsSinOC = r.items.some(item => !itemsConOC.has(item.id));
+      return tieneItemsSinOC;
+    });
+  }, [requerimientos, ordenesCompra]);
 
   // Filtrar OC
   const ordenesCompraFiltradas = useMemo(() => {
@@ -621,6 +811,17 @@ export default function OrdenesCompraPage() {
     });
   }, [ordenesCompra, searchQuery, filtroEstado]);
 
+  // Calcular progreso de recepción para una OC
+  const calcularProgresoRecepcion = (oc: OrdenCompra) => {
+    const totalSolicitado = oc.items.reduce((sum, item) => sum + Number(item.cantidad || 0), 0);
+    const totalRecibido = oc.items.reduce((sum, item) => sum + Number(item.cantidadRecibida || 0), 0);
+    return {
+      porcentaje: totalSolicitado > 0 ? Math.round((totalRecibido / totalSolicitado) * 100) : 0,
+      recibido: Math.round(totalRecibido * 100) / 100, // Redondear a 2 decimales
+      total: Math.round(totalSolicitado * 100) / 100,
+    };
+  };
+
   const [creandoOC, setCreandoOC] = useState(false);
 
   const handleCrearOC = async (ocData: Omit<OrdenCompra, 'id' | 'numero'>) => {
@@ -629,12 +830,13 @@ export default function OrdenesCompraPage() {
       const result = await agregarOrdenCompra(ocData);
       if (result) {
         console.log('OC creada exitosamente:', result.numero);
+        toast.success(`Orden de compra ${result.numero} creada exitosamente`);
       } else {
-        alert('Error al crear la orden de compra');
+        toast.error('Error al crear la orden de compra');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creando OC:', error);
-      alert('Error al crear la orden de compra');
+      toast.error(error.message || 'Error al crear la orden de compra');
     } finally {
       setCreandoOC(false);
     }
@@ -668,6 +870,7 @@ export default function OrdenesCompraPage() {
       <PageHeader
         title="Ordenes de Compra"
         subtitle={`${ordenesCompra.length} orden${ordenesCompra.length !== 1 ? 'es' : ''} en total`}
+        icon={ShoppingCart}
         action={
           <Button onClick={() => setShowNuevaOCModal(true)} disabled={requerimientosAprobados.length === 0}>
             <Plus className="w-4 h-4 mr-2" />
@@ -743,9 +946,13 @@ export default function OrdenesCompraPage() {
               <thead className="bg-gray-50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Numero</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Titulo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Proveedor</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Creado Por</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Estado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Fecha</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Recepcion</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Prioridad</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Categoria</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase">Total</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase">Acciones</th>
                 </tr>
@@ -754,12 +961,23 @@ export default function OrdenesCompraPage() {
                 {ordenesCompraFiltradas.map((oc) => {
                   const estadoConfig = estadosOC.find(e => e.id === oc.estado);
                   const Icon = estadoConfig?.icon || Clock;
+                  const prioridadBadge = getPrioridadBadge(oc.requerimiento?.prioridad);
+                  const progreso = calcularProgresoRecepcion(oc);
                   return (
                     <tr key={oc.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-palette-purple">{oc.numero}</td>
                       <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-text-primary">{oc.requerimiento?.titulo || '-'}</p>
+                        <p className="text-xs text-text-secondary">{oc.requerimiento?.numero || ''}</p>
+                      </td>
+                      <td className="px-4 py-3">
                         <p className="text-sm font-medium text-text-primary">{oc.proveedor.nombre}</p>
-                        <p className="text-xs text-text-secondary">CUIT: {oc.proveedor.cuit}</p>
+                        {oc.proveedor.cuit && !oc.proveedor.cuit.startsWith('TEMP-') && (
+                          <p className="text-xs text-text-secondary">CUIT: {oc.proveedor.cuit}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">
+                        {oc.creadoPor?.nombre || '-'}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${estadoConfig?.color}`}>
@@ -767,7 +985,37 @@ export default function OrdenesCompraPage() {
                           {estadoConfig?.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{formatFecha(oc.fechaEmision)}</td>
+                      <td className="px-4 py-3">
+                        <div className="w-16">
+                          <div className="flex items-center justify-center text-xs mb-1">
+                            <span className={`font-medium ${
+                              progreso.porcentaje === 100 ? 'text-green-600' :
+                              progreso.porcentaje > 0 ? 'text-orange-600' :
+                              'text-gray-500'
+                            }`}>
+                              {progreso.porcentaje}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all ${
+                                progreso.porcentaje === 100 ? 'bg-green-500' :
+                                progreso.porcentaje > 0 ? 'bg-orange-500' :
+                                'bg-gray-300'
+                              }`}
+                              style={{ width: `${progreso.porcentaje}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${prioridadBadge.className}`}>
+                          {prioridadBadge.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">
+                        {oc.requerimiento?.categoria || '-'}
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-text-primary text-right">
                         {formatMonto(oc.total, oc.moneda)}
                       </td>
@@ -805,6 +1053,7 @@ export default function OrdenesCompraPage() {
         requerimientosAprobados={requerimientosAprobados}
         proveedores={proveedores}
         onCrear={handleCrearOC}
+        ordenesCompraExistentes={ordenesCompra}
       />
 
       <DetalleOCModal

@@ -55,6 +55,7 @@ export interface ItemRequerimiento {
 
 export interface ItemOC {
   id: string;
+  purchaseRequestItemId?: string; // Referencia al item del requerimiento original
   descripcion: string;
   cantidad: number;
   cantidadRecibida?: number; // Para tracking de recepciones parciales

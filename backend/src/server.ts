@@ -3,6 +3,8 @@ import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
 import dotenv from 'dotenv'
+import { PrismaClient } from '@prisma/client'
+import { syncProveedoresToLocal } from './services/parseIntegration'
 import authRoutes from './routes/auth'
 import menuRoutes from './routes/menu'
 import usersRoutes from './routes/users'
@@ -24,6 +26,25 @@ dotenv.config()
 
 const app: Application = express()
 const PORT = process.env.PORT || 4000
+const prisma = new PrismaClient()
+
+// Sincronización automática de proveedores desde Parse
+async function syncProveedoresOnStartup() {
+  const tenantId = process.env.PARSE_TENANT_ID || 'grupolb'
+
+  if (!process.env.PARSE_API_KEY) {
+    console.log('⚠️  PARSE_API_KEY no configurada, omitiendo sincronización de proveedores')
+    return
+  }
+
+  try {
+    console.log('🔄 Sincronizando proveedores desde Parse...')
+    const result = await syncProveedoresToLocal(prisma, tenantId)
+    console.log(`✅ Proveedores sincronizados: ${result.created} nuevos, ${result.updated} actualizados (${result.total} total)`)
+  } catch (error) {
+    console.error('❌ Error sincronizando proveedores:', error)
+  }
+}
 
 // Middlewares
 // CORS debe ir antes que helmet para evitar conflictos
@@ -75,10 +96,13 @@ app.get('/api/test', (req: Request, res: Response) => {
 })
 
 // Iniciar servidor
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Hub Backend running on http://localhost:${PORT}`)
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL}`)
+
+  // Sincronizar proveedores al iniciar
+  await syncProveedoresOnStartup()
 })
 
 export default app

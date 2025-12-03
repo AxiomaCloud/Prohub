@@ -35,7 +35,16 @@ import {
   Key,
   Sparkles,
   ScanText,
-  Package
+  Package,
+  LayoutDashboard,
+  ClipboardList,
+  ClipboardCheck,
+  ShoppingCart,
+  PackageCheck,
+  Menu,
+  Webhook,
+  Lightbulb,
+  Boxes,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -77,7 +86,16 @@ const IconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Key,
   Sparkles,
   ScanText,
-  Package
+  Package,
+  LayoutDashboard,
+  ClipboardList,
+  ClipboardCheck,
+  ShoppingCart,
+  PackageCheck,
+  Menu,
+  Webhook,
+  Lightbulb,
+  Boxes,
 };
 
 // Helper para obtener el componente de ícono desde el nombre
@@ -111,9 +129,9 @@ export function MenuPreview({ items }: MenuPreviewProps) {
       {/* Header simulado */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700 mb-3">
         <div className="w-6 h-6 bg-palette-yellow rounded flex items-center justify-center">
-          <FileText className="w-3.5 h-3.5 text-palette-dark" />
+          <Boxes className="w-3.5 h-3.5 text-palette-dark" />
         </div>
-        <span className="text-white font-semibold text-sm">Rendiciones</span>
+        <span className="text-white font-semibold text-sm">Hub</span>
       </div>
 
       {/* Items del menú */}

@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { SidebarProvider } from '@/contexts/SidebarContext'
 import { ConfirmProvider } from '@/hooks/useConfirm'
 import { ChatWidgetWrapper } from '@/components/chat/ChatWidgetWrapper'
+import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
   title: 'Axioma - Hub',
@@ -23,6 +24,14 @@ export default function RootLayout({
             <ConfirmProvider>
               {children}
               <ChatWidgetWrapper />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  style: {
+                    zIndex: 99999,
+                  },
+                }}
+              />
             </ConfirmProvider>
           </SidebarProvider>
         </AuthProvider>

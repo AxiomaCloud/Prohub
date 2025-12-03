@@ -390,5 +390,25 @@ Planificación detallada del desarrollo del proyecto.
 
 ---
 
-**Última actualización:** 2025-11-15
-**Próxima revisión:** Al completar Milestone 1
+**Última actualización:** 2025-12-02
+**Próxima revisión:** Al completar Circuito de Compras
+
+---
+
+## 🛒 MÓDULO COMPRAS - ESTADO v1.2.0
+
+### ✅ Implementado
+- **Requerimientos**: CRUD, aprobaciones, vista Kanban, drag & drop
+- **Órdenes de Compra**: Generación desde RQ, OCs parciales, múltiples OCs por RQ
+- **Recepciones**: Total/parcial, múltiples recepciones por OC, trazabilidad
+- **Chatbot IA**: Crear requerimientos con lenguaje natural (Claude 3.5 Sonnet)
+- **Indicadores de Progreso**: % OC en RQ, % Recepción en OC
+- **Soporte Decimales**: Cantidades y precios con 4 decimales
+
+### 🔲 Pendiente (v1.3.0)
+- Generador PDF de OC
+- Portal de proveedores
+- Sistema de facturas
+- Integración ERP (Softland)
+
+Ver detalle completo en: `docs/ROADMAP_CIRCUITOS_COMPRAS.md`

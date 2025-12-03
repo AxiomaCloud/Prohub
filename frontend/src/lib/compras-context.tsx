@@ -24,7 +24,7 @@ interface ComprasContextType {
   ordenesCompra: OrdenCompra[];
   loadingOrdenesCompra: boolean;
   agregarOrdenCompra: (oc: Omit<OrdenCompra, 'id' | 'numero'>) => Promise<OrdenCompra | null>;
-  actualizarOrdenCompra: (id: string, data: Partial<OrdenCompra>) => void;
+  actualizarOrdenCompra: (id: string, data: Partial<OrdenCompra>) => Promise<void>;
   refreshOrdenesCompra: () => Promise<void>;
 
   // Recepciones
@@ -201,9 +201,12 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
         const data = await response.json();
         setOrdenesCompra(data.ordenesCompra || []);
         console.log(`✅ Cargadas ${data.ordenesCompra?.length || 0} órdenes de compra`);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Error cargando órdenes de compra:', response.status, errorData);
       }
     } catch (error) {
-      console.error('Error cargando órdenes de compra:', error);
+      console.error('❌ Error cargando órdenes de compra:', error);
     } finally {
       setLoadingOrdenesCompra(false);
     }
@@ -227,7 +230,16 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
           tenantId: currentTenant.id,
           purchaseRequestId: ocData.requerimientoId,
           proveedorId: ocData.proveedorId,
+          proveedor: ocData.proveedor ? {
+            id: ocData.proveedor.id,
+            nombre: ocData.proveedor.nombre,
+            cuit: ocData.proveedor.cuit,
+            email: ocData.proveedor.email,
+            telefono: ocData.proveedor.telefono,
+            direccion: ocData.proveedor.direccion,
+          } : undefined,
           items: ocData.items.map((item) => ({
+            purchaseRequestItemId: item.purchaseRequestItemId, // Referencia al item del requerimiento
             descripcion: item.descripcion,
             cantidad: item.cantidad,
             unidad: item.unidad,
@@ -254,23 +266,55 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
 
         return data.ordenCompra;
       } else {
-        const error = await response.json();
-        console.error('Error creando OC:', error);
-        return null;
+        const errorData = await response.json();
+        console.error('Error creando OC:', errorData);
+        throw new Error(errorData.error || 'Error al crear la orden de compra');
       }
     } catch (error) {
       console.error('Error creando OC:', error);
-      return null;
+      throw error;
     }
   }, [currentTenant?.id, getToken, fetchOrdenesCompra, fetchRequerimientos]);
 
   const actualizarOrdenCompra = useCallback(
-    (id: string, data: Partial<OrdenCompra>) => {
-      setOrdenesCompra((prev) =>
-        prev.map((oc) => (oc.id === id ? { ...oc, ...data } : oc))
-      );
+    async (id: string, data: Partial<OrdenCompra>) => {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/purchase-orders/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            estado: data.estado,
+            condicionPago: data.condicionPago,
+            lugarEntrega: data.lugarEntrega,
+            observaciones: data.observaciones,
+            fechaEntregaEstimada: data.fechaEntregaEstimada,
+          }),
+        });
+
+        if (response.ok) {
+          // Actualizar estado local
+          setOrdenesCompra((prev) =>
+            prev.map((oc) => (oc.id === id ? { ...oc, ...data } : oc))
+          );
+          // Refrescar desde el backend para tener datos actualizados
+          await fetchOrdenesCompra();
+        } else {
+          const errorData = await response.json();
+          console.error('Error actualizando OC:', errorData);
+          throw new Error(errorData.error || 'Error al actualizar la orden de compra');
+        }
+      } catch (error) {
+        console.error('Error actualizando OC:', error);
+        throw error;
+      }
     },
-    []
+    [getToken, fetchOrdenesCompra]
   );
 
   // =============================================
