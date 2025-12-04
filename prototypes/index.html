@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXIOMA Hub - Prototipos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        axioma: {
+                            dark: '#352151',
+                            primary: '#8E6AAA',
+                            yellow: '#FCE5B7',
+                            pink: '#F1ABB5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex items-center justify-center p-8">
+        <div class="max-w-4xl w-full">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold text-axioma-dark mb-4">AXIOMA Hub</h1>
+                <p class="text-gray-600 text-lg">Prototipos Interactivos</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Portal de Documentos -->
+                <a href="documentos.html" class="group">
+                    <div class="bg-white rounded-lg shadow-md p-8 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-axioma-primary">
+                        <div class="text-4xl mb-4">📄</div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2 group-hover:text-axioma-primary">
+                            Portal de Documentos
+                        </h2>
+                        <p class="text-gray-600">
+                            Vista de tabla con estados, subida de comprobantes con Parse, y detalle de documentos.
+                        </p>
+                        <div class="mt-4 text-axioma-primary font-semibold">
+                            Ver prototipo →
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Pagos -->
+                <a href="pagos.html" class="group">
+                    <div class="bg-white rounded-lg shadow-md p-8 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-axioma-primary">
+                        <div class="text-4xl mb-4">💰</div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2 group-hover:text-axioma-primary">
+                            Mis Pagos
+                        </h2>
+                        <p class="text-gray-600">
+                            Listado de pagos recibidos, facturas asociadas, y descarga de retenciones.
+                        </p>
+                        <div class="mt-4 text-axioma-primary font-semibold">
+                            Ver prototipo →
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Onboarding -->
+                <a href="onboarding.html" class="group">
+                    <div class="bg-white rounded-lg shadow-md p-8 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-axioma-primary">
+                        <div class="text-4xl mb-4">📋</div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2 group-hover:text-axioma-primary">
+                            Alta de Proveedor
+                        </h2>
+                        <p class="text-gray-600">
+                            Formularios de onboarding: datos bancarios y datos de empresa.
+                        </p>
+                        <div class="mt-4 text-axioma-primary font-semibold">
+                            Ver prototipo →
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Dashboard (Próximamente) -->
+                <div class="bg-gray-100 rounded-lg shadow-md p-8 opacity-60">
+                    <div class="text-4xl mb-4">📊</div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                        Dashboard
+                    </h2>
+                    <p class="text-gray-600">
+                        Panel principal con métricas y resumen.
+                    </p>
+                    <div class="mt-4 text-gray-500 font-semibold">
+                        Próximamente
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-12 text-center text-gray-500 text-sm">
+                <p>Prototipos creados para revisión con el socio</p>
+                <p class="mt-2">📁 Ver documentación técnica en <code class="bg-gray-200 px-2 py-1 rounded">/docs/</code></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

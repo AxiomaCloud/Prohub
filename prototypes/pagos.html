@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Pagos - AXIOMA Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        axioma: {
+                            dark: '#352151',
+                            primary: '#8E6AAA',
+                            yellow: '#FCE5B7',
+                            pink: '#F1ABB5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-axioma-dark text-white flex-shrink-0">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold mb-1">AXIOMA Hub</h1>
+                <p class="text-sm text-gray-300">Mi Empresa SRL</p>
+            </div>
+
+            <nav class="mt-6">
+                <a href="documentos.html" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">📄</span>
+                    <span class="font-medium">Mis Documentos</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 bg-axioma-primary text-white">
+                    <span class="text-xl mr-3">💰</span>
+                    <span class="font-medium">Mis Pagos</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">📋</span>
+                    <span class="font-medium">Órdenes de Compra</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">💬</span>
+                    <span class="font-medium">Comunicaciones</span>
+                </a>
+                <a href="onboarding.html" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">⚙️</span>
+                    <span class="font-medium">Mi Perfil</span>
+                </a>
+            </nav>
+
+            <div class="absolute bottom-0 w-64 p-6 border-t border-gray-700">
+                <a href="index.html" class="text-sm text-gray-400 hover:text-white">← Volver a prototipos</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto">
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b border-gray-200">
+                <div class="px-8 py-4">
+                    <h2 class="text-2xl font-bold text-gray-800">💰 Mis Pagos</h2>
+                    <p class="text-sm text-gray-500 mt-1">Consulta tus pagos recibidos y retenciones</p>
+                </div>
+            </header>
+
+            <!-- Toolbar -->
+            <div class="px-8 py-4 bg-white border-b border-gray-200">
+                <div class="flex items-center gap-4">
+                    <input type="text" placeholder="🔍 Buscar pago..." class="border border-gray-300 rounded-lg px-4 py-2 w-64">
+                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">📅 Filtros</button>
+                    <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">⬇️ Exportar</button>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <!-- Resumen Cards -->
+                <div class="grid md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-600 mb-2">Total Recibido (Últimos 12m)</p>
+                        <p class="text-3xl font-bold text-green-600">$1,250,000.00</p>
+                        <p class="text-sm text-green-600 mt-2">↗️ +15%</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-600 mb-2">Pendiente de Pago</p>
+                        <p class="text-3xl font-bold text-yellow-600">$185,500.00</p>
+                        <p class="text-sm text-gray-600 mt-2">8 facturas</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-600 mb-2">Este Mes</p>
+                        <p class="text-3xl font-bold text-blue-600">$350,000.00</p>
+                        <p class="text-sm text-blue-600 mt-2">↗️ +22%</p>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="font-bold text-gray-900">Últimos Pagos Recibidos</h3>
+                    </div>
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">#</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Pago</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Fecha</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Monto</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Facturas</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Retenciones</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-gray-900">1</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">#12345</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">10/11/25</td>
+                                <td class="px-6 py-4 text-sm text-gray-900 text-right font-semibold">$60,500.00</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">2 docs</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">3 docs</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <button onclick="openPaymentDetail('12345')" class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button onclick="toggleExpand('row1')" class="text-gray-600 hover:text-gray-800">▼</button>
+                                </td>
+                            </tr>
+                            <tr id="row1" class="hidden bg-gray-50">
+                                <td colspan="7" class="px-6 py-4">
+                                    <div class="ml-12">
+                                        <h4 class="font-bold text-sm mb-3">Pago #12345 - Detalle</h4>
+                                        <div class="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <p class="text-sm font-medium mb-2">Facturas Incluidas:</p>
+                                                <div class="space-y-2">
+                                                    <div class="bg-white p-3 rounded border">
+                                                        <p class="font-medium text-sm">📄 F-001-00045678</p>
+                                                        <p class="text-xs text-gray-600">Monto: $50,000.00</p>
+                                                    </div>
+                                                    <div class="bg-white p-3 rounded border">
+                                                        <p class="font-medium text-sm">📄 F-002-00045679</p>
+                                                        <p class="text-xs text-gray-600">Monto: $28,000.00</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium mb-2">Comprobantes Disponibles:</p>
+                                                <div class="space-y-2">
+                                                    <div class="flex items-center justify-between bg-white p-3 rounded border">
+                                                        <div>
+                                                            <p class="font-medium text-sm">📄 Recibo de Pago</p>
+                                                            <p class="text-xs text-gray-600">Nro: 00012345</p>
+                                                        </div>
+                                                        <div>
+                                                            <button class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                                            <button class="text-gray-600 hover:text-gray-800">⬇️</button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center justify-between bg-white p-3 rounded border">
+                                                        <div>
+                                                            <p class="font-medium text-sm">📄 Retención IIBB</p>
+                                                            <p class="text-xs text-gray-600">$8,000.00</p>
+                                                        </div>
+                                                        <div>
+                                                            <button class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                                            <button class="text-gray-600 hover:text-gray-800">⬇️</button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center justify-between bg-white p-3 rounded border">
+                                                        <div>
+                                                            <p class="font-medium text-sm">📄 Retención Ganancias</p>
+                                                            <p class="text-xs text-gray-600">$3,500.00</p>
+                                                        </div>
+                                                        <div>
+                                                            <button class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                                            <button class="text-gray-600 hover:text-gray-800">⬇️</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button class="mt-3 text-sm text-axioma-primary hover:text-axioma-dark font-medium">⬇️ Descargar todo (.zip)</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-gray-900">2</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">#12344</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">08/11/25</td>
+                                <td class="px-6 py-4 text-sm text-gray-900 text-right font-semibold">$100,000.00</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">1 doc</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">2 docs</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <button onclick="openPaymentDetail('12344')" class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button onclick="toggleExpand('row2')" class="text-gray-600 hover:text-gray-800">▼</button>
+                                </td>
+                            </tr>
+                            <tr id="row2" class="hidden bg-gray-50">
+                                <td colspan="7" class="px-6 py-4">
+                                    <div class="ml-12 text-sm text-gray-600">
+                                        <p>Click en ▼ para expandir detalle</p>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-gray-900">3</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">#12343</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">05/11/25</td>
+                                <td class="px-6 py-4 text-sm text-gray-900 text-right font-semibold">$75,000.00</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">1 doc</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">1 doc</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <button onclick="openPaymentDetail('12343')" class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button onclick="toggleExpand('row3')" class="text-gray-600 hover:text-gray-800">▼</button>
+                                </td>
+                            </tr>
+
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-gray-900">4</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">#12342</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">03/11/25</td>
+                                <td class="px-6 py-4 text-sm text-gray-900 text-right font-semibold">$45,000.00</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">1 doc</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">2 docs</span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <button onclick="openPaymentDetail('12342')" class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button onclick="toggleExpand('row4')" class="text-gray-600 hover:text-gray-800">▼</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="mt-6 flex justify-center">
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">◀️</button>
+                        <button class="px-3 py-1 bg-axioma-primary text-white rounded">1</button>
+                        <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">2</button>
+                        <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">3</button>
+                        <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">4</button>
+                        <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">▶️</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Payment Detail -->
+    <div id="paymentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                <h3 class="text-xl font-bold text-gray-900">Pago #12345</h3>
+                <button onclick="closePaymentDetail()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="p-6">
+                <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                    <div class="grid md:grid-cols-3 gap-4 text-center">
+                        <div>
+                            <p class="text-sm text-gray-600">Fecha de pago</p>
+                            <p class="text-lg font-bold">10/11/2025</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Monto total</p>
+                            <p class="text-2xl font-bold text-green-600">$60,500.00</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Estado</p>
+                            <p class="text-lg"><span class="bg-green-600 text-white px-3 py-1 rounded">✅ Pagado</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-bold mb-3">Facturas Incluidas (2)</h4>
+                        <div class="space-y-3">
+                            <div class="border rounded-lg p-4">
+                                <p class="font-medium">📄 Factura F-001-00045678</p>
+                                <p class="text-sm text-gray-600">Fecha: 13/11/2025</p>
+                                <div class="mt-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Monto original:</span>
+                                        <span>$60,500.00</span>
+                                    </div>
+                                    <div class="flex justify-between text-red-600">
+                                        <span>Retenciones:</span>
+                                        <span>-$10,500.00</span>
+                                    </div>
+                                    <div class="flex justify-between font-bold border-t mt-2 pt-2">
+                                        <span>Monto pagado:</span>
+                                        <span>$50,000.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold mb-3">Comprobantes Disponibles (4)</h4>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between border rounded p-3 hover:bg-gray-50">
+                                <div>
+                                    <p class="font-medium text-sm">📄 Recibo de Pago</p>
+                                    <p class="text-xs text-gray-600">Nro: 00012345</p>
+                                </div>
+                                <div>
+                                    <button class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800">⬇️</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between border rounded p-3 hover:bg-gray-50">
+                                <div>
+                                    <p class="font-medium text-sm">📄 Retención IIBB</p>
+                                    <p class="text-xs text-gray-600">$8,000.00</p>
+                                </div>
+                                <div>
+                                    <button class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800">⬇️</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between border rounded p-3 hover:bg-gray-50">
+                                <div>
+                                    <p class="font-medium text-sm">📄 Retención Ganancias</p>
+                                    <p class="text-xs text-gray-600">$3,500.00</p>
+                                </div>
+                                <div>
+                                    <button class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800">⬇️</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between border rounded p-3 hover:bg-gray-50">
+                                <div>
+                                    <p class="font-medium text-sm">📄 Retención IVA</p>
+                                    <p class="text-xs text-gray-600">$1,000.00</p>
+                                </div>
+                                <div>
+                                    <button class="text-blue-600 hover:text-blue-800 mr-2">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800">⬇️</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 border-t pt-6">
+                    <h4 class="font-bold mb-3">Detalle del Pago</h4>
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-gray-600">Monto bruto:</span>
+                                    <span class="font-medium">$60,500.00</span>
+                                </div>
+                                <div class="flex justify-between mb-2 text-red-600">
+                                    <span>Retención IIBB:</span>
+                                    <span>-$8,000.00</span>
+                                </div>
+                                <div class="flex justify-between mb-2 text-red-600">
+                                    <span>Retención Ganancias:</span>
+                                    <span>-$3,500.00</span>
+                                </div>
+                                <div class="flex justify-between mb-2 text-red-600">
+                                    <span>Retención IVA:</span>
+                                    <span>-$1,000.00</span>
+                                </div>
+                                <div class="flex justify-between font-bold border-t pt-2">
+                                    <span>Total pagado:</span>
+                                    <span class="text-green-600">$48,000.00</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-gray-600 mb-1">Método de pago:</p>
+                                <p class="font-medium mb-3">Transferencia bancaria</p>
+                                <p class="text-gray-600 mb-1">CBU destino:</p>
+                                <p class="font-medium font-mono text-sm">0170099220000012345678</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex gap-4">
+                    <button class="flex-1 bg-axioma-primary hover:bg-axioma-dark text-white px-6 py-3 rounded-lg font-medium">
+                        ⬇️ Descargar todo (.zip)
+                    </button>
+                    <button class="flex-1 border-2 border-axioma-primary text-axioma-primary hover:bg-axioma-primary hover:text-white px-6 py-3 rounded-lg font-medium transition">
+                        📧 Enviar por email
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleExpand(rowId) {
+            const row = document.getElementById(rowId);
+            row.classList.toggle('hidden');
+        }
+
+        function openPaymentDetail(paymentId) {
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+
+        function closePaymentDetail() {
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
