@@ -88,7 +88,8 @@ export default function UploadDocumentPage() {
           uploadData.append('providerTenantId', providerTenantId);
           uploadData.append('clientTenantId', clientTenantId);
 
-          const response = await fetch('http://localhost:4000/api/documents/upload', {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+          const response = await fetch(`${apiUrl}/api/documents/new`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`

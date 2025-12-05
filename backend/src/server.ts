@@ -49,11 +49,19 @@ async function syncProveedoresOnStartup() {
 
 // Middlewares
 // CORS debe ir antes que helmet para evitar conflictos
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.FRONTEND_URL
+].filter((url): url is string => Boolean(url))
+
+console.log('🌐 CORS allowed origins:', allowedOrigins)
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', process.env.FRONTEND_URL].filter((url): url is string => Boolean(url)),
+  origin: allowedOrigins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'X-Tenant-Id'],
 }))
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
