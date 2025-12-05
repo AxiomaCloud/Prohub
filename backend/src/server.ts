@@ -30,7 +30,13 @@ const PORT = process.env.PORT || 4000
 const prisma = new PrismaClient()
 
 // Sincronización automática de proveedores desde Parse
+// DESHABILITADA temporalmente - el endpoint de Parse devuelve error 500
 async function syncProveedoresOnStartup() {
+  // Deshabilitado hasta que se corrija el endpoint en Parse
+  console.log('⚠️  Sincronización de proveedores deshabilitada temporalmente')
+  return
+
+  /*
   const tenantId = process.env.PARSE_TENANT_ID || 'grupolb'
 
   if (!process.env.PARSE_API_KEY) {
@@ -45,6 +51,7 @@ async function syncProveedoresOnStartup() {
   } catch (error) {
     console.error('❌ Error sincronizando proveedores:', error)
   }
+  */
 }
 
 // Middlewares
