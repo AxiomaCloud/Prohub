@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos - AXIOMA Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        axioma: {
+                            dark: '#352151',
+                            primary: '#8E6AAA',
+                            yellow: '#FCE5B7',
+                            pink: '#F1ABB5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <!-- Sidebar -->
+    <div class="flex h-screen">
+        <!-- Sidebar lateral -->
+        <aside class="w-64 bg-axioma-dark text-white flex-shrink-0">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold mb-1">AXIOMA Hub</h1>
+                <p class="text-sm text-gray-300">Mi Empresa SRL</p>
+            </div>
+
+            <nav class="mt-6">
+                <a href="#" class="flex items-center px-6 py-3 bg-axioma-primary text-white">
+                    <span class="text-xl mr-3">📄</span>
+                    <span class="font-medium">Mis Documentos</span>
+                </a>
+                <a href="pagos.html" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">💰</span>
+                    <span class="font-medium">Mis Pagos</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">📋</span>
+                    <span class="font-medium">Órdenes de Compra</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">💬</span>
+                    <span class="font-medium">Comunicaciones</span>
+                </a>
+                <a href="onboarding.html" class="flex items-center px-6 py-3 text-gray-300 hover:bg-axioma-primary hover:text-white transition">
+                    <span class="text-xl mr-3">⚙️</span>
+                    <span class="font-medium">Mi Perfil</span>
+                </a>
+            </nav>
+
+            <div class="absolute bottom-0 w-64 p-6 border-t border-gray-700">
+                <a href="index.html" class="text-sm text-gray-400 hover:text-white">← Volver a prototipos</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto">
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b border-gray-200">
+                <div class="px-8 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">📄 Documentos Presentados</h2>
+                        <p class="text-sm text-gray-500 mt-1">Gestiona tus comprobantes</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">01</span>
+                        <button onclick="openUploadModal()" class="bg-axioma-primary hover:bg-axioma-dark text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2">
+                            <span>📤</span>
+                            Cargar documento
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Toolbar -->
+            <div class="px-8 py-4 bg-white border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <button onclick="toggleFilters()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition">
+                        🔍 Filtrar
+                    </button>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">&larr;</button>
+                            <span class="text-sm text-gray-600">1/5</span>
+                            <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">&rarr;</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="p-8">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Tipo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Número<br><span class="text-xs normal-case text-gray-500">Fecha Emisión</span></th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Empresa</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Monto Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">OC</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-3 py-1 bg-gray-900 text-white text-xs font-medium rounded">Exportado</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">FC B</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">00002-00001189</div>
+                                    <div class="text-xs text-gray-500">01/11/2025</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">FUNDACIÓN CAMPANA</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">$60,500.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">300919</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button onclick="openDetailModal()" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalle">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Descargar">⬇️</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-3 py-1 bg-gray-900 text-white text-xs font-medium rounded">Exportado</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">FC B</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">00002-00001183</div>
+                                    <div class="text-xs text-gray-500">03/10/2025</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">FUNDACIÓN CAMPANA</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">$30,000.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">300876</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button onclick="openDetailModal()" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalle">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Descargar">⬇️</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded">Presentado</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">FC B</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">00002-00001172</div>
+                                    <div class="text-xs text-gray-500">26/09/2025</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">FUNDACIÓN CAMPANA</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">$75,000.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">300855</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button onclick="openDetailModal()" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalle">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Descargar">⬇️</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded">Rechazado</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">FC B</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">00002-00001171</div>
+                                    <div class="text-xs text-gray-500">24/09/2025</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">ASOC. CIVIL ENSEÑANZA</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">$10,000.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">300855</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button onclick="openDetailModal()" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalle">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Descargar">⬇️</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded">Aprobado</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">FC B</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">00002-00001157</div>
+                                    <div class="text-xs text-gray-500">01/09/2025</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">FUNDACIÓN CAMPANA</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">$45,000.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">300835</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button onclick="openDetailModal()" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalle">👁️</button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Descargar">⬇️</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer -->
+                <div class="mt-4 text-sm text-gray-500 text-right">
+                    Última actualización: hoy a las 15:01
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Upload -->
+    <div id="uploadModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-gray-900">Subir Comprobante</h3>
+                <button onclick="closeUploadModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="p-6">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-axioma-primary transition cursor-pointer">
+                    <div class="text-6xl mb-4">📁</div>
+                    <p class="text-lg font-medium text-gray-700 mb-2">Arrastra tu comprobante aquí</p>
+                    <p class="text-sm text-gray-500 mb-4">o haz click para seleccionar</p>
+                    <p class="text-xs text-gray-400">Formatos: PDF, JPG, PNG, JPEG</p>
+                    <p class="text-xs text-gray-400">Tamaño máximo: 10MB</p>
+                </div>
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-600 mb-2">o ingresa los datos manualmente</p>
+                    <button class="text-axioma-primary hover:text-axioma-dark font-medium">✏️ Cargar manualmente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detail -->
+    <div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                <h3 class="text-xl font-bold text-gray-900">Factura F-00002-00001189</h3>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="p-6">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Vista previa -->
+                    <div class="bg-gray-100 rounded-lg p-6 text-center">
+                        <p class="text-6xl mb-4">📄</p>
+                        <p class="text-sm text-gray-600 mb-4">Vista previa del documento</p>
+                        <div class="flex justify-center gap-2 text-2xl">
+                            <button title="Zoom in">🔍</button>
+                            <button title="Zoom out">🔍</button>
+                            <button title="Rotar">↻</button>
+                            <button title="Imprimir">🖨️</button>
+                            <button title="Descargar">⬇️</button>
+                        </div>
+                    </div>
+
+                    <!-- Información -->
+                    <div>
+                        <h4 class="font-bold text-gray-900 mb-4">INFORMACIÓN</h4>
+                        <dl class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <dt class="text-gray-600">Estado:</dt>
+                                <dd><span class="px-2 py-1 bg-gray-900 text-white text-xs rounded">Exportado</span></dd>
+                            </div>
+                            <div class="flex justify-between">
+                                <dt class="text-gray-600">Fecha:</dt>
+                                <dd class="font-medium">01/11/2025 14:30</dd>
+                            </div>
+                            <div class="flex justify-between">
+                                <dt class="text-gray-600">Cliente:</dt>
+                                <dd class="font-medium">FUNDACIÓN CAMPANA</dd>
+                            </div>
+                        </dl>
+
+                        <h4 class="font-bold text-gray-900 mt-6 mb-4">MONTOS</h4>
+                        <dl class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <dt class="text-gray-600">Subtotal:</dt>
+                                <dd class="font-medium">$ 50,000.00</dd>
+                            </div>
+                            <div class="flex justify-between">
+                                <dt class="text-gray-600">IVA (21%):</dt>
+                                <dd class="font-medium">$ 10,500.00</dd>
+                            </div>
+                            <div class="flex justify-between border-t pt-2 font-bold">
+                                <dt>Total:</dt>
+                                <dd>$ 60,500.00</dd>
+                            </div>
+                        </dl>
+
+                        <h4 class="font-bold text-gray-900 mt-6 mb-4">OC RELACIONADA</h4>
+                        <div class="bg-gray-50 p-4 rounded">
+                            <p class="font-medium">OC-300919</p>
+                            <p class="text-sm text-gray-600">Monto OC: $500,000</p>
+                            <p class="text-sm text-gray-600">Facturado: $310,500 (62%)</p>
+                            <button class="text-blue-600 hover:text-blue-800 text-sm mt-2">👁️ Ver OC</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline -->
+                <div class="mt-6 border-t pt-6">
+                    <h4 class="font-bold text-gray-900 mb-4">TIMELINE</h4>
+                    <div class="space-y-3">
+                        <div class="flex gap-4">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">✅</div>
+                            <div class="flex-1">
+                                <p class="font-medium text-sm">Exportado</p>
+                                <p class="text-xs text-gray-500">05/11/2025 10:30</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">✅</div>
+                            <div class="flex-1">
+                                <p class="font-medium text-sm">Aprobado</p>
+                                <p class="text-xs text-gray-500">03/11/2025 15:00 - Por: Ana López</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">✅</div>
+                            <div class="flex-1">
+                                <p class="font-medium text-sm">Presentado</p>
+                                <p class="text-xs text-gray-500">01/11/2025 14:30 - Por: Mi Empresa</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openUploadModal() {
+            document.getElementById('uploadModal').classList.remove('hidden');
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.add('hidden');
+        }
+
+        function openDetailModal() {
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        function toggleFilters() {
+            alert('Panel de filtros (implementar)');
+        }
+    </script>
+</body>
+</html>

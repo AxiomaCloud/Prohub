@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alta de Proveedor - AXIOMA Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        axioma: {
+                            dark: '#352151',
+                            primary: '#8E6AAA',
+                            yellow: '#FCE5B7',
+                            pink: '#F1ABB5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-4xl w-full">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-axioma-dark">AXIOMA Hub</h1>
+                <p class="text-gray-600 mt-2">Bienvenido - Complete su perfil</p>
+            </div>
+
+            <!-- Formularios Card -->
+            <div id="selectForm" class="bg-white rounded-lg shadow-xl p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Formularios</h2>
+
+                <p class="text-gray-600 mb-8">
+                    Para comenzar a trabajar con <strong>EMPRESA A SA</strong>, completá los siguientes formularios obligatorios:
+                </p>
+
+                <div class="space-y-4">
+                    <!-- Formulario 1 -->
+                    <div onclick="openBankForm()" class="border-2 border-green-500 rounded-lg p-6 cursor-pointer hover:bg-green-50 transition">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-2">DECLARACIÓN CUENTA BANCARIA</h3>
+                                <p class="text-sm text-gray-600 mb-3">
+                                    Necesitamos tus datos bancarios para poder efectuar los pagos.
+                                </p>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-medium text-yellow-600">⚠️ Pendiente</span>
+                                </div>
+                            </div>
+                            <div class="text-3xl">🏦</div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario 2 -->
+                    <div onclick="openProviderForm()" class="border-2 border-green-500 rounded-lg p-6 cursor-pointer hover:bg-green-50 transition">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-2">FORMULARIO DE PROVEEDORES</h3>
+                                <p class="text-sm text-gray-600 mb-3">
+                                    Información fiscal, legal y de contacto de tu empresa.
+                                </p>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-medium text-yellow-600">⚠️ Pendiente</span>
+                                </div>
+                            </div>
+                            <div class="text-3xl">📋</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p class="text-sm text-yellow-800">
+                        ⚠️ <strong>Importante:</strong> Debes completar ambos formularios para poder subir documentos.
+                    </p>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <a href="index.html" class="text-sm text-gray-500 hover:text-gray-700">← Volver a prototipos</a>
+                </div>
+            </div>
+
+            <!-- Formulario: Cuenta Bancaria -->
+            <div id="bankForm" class="hidden bg-white rounded-lg shadow-xl p-8 max-h-[90vh] overflow-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Declaración de Cuenta Bancaria</h2>
+                    <button onclick="closeForms()" class="text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+
+                <form class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Banco *</label>
+                        <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                            <option>Seleccionar banco...</option>
+                            <option>Banco Nación</option>
+                            <option>Banco Provincia</option>
+                            <option>Banco Galicia</option>
+                            <option>Banco Santander</option>
+                            <option>BBVA</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Cuenta *</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="radio" name="accountType" class="mr-2">
+                                <span>Cuenta Corriente</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="accountType" class="mr-2" checked>
+                                <span>Caja de Ahorro</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Número de Cuenta *</label>
+                        <input type="text" placeholder="0123456789" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CBU/CVU *</label>
+                        <input type="text" placeholder="0170099220000012345678" maxlength="22" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                        <p class="text-xs text-gray-500 mt-1">22 dígitos</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Alias (opcional)</label>
+                        <input type="text" placeholder="MI.EMPRESA.PAGOS" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Titular de la Cuenta *</label>
+                        <input type="text" placeholder="MI EMPRESA SRL" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                        <p class="text-xs text-gray-500 mt-1">Debe coincidir con la razón social</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CUIT del Titular *</label>
+                        <input type="text" placeholder="30-12345678-9" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Moneda *</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="radio" name="currency" class="mr-2" checked>
+                                <span>Pesos (ARS)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="currency" class="mr-2">
+                                <span>Dólares (USD)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-axioma-primary transition cursor-pointer">
+                        <div class="text-4xl mb-2">📎</div>
+                        <p class="font-medium text-gray-700">Adjuntar constancia de CBU</p>
+                        <p class="text-sm text-gray-500">Formatos: PDF, JPG, PNG - Máx 5MB</p>
+                        <button type="button" class="mt-3 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded">Seleccionar archivo...</button>
+                    </div>
+
+                    <div class="flex gap-4 pt-6">
+                        <button type="button" onclick="closeForms()" class="flex-1 border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="showSuccess('Datos bancarios guardados correctamente')" class="flex-1 bg-axioma-primary hover:bg-axioma-dark text-white px-6 py-3 rounded-lg font-medium">
+                            💾 Guardar datos bancarios
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Formulario: Proveedor -->
+            <div id="providerForm" class="hidden bg-white rounded-lg shadow-xl p-8 max-h-[90vh] overflow-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Formulario de Proveedores</h2>
+                    <button onclick="closeForms()" class="text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+
+                <form class="space-y-8">
+                    <!-- DATOS DE LA EMPRESA -->
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">DATOS DE LA EMPRESA</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Razón Social *</label>
+                                <input type="text" placeholder="MI EMPRESA SRL" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">CUIT *</label>
+                                    <input type="text" placeholder="30-12345678-9" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre de Fantasía</label>
+                                    <input type="text" placeholder="Mi Empresa" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Condición Fiscal *</label>
+                                <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                    <option>Responsable Inscripto</option>
+                                    <option>Monotributo</option>
+                                    <option>Exento</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Factura que emite *</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center"><input type="radio" name="invoiceType" class="mr-2"><span>Factura A</span></label>
+                                    <label class="flex items-center"><input type="radio" name="invoiceType" class="mr-2" checked><span>Factura B</span></label>
+                                    <label class="flex items-center"><input type="radio" name="invoiceType" class="mr-2"><span>Factura C</span></label>
+                                    <label class="flex items-center"><input type="radio" name="invoiceType" class="mr-2"><span>Factura E (Exportación)</span></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- DOMICILIO FISCAL -->
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">DOMICILIO FISCAL</h3>
+                        <div class="space-y-4">
+                            <div class="grid md:grid-cols-4 gap-4">
+                                <div class="md:col-span-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Calle *</label>
+                                    <input type="text" placeholder="Av. Corrientes" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Número *</label>
+                                    <input type="text" placeholder="1234" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Piso/Depto</label>
+                                    <input type="text" placeholder="5 A" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Código Postal *</label>
+                                    <input type="text" placeholder="C1043" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Localidad/Ciudad *</label>
+                                <input type="text" placeholder="Ciudad Autónoma de Buenos Aires" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Provincia *</label>
+                                    <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                        <option>Buenos Aires</option>
+                                        <option>CABA</option>
+                                        <option>Córdoba</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">País *</label>
+                                    <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                        <option>Argentina</option>
+                                        <option>Uruguay</option>
+                                        <option>Chile</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- DATOS DE CONTACTO -->
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">DATOS DE CONTACTO</h3>
+                        <div class="space-y-4">
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Teléfono *</label>
+                                    <input type="tel" placeholder="+54 11 4567-8900" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">WhatsApp</label>
+                                    <input type="tel" placeholder="+54 9 11 2345-6789" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email Principal *</label>
+                                <input type="email" placeholder="contacto@miempresa.com" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email Secundario (Facturación)</label>
+                                <input type="email" placeholder="facturacion@miempresa.com" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Persona de Contacto *</label>
+                                    <input type="text" placeholder="Juan Pérez" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Cargo</label>
+                                    <input type="text" placeholder="Gerente Administrativo" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-axioma-primary">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- DOCUMENTACIÓN -->
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">DOCUMENTACIÓN</h3>
+                        <div class="space-y-4">
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-axioma-primary transition">
+                                <p class="font-medium text-sm mb-2">📎 Constancia de Inscripción AFIP *</p>
+                                <p class="text-xs text-gray-500 mb-3">Formatos: PDF - Máx 5MB</p>
+                                <button type="button" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded text-sm">Seleccionar archivo...</button>
+                            </div>
+
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-axioma-primary transition">
+                                <p class="font-medium text-sm mb-2">📎 Constancia de Inscripción IIBB</p>
+                                <p class="text-xs text-gray-500 mb-3">Formatos: PDF - Máx 5MB</p>
+                                <button type="button" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded text-sm">Seleccionar archivo...</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- PREFERENCIAS -->
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">PREFERENCIAS DE NOTIFICACIONES</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-700 mb-2">Quiero recibir notificaciones por:</p>
+                                <div class="space-y-2">
+                                    <label class="flex items-center"><input type="checkbox" class="mr-2" checked><span>Email</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-2" checked><span>WhatsApp</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-2"><span>SMS</span></label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-700 mb-2">Notificarme cuando:</p>
+                                <div class="space-y-2">
+                                    <label class="flex items-center"><input type="checkbox" class="mr-2" checked><span>Mi documento cambia de estado</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-2" checked><span>Recibo un nuevo pago</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-2" checked><span>Hay un comentario en mi documento</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-2"><span>Hay nuevas órdenes de compra</span></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 pt-6">
+                        <button type="button" onclick="closeForms()" class="flex-1 border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="showSuccess('Registro completado correctamente')" class="flex-1 bg-axioma-primary hover:bg-axioma-dark text-white px-6 py-3 rounded-lg font-medium">
+                            ✓ Completar registro
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Success Message -->
+            <div id="successMessage" class="hidden bg-white rounded-lg shadow-xl p-8 text-center">
+                <div class="text-6xl mb-4">✅</div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">¡Registro completado!</h2>
+                <p class="text-gray-600 mb-6">
+                    Tu perfil ha sido creado exitosamente.<br>
+                    <strong>EMPRESA A SA</strong> revisará tu información y activará tu cuenta en las próximas 24-48 horas.
+                </p>
+                <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                    <p class="text-sm text-blue-800">
+                        📧 Recibirás un email cuando tu cuenta esté activa.
+                    </p>
+                </div>
+                <div class="flex gap-4 justify-center">
+                    <button onclick="closeForms()" class="bg-axioma-primary hover:bg-axioma-dark text-white px-6 py-3 rounded-lg font-medium">
+                        Volver a inicio
+                    </button>
+                    <a href="documentos.html" class="border-2 border-axioma-primary text-axioma-primary hover:bg-axioma-primary hover:text-white px-6 py-3 rounded-lg font-medium transition">
+                        Ir al dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openBankForm() {
+            document.getElementById('selectForm').classList.add('hidden');
+            document.getElementById('bankForm').classList.remove('hidden');
+        }
+
+        function openProviderForm() {
+            document.getElementById('selectForm').classList.add('hidden');
+            document.getElementById('providerForm').classList.remove('hidden');
+        }
+
+        function closeForms() {
+            document.getElementById('selectForm').classList.remove('hidden');
+            document.getElementById('bankForm').classList.add('hidden');
+            document.getElementById('providerForm').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            document.getElementById('selectForm').classList.add('hidden');
+            document.getElementById('bankForm').classList.add('hidden');
+            document.getElementById('providerForm').classList.add('hidden');
+            document.getElementById('successMessage').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
