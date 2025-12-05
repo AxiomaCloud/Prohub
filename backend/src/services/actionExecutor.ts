@@ -10,9 +10,10 @@ const prisma = new PrismaClient();
  */
 
 interface AIAction {
-  accion: 'crear_requerimiento' | 'consultar_estado' | 'aprobar_documento' | 'unknown';
+  accion: 'crear_requerimiento' | 'consultar_estado' | 'aprobar_documento' | 'subir_factura' | 'unknown';
   entidades?: any;
   error?: string;
+  requiresUserAction?: 'file_upload';
 }
 
 interface ExecutionResult {
@@ -20,6 +21,8 @@ interface ExecutionResult {
   message: string;
   data?: any;
   error?: string;
+  requiresUserAction?: 'file_upload';
+  actionContext?: any; // Contexto adicional para la acción del usuario
 }
 
 class ActionExecutorService {
@@ -45,6 +48,9 @@ class ActionExecutorService {
 
         case 'aprobar_documento':
           return await this.aprobarDocumento(action, userId, tenantId);
+
+        case 'subir_factura':
+          return this.solicitarSubidaFactura(action);
 
         case 'unknown':
           return {
@@ -227,6 +233,33 @@ class ActionExecutorService {
       success: false,
       message: 'La funcionalidad de aprobación estará disponible próximamente',
       error: 'No implementado aún'
+    };
+  }
+
+  /**
+   * Solicita al usuario que suba un archivo de factura
+   */
+  private solicitarSubidaFactura(action: AIAction): ExecutionResult {
+    const { tipoDocumento, proveedorNombre } = action.entidades || {};
+
+    let mensaje = '📄 **¡Perfecto! Vamos a procesar tu documento.**\n\n';
+
+    if (proveedorNombre) {
+      mensaje += `Veo que es un documento de **${proveedorNombre}**.\n\n`;
+    }
+
+    mensaje += '📎 **Seleccioná el archivo** (PDF o imagen) usando el botón de abajo.\n\n';
+    mensaje += '💡 **Formatos soportados:** PDF, JPG, PNG\n';
+    mensaje += '📏 **Tamaño máximo:** 10 MB';
+
+    return {
+      success: true,
+      message: mensaje,
+      requiresUserAction: 'file_upload',
+      actionContext: {
+        tipoDocumento: tipoDocumento || 'AUTO',
+        proveedorNombre: proveedorNombre || null
+      }
     };
   }
 

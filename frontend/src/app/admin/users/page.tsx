@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Users, UserPlus, Edit, Trash2, X, Search, Mail, CheckCircle2, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/hooks/useApiClient';
+import { useConfirmDialog } from '@/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -58,6 +59,7 @@ const ROLE_CATEGORIES = {
 export default function UsersPage() {
   const { user: currentUser, isSuperuser, tenant: currentTenant } = useAuth();
   const { get, post, put, delete: del } = useApiClient();
+  const { confirm } = useConfirmDialog();
 
   const [users, setUsers] = useState<User[]>([]);
   const [availableRoles, setAvailableRoles] = useState<AvailableRole[]>([]);
@@ -234,9 +236,13 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (user: User) => {
-    if (!confirm(`¿Está seguro de eliminar ${user.name}?`)) {
-      return;
-    }
+    const confirmed = await confirm(
+      `¿Está seguro de eliminar "${user.name}"?\n\nEsta acción no se puede deshacer.`,
+      'Eliminar Usuario',
+      'danger'
+    );
+
+    if (!confirmed) return;
 
     try {
       setLoading(true);
@@ -267,9 +273,13 @@ export default function UsersPage() {
   };
 
   const handleVerifyEmailManually = async (user: User) => {
-    if (!confirm(`¿Estás seguro de que quieres verificar manualmente el email de ${user.name}?`)) {
-      return;
-    }
+    const confirmed = await confirm(
+      `¿Estás seguro de que quieres verificar manualmente el email de "${user.name}"?`,
+      'Verificar Email',
+      'warning'
+    );
+
+    if (!confirmed) return;
 
     try {
       setLoading(true);

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
+import { useConfirmDialog } from '@/hooks/useConfirm';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import {
   Table,
@@ -55,6 +56,7 @@ export default function TenantsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { get, post, put, delete: del } = useApiClient();
+  const { confirm } = useConfirmDialog();
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
@@ -216,9 +218,13 @@ export default function TenantsPage() {
   };
 
   const handleDelete = async (tenant: Tenant) => {
-    if (!confirm(`¿Está seguro de eliminar ${tenant.name}?`)) {
-      return;
-    }
+    const confirmed = await confirm(
+      `¿Está seguro de eliminar "${tenant.name}"?\n\nEsta acción no se puede deshacer.`,
+      'Eliminar Tenant',
+      'danger'
+    );
+
+    if (!confirmed) return;
 
     try {
       await del(`/api/tenants/${tenant.id}`);
@@ -250,7 +256,14 @@ export default function TenantsPage() {
 
   const handleRemoveUser = async (membershipId: string) => {
     if (!selectedTenant) return;
-    if (!confirm('¿Estás seguro de remover este usuario del tenant?')) return;
+
+    const confirmed = await confirm(
+      '¿Estás seguro de remover este usuario del tenant?',
+      'Remover Usuario',
+      'danger'
+    );
+
+    if (!confirmed) return;
 
     try {
       await del(`/api/tenants/${selectedTenant.id}/users/${membershipId}`);

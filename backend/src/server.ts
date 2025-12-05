@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
 import dotenv from 'dotenv'
+import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { syncProveedoresToLocal } from './services/parseIntegration'
 import authRoutes from './routes/auth'
@@ -60,6 +61,9 @@ app.use(helmet({
 app.use(compression())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// Servir archivos estáticos de uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
