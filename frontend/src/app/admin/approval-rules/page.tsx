@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/hooks/useApiClient';
+import { useConfirmDialog } from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -72,6 +73,7 @@ const LEVEL_TYPE_LABELS: Record<string, string> = {
 export default function ApprovalRulesPage() {
   const { tenant: currentTenant } = useAuth();
   const { get, post, put, delete: del } = useApiClient();
+  const { confirm } = useConfirmDialog();
 
   const [rules, setRules] = useState<ApprovalRule[]>([]);
   const [availableApprovers, setAvailableApprovers] = useState<AvailableApprover[]>([]);
@@ -280,7 +282,13 @@ export default function ApprovalRulesPage() {
   };
 
   const deleteRule = async (ruleId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta regla?')) return;
+    const confirmed = await confirm(
+      '¿Estás seguro de eliminar esta regla de aprobación?\n\nEsta acción no se puede deshacer.',
+      'Eliminar Regla',
+      'danger'
+    );
+
+    if (!confirmed) return;
 
     try {
       await del(`/api/approval-rules/${ruleId}`, { 'X-Tenant-Id': currentTenant?.id || '' });

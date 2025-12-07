@@ -10,11 +10,21 @@ interface ChatWidgetProps {
   token: string;
 }
 
+interface ExtendedChatMessage extends ChatMessageType {
+  requiresUpload?: boolean;
+  actionContext?: {
+    tipoDocumento?: string;
+    proveedorNombre?: string;
+  };
+}
+
 export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  const [messages, setMessages] = useState<ExtendedChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessageId, setUploadMessageId] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,15 +83,23 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
       });
 
       // Agregar respuesta del asistente
-      const assistantMessage: ChatMessageType = {
-        id: (Date.now() + 1).toString(),
+      const messageId = (Date.now() + 1).toString();
+      const assistantMessage: ExtendedChatMessage = {
+        id: messageId,
         role: 'assistant',
         content: response.message,
         timestamp: new Date(),
-        data: response.data
+        data: response.data,
+        requiresUpload: response.requiresUserAction === 'file_upload',
+        actionContext: response.actionContext
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Si requiere upload, guardamos el ID del mensaje
+      if (response.requiresUserAction === 'file_upload') {
+        setUploadMessageId(messageId);
+      }
 
       // Si hubo error, mostrar mensaje adicional
       if (!response.success && response.error) {
@@ -111,22 +129,80 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
     }
   };
 
+  const handleFileSelect = async (file: File, messageId: string, actionContext?: ExtendedChatMessage['actionContext']) => {
+    setIsUploading(true);
+
+    // Mostrar mensaje de que se está subiendo
+    const uploadingMessage: ExtendedChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: `📎 Subiendo: ${file.name}`,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, uploadingMessage]);
+
+    try {
+      const response = await chatService.uploadDocument(
+        file,
+        tenantId,
+        actionContext?.tipoDocumento
+      );
+
+      // Agregar respuesta del procesamiento
+      const resultMessage: ExtendedChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        data: response.data
+      };
+
+      setMessages(prev => [...prev, resultMessage]);
+
+      // Limpiar estado de upload
+      setUploadMessageId(null);
+
+      // Marcar el mensaje original como ya no requiere upload
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === messageId ? { ...msg, requiresUpload: false } : msg
+        )
+      );
+
+    } catch (error) {
+      console.error('Error subiendo archivo:', error);
+
+      const errorMessage: ExtendedChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '❌ Hubo un error al subir el archivo. Por favor intentá nuevamente.',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const toggleOpen = () => {
     setIsOpen(!isOpen);
 
     // Mensaje de bienvenida al abrir por primera vez
     if (!isOpen && messages.length === 0) {
-      const welcomeMessage: ChatMessageType = {
+      const welcomeMessage: ExtendedChatMessage = {
         id: 'welcome',
         role: 'assistant',
         content: `👋 ¡Hola! Soy **AXIO**, tu asistente inteligente de Hub.
 
 Puedo ayudarte a:
 • Crear requerimientos de compra con lenguaje natural
+• **Subir y procesar facturas** automáticamente
 • Consultar el estado de tus documentos
-• Y más próximamente...
 
-**Ejemplo:** "Necesito una notebook para diseño, presupuesto $2000, urgente"`,
+**Ejemplos:**
+• "Necesito una notebook para diseño, presupuesto $2000"
+• "Quiero subir una factura"`,
         timestamp: new Date()
       };
 
@@ -176,7 +252,13 @@ Puedo ayudarte a:
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {messages.map(message => (
-              <ChatMessage key={message.id} message={message} />
+              <ChatMessage
+                key={message.id}
+                message={message}
+                showUploadButton={message.requiresUpload && message.id === uploadMessageId}
+                onFileSelect={(file) => handleFileSelect(file, message.id, message.actionContext)}
+                isUploading={isUploading && message.id === uploadMessageId}
+              />
             ))}
 
             {isLoading && (

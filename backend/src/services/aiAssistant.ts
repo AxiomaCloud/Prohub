@@ -8,7 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
  */
 
 interface AIAction {
-  accion: 'crear_requerimiento' | 'consultar_estado' | 'aprobar_documento' | 'unknown';
+  accion: 'crear_requerimiento' | 'consultar_estado' | 'aprobar_documento' | 'subir_factura' | 'unknown';
   entidades?: {
     items?: Array<{
       descripcion: string;
@@ -19,8 +19,13 @@ interface AIAction {
     urgencia?: 'baja' | 'normal' | 'alta' | 'urgente';
     presupuesto?: number;
     justificacion?: string;
+    // Para subir_factura
+    tipoDocumento?: 'FACTURA' | 'NOTA_CREDITO' | 'NOTA_DEBITO' | 'REMITO' | 'AUTO';
+    proveedorNombre?: string;
   };
   error?: string;
+  // Flag para indicar que se requiere acción del usuario (ej: seleccionar archivo)
+  requiresUserAction?: 'file_upload';
 }
 
 interface UserContext {
@@ -133,7 +138,8 @@ ACCIONES DISPONIBLES:
 1. "crear_requerimiento" - Crear un nuevo requerimiento de compra
 2. "consultar_estado" - Consultar estado de documentos/requerimientos
 3. "aprobar_documento" - Aprobar un documento pendiente
-4. "unknown" - Cuando no puedas identificar la acción
+4. "subir_factura" - Subir y procesar una factura o documento fiscal
+5. "unknown" - Cuando no puedas identificar la acción
 
 FORMATO DE RESPUESTA (JSON estricto):
 Para "crear_requerimiento":
@@ -172,6 +178,16 @@ Para "aprobar_documento":
     "documentoId": "ID del documento",
     "comentario": "Comentario opcional"
   }
+}
+
+Para "subir_factura":
+{
+  "accion": "subir_factura",
+  "entidades": {
+    "tipoDocumento": "FACTURA" | "NOTA_CREDITO" | "NOTA_DEBITO" | "REMITO" | "AUTO",
+    "proveedorNombre": "Nombre del proveedor si lo menciona" (opcional)
+  },
+  "requiresUserAction": "file_upload"
 }
 
 Para "unknown":
@@ -282,6 +298,37 @@ Respuesta:
     "urgencia": "alta",
     "justificacion": "Reposición urgente de insumo agotado. El toner actual se terminó y está afectando la operación normal del área, impidiendo la impresión de facturas y documentación crítica."
   }
+}
+
+Usuario: "Quiero subir una factura"
+Respuesta:
+{
+  "accion": "subir_factura",
+  "entidades": {
+    "tipoDocumento": "AUTO"
+  },
+  "requiresUserAction": "file_upload"
+}
+
+Usuario: "Necesito cargar la factura de Telecom"
+Respuesta:
+{
+  "accion": "subir_factura",
+  "entidades": {
+    "tipoDocumento": "FACTURA",
+    "proveedorNombre": "Telecom"
+  },
+  "requiresUserAction": "file_upload"
+}
+
+Usuario: "Tengo una nota de crédito para subir al sistema"
+Respuesta:
+{
+  "accion": "subir_factura",
+  "entidades": {
+    "tipoDocumento": "NOTA_CREDITO"
+  },
+  "requiresUserAction": "file_upload"
 }
 
 AHORA PROCESA EL MENSAJE DEL USUARIO Y RESPONDE SOLO CON EL JSON.`;

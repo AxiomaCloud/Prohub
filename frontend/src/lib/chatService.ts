@@ -21,6 +21,11 @@ export interface ChatResponse {
   data?: any;
   error?: string;
   debug?: any;
+  requiresUserAction?: 'file_upload';
+  actionContext?: {
+    tipoDocumento?: string;
+    proveedorNombre?: string;
+  };
 }
 
 class ChatService {
@@ -68,6 +73,42 @@ class ChatService {
         available: false,
         service: 'AI Chat Assistant',
         model: null
+      };
+    }
+  }
+
+  async uploadDocument(file: File, tenantId: string, tipoDocumento?: string): Promise<ChatResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('tenantId', tenantId);
+      if (tipoDocumento) {
+        formData.append('tipoDocumento', tipoDocumento);
+      }
+
+      const response = await axios.post<ChatResponse>(
+        `${API_URL}/api/v1/chat/upload-document`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            ...(this.token && { Authorization: `Bearer ${this.token}` })
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Upload document error:', error);
+
+      if (error.response?.data) {
+        return error.response.data;
+      }
+
+      return {
+        success: false,
+        message: 'Error al subir el documento',
+        error: error.message
       };
     }
   }

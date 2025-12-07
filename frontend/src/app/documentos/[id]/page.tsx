@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Eye
 } from 'lucide-react';
+import { DocumentoParseView } from '@/components/documents/DocumentoParseView';
 
 interface Document {
   id: string;
@@ -387,11 +388,7 @@ export default function DocumentDetailPage() {
               {document.parseData && (
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-2">Datos Extraídos</label>
-                  <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
-                    <pre className="text-xs text-text-primary">
-                      {JSON.stringify(document.parseData, null, 2)}
-                    </pre>
-                  </div>
+                  <DocumentoParseView parseData={document.parseData} />
                 </div>
               )}
             </div>

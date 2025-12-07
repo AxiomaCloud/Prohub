@@ -3,38 +3,45 @@
  * Consume la API de sync de Parse usando API Key
  */
 
-const PARSE_API_URL = process.env.PARSE_API_URL || 'https://parsedemo.axiomacloud.com';
+// PARSE_API_URL puede incluir /api/v1, lo removemos para construir URLs correctamente
+const PARSE_API_URL_RAW = process.env.PARSE_API_URL || 'https://parsedemo.axiomacloud.com/api/v1';
+// Aseguramos que termine en /api/v1
+const PARSE_API_URL = PARSE_API_URL_RAW.replace(/\/api\/v1\/?$/, '') + '/api/v1';
 const PARSE_API_KEY = process.env.PARSE_API_KEY || '';
 const PARSE_TENANT_ID = process.env.PARSE_TENANT_ID || 'grupolb';
 
 export interface ParametroMaestro {
-  id: number;
-  codigo: string;
-  nombre: string;
+  id: number | string;
+  codigo?: string;
+  nombre?: string;
   descripcion?: string;
-  tipo_campo: string;
+  tipo_campo?: string;
   valor_padre?: string;
-  orden: number;
-  activo: boolean;
+  orden?: number;
+  activo?: boolean;
   tenantId?: string;
   parametros_json?: any;
-  createdAt: string;
-  updatedAt: string;
-  // Campos adicionales para proveedores
+  createdAt?: string;
+  updatedAt?: string;
+  // Campos de proveedores (formato Parse)
+  razonSocial?: string;
   cuit?: string;
   direccion?: string;
   telefono?: string;
   email?: string;
   contacto?: string;
+  lastExportedAt?: string;
 }
 
 interface SyncDownloadResponse {
   success: boolean;
-  tabla: string;
   data: ParametroMaestro[];
-  schema?: any;
-  syncType: string;
-  timestamp: string;
+  pagination?: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
   error?: string;
 }
 
@@ -47,7 +54,8 @@ async function downloadFromParse(tabla: string): Promise<ParametroMaestro[]> {
     return [];
   }
 
-  const url = `${PARSE_API_URL}/api/sync/download/${PARSE_TENANT_ID}?tabla=${tabla}`;
+  // El endpoint de sync en Parse es /api/v1/parse/sync/{tabla}
+  const url = `${PARSE_API_URL}/parse/sync/${tabla}?limit=1000`;
 
   console.log(`[PARSE] Descargando ${tabla} desde ${url}`);
 
@@ -123,19 +131,19 @@ export interface Supplier {
 }
 
 /**
- * Mapea un parámetro maestro de tipo 'proveedor' al formato Supplier de Hub
- * NOTA: param.codigo es el ID del proveedor, param.cuit es el CUIT (campo directo)
+ * Mapea un proveedor de Parse al formato Supplier de Hub
+ * Parse devuelve: id, razonSocial, cuit, email, telefono, direccion, activo
  */
 export function mapParametroToSupplier(param: ParametroMaestro): Supplier {
   return {
-    id: param.codigo,  // El codigo es el ID del proveedor
-    nombre: param.nombre,
-    cuit: param.cuit || '',  // CUIT viene como campo directo
+    id: String(param.id),
+    nombre: param.razonSocial || param.nombre || '',
+    cuit: param.cuit || '',
     direccion: param.direccion,
     telefono: param.telefono,
     email: param.email,
     contacto: param.contacto,
-    isActive: param.activo,
+    isActive: param.activo !== false, // Por defecto true
   };
 }
 

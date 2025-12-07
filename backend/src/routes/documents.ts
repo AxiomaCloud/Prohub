@@ -35,10 +35,11 @@ const upload = multer({
 });
 
 /**
- * POST /api/documents/upload
+ * POST /api/documents/new
  * Upload a new document
+ * (Renombrado de /upload para evitar bloqueo por ad-blockers)
  */
-router.post('/upload', authenticate, upload.single('file'), async (req: Request, res: Response) => {
+router.post('/new', authenticate, upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });

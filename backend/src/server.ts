@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
 import dotenv from 'dotenv'
+import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { syncProveedoresToLocal } from './services/parseIntegration'
 import authRoutes from './routes/auth'
@@ -29,7 +30,13 @@ const PORT = process.env.PORT || 4000
 const prisma = new PrismaClient()
 
 // Sincronización automática de proveedores desde Parse
+// DESHABILITADA temporalmente - el endpoint de Parse devuelve error 500
 async function syncProveedoresOnStartup() {
+  // Deshabilitado hasta que se corrija el endpoint en Parse
+  console.log('⚠️  Sincronización de proveedores deshabilitada temporalmente')
+  return
+
+  /*
   const tenantId = process.env.PARSE_TENANT_ID || 'grupolb'
 
   if (!process.env.PARSE_API_KEY) {
@@ -44,15 +51,24 @@ async function syncProveedoresOnStartup() {
   } catch (error) {
     console.error('❌ Error sincronizando proveedores:', error)
   }
+  */
 }
 
 // Middlewares
 // CORS debe ir antes que helmet para evitar conflictos
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.FRONTEND_URL
+].filter((url): url is string => Boolean(url))
+
+console.log('🌐 CORS allowed origins:', allowedOrigins)
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', process.env.FRONTEND_URL].filter((url): url is string => Boolean(url)),
+  origin: allowedOrigins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'X-Tenant-Id'],
 }))
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -60,6 +76,9 @@ app.use(helmet({
 app.use(compression())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// Servir archivos estáticos de uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {

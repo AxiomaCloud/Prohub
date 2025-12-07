@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ChatMessage as ChatMessageType } from '@/lib/chatService';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Upload, FileText } from 'lucide-react';
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  showUploadButton?: boolean;
+  onFileSelect?: (file: File) => void;
+  isUploading?: boolean;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({
+  message,
+  showUploadButton = false,
+  onFileSelect,
+  isUploading = false
+}) => {
   const isUser = message.role === 'user';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onFileSelect) {
+      onFileSelect(file);
+    }
+    // Reset input para permitir seleccionar el mismo archivo de nuevo
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div className={`flex gap-3 mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -63,6 +83,37 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             })}
           </div>
         </div>
+
+        {/* Botón de upload si es necesario */}
+        {showUploadButton && !isUser && (
+          <div className="mt-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={isUploading}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>Seleccionar archivo</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Timestamp */}
         <div className={`text-xs text-gray-500 mt-1 px-2 ${isUser ? 'text-right' : ''}`}>
