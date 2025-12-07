@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Documentos - Diseño Detallado</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            background: #F9FAFB;
+            padding: 40px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1F2937;
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 40px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #8E6AAA;
+            color: #1F2937;
+        }
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 30px 0 15px;
+            color: #374151;
+        }
+        h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 20px 0 10px;
+            color: #4B5563;
+        }
+        p {
+            margin-bottom: 16px;
+            color: #6B7280;
+        }
+        .subtitle {
+            font-size: 16px;
+            color: #6B7280;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #E5E7EB;
+        }
+        .wireframe {
+            background: #F3F4F6;
+            border: 2px dashed #D1D5DB;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.4;
+            color: #374151;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        th {
+            background: #F9FAFB;
+            font-weight: 600;
+            color: #374151;
+        }
+        tr:hover {
+            background: #F9FAFB;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+        .badge-presentado { background: #3B82F6; }
+        .badge-revision { background: #F59E0B; }
+        .badge-aprobado { background: #10B981; }
+        .badge-exportado { background: #1F2937; }
+        .badge-pagado { background: #059669; }
+        .badge-rechazado { background: #EF4444; }
+        .badge-procesando { background: #6B7280; }
+        .badges-demo {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        code {
+            background: #F3F4F6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #8E6AAA;
+        }
+        .code-block {
+            background: #1F2937;
+            color: #E5E7EB;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+        .code-block .tag { color: #F472B6; }
+        .code-block .attr { color: #A78BFA; }
+        .code-block .value { color: #34D399; }
+        .checklist {
+            list-style: none;
+        }
+        .checklist li {
+            padding: 8px 0;
+            padding-left: 28px;
+            position: relative;
+        }
+        .checklist li::before {
+            content: '☐';
+            position: absolute;
+            left: 0;
+            color: #9CA3AF;
+        }
+        .flow-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            background: #F9FAFB;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .flow-step {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .flow-arrow {
+            color: #9CA3AF;
+            font-size: 20px;
+        }
+        .color-swatch {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 8px 4px 0;
+        }
+        .color-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid #E5E7EB;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 20px;
+            }
+        }
+        .highlight {
+            background: linear-gradient(120deg, #8E6AAA20 0%, #8E6AAA10 100%);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #8E6AAA;
+            margin: 20px 0;
+        }
+        .icon-table td:first-child {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 Portal de Documentos</h1>
+        <p class="subtitle">Diseño del módulo principal donde los proveedores gestionan sus comprobantes con integración Parse.</p>
+
+        <div class="highlight">
+            <strong>🎯 Objetivo:</strong> Portal tipo tabla (basado en cobranzas.com) donde los proveedores ven sus comprobantes en lista completa, con estados visuales, integración con Parse para carga en 1 click, filtros avanzados y exportación.
+        </div>
+
+        <!-- PANTALLA PRINCIPAL -->
+        <h2>📋 Pantalla Principal - Documentos</h2>
+
+        <div class="card">
+            <h3>Layout Desktop</h3>
+            <div class="wireframe">┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ [SIDEBAR]    📄 Documentos Presentados                     [Badge: 01]              │
+│              ═════════════════════════                                              │
+│                                                                                     │
+│  [🔍 Filtrar]                           ← 1/5 →                [📤 Cargar documento]│
+│                                                                                     │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐ │
+│  │ Estado    Tipo  Número         Fecha      Empresa    Monto    OC      Acciones│ │
+│  │                                Emisión               Total                     │ │
+│  ├───────────────────────────────────────────────────────────────────────────────┤ │
+│  │ Exportado  FC B 00002-00001189 01/11/25  FUNDACIÓN  $60,500  300919  [👁️][⬇️]│ │
+│  │                                           CAMPANA                              │ │
+│  ├───────────────────────────────────────────────────────────────────────────────┤ │
+│  │ Exportado  FC B 00002-00001183 03/10/25  FUNDACIÓN  $30,000  300876  [👁️][⬇️]│ │
+│  │                                           CAMPANA                              │ │
+│  ├───────────────────────────────────────────────────────────────────────────────┤ │
+│  │ Rechazado  FC B 00002-00001171 24/09/25  ASOC. CIVIL $10,000 300855  [👁️][⬇️]│ │
+│  │                                           ENSEÑANZA                            │ │
+│  └───────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                     │
+│  Última actualización: hoy a las 15:01                                              │
+└─────────────────────────────────────────────────────────────────────────────────────┘</div>
+        </div>
+
+        <div class="card">
+            <h3>Columnas de la Tabla</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Columna</th>
+                        <th>Descripción</th>
+                        <th>Ancho</th>
+                        <th>Obligatoria</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Estado</strong></td>
+                        <td>Badge de color con texto</td>
+                        <td>100px</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tipo</strong></td>
+                        <td>FC B, FC A, NC, ND</td>
+                        <td>80px</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Número</strong></td>
+                        <td>00002-00001189</td>
+                        <td>140px</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fecha Emisión</strong></td>
+                        <td>DD/MM/YY</td>
+                        <td>90px</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Empresa</strong></td>
+                        <td>Nombre empresa</td>
+                        <td>150px</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Monto Total</strong></td>
+                        <td>$XX,XXX.XX</td>
+                        <td>100px</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OC</strong></td>
+                        <td>Número OC</td>
+                        <td>80px</td>
+                        <td>⚠️ Si aplica</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Acciones</strong></td>
+                        <td>[👁️] [⬇️]</td>
+                        <td>80px</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ESTADOS CON BADGES -->
+        <div class="card">
+            <h3>Estados con Badges</h3>
+            <p>Los estados se muestran como badges (etiquetas) con fondo de color y texto, no iconos.</p>
+
+            <div class="badges-demo">
+                <span class="badge badge-presentado">Presentado</span>
+                <span class="badge badge-revision">En Revisión</span>
+                <span class="badge badge-aprobado">Aprobado</span>
+                <span class="badge badge-exportado">Exportado</span>
+                <span class="badge badge-pagado">Pagado</span>
+                <span class="badge badge-rechazado">Rechazado</span>
+                <span class="badge badge-procesando">Procesando</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>Color Fondo</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge badge-presentado">Presentado</span></td>
+                        <td><code>#3B82F6</code></td>
+                        <td>Recién cargado, esperando revisión</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-revision">En Revisión</span></td>
+                        <td><code>#F59E0B</code></td>
+                        <td>Siendo evaluado por el cliente</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-aprobado">Aprobado</span></td>
+                        <td><code>#10B981</code></td>
+                        <td>Aprobado, esperando pago</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-exportado">Exportado</span></td>
+                        <td><code>#1F2937</code></td>
+                        <td>Exportado al ERP del cliente</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-pagado">Pagado</span></td>
+                        <td><code>#059669</code></td>
+                        <td>Pago emitido</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-rechazado">Rechazado</span></td>
+                        <td><code>#EF4444</code></td>
+                        <td>Rechazado con motivo</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-procesando">Procesando</span></td>
+                        <td><code>#6B7280</code></td>
+                        <td>Parse procesando IA</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Código HTML de Badges</h4>
+            <div class="code-block">
+<span class="tag">&lt;span</span> <span class="attr">class</span>=<span class="value">"px-3 py-1 bg-gray-900 text-white text-xs font-medium rounded"</span><span class="tag">&gt;</span>
+  Exportado
+<span class="tag">&lt;/span&gt;</span>
+
+<span class="tag">&lt;span</span> <span class="attr">class</span>=<span class="value">"px-3 py-1 bg-red-500 text-white text-xs font-medium rounded"</span><span class="tag">&gt;</span>
+  Rechazado
+<span class="tag">&lt;/span&gt;</span>
+
+<span class="tag">&lt;span</span> <span class="attr">class</span>=<span class="value">"px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded"</span><span class="tag">&gt;</span>
+  Presentado
+<span class="tag">&lt;/span&gt;</span>
+            </div>
+        </div>
+
+        <!-- SUBIR COMPROBANTE -->
+        <h2>📤 Subir Comprobante - Flujo Completo</h2>
+
+        <div class="grid-2">
+            <div class="card">
+                <h3>Paso 1: Modal de Carga</h3>
+                <div class="wireframe">┌────────────────────────────────────┐
+│  Subir Comprobante            [❌]  │
+├────────────────────────────────────┤
+│                                    │
+│  ┌──────────────────────────────┐ │
+│  │                              │ │
+│  │   📁 Arrastra tu comprobante │ │
+│  │      aquí o haz click        │ │
+│  │                              │ │
+│  │   Formatos: PDF, JPG, PNG    │ │
+│  │   Tamaño máximo: 10MB        │ │
+│  │                              │ │
+│  └──────────────────────────────┘ │
+│                                    │
+│  o ingresa los datos manualmente   │
+│  [✏️ Cargar manualmente]            │
+│                                    │
+└────────────────────────────────────┘</div>
+            </div>
+
+            <div class="card">
+                <h3>Paso 2: Procesando con IA</h3>
+                <div class="wireframe">┌────────────────────────────────────┐
+│  Procesando Comprobante       [❌]  │
+├────────────────────────────────────┤
+│                                    │
+│  📄 factura-nov-2025.pdf   1.2 MB  │
+│                                    │
+│  ✅ Archivo subido exitosamente    │
+│  ⏳ Analizando con Axioma Parse... │
+│                                    │
+│  ┌──────────────────────────────┐ │
+│  │  🤖 Axioma Parse - IA        │ │
+│  │                              │ │
+│  │  ✓ Documento escaneado       │ │
+│  │  ✓ Clasificando tipo...      │ │
+│  │  ⏳ Extrayendo datos...      │ │
+│  │                              │ │
+│  │  [━━━━━━━━━━━░░░░] 78%       │ │
+│  │                              │ │
+│  │  Tiempo estimado: 8 seg      │ │
+│  └──────────────────────────────┘ │
+│                                    │
+└────────────────────────────────────┘</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Paso 3: Revisión de Datos Extraídos</h3>
+            <div class="wireframe">┌────────────────────────────────────────────────────────────────────────────┐
+│  Revisá los datos extraídos                                          [❌]  │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌──────────────────────────┐  ┌──────────────────────────────────────┐  │
+│  │                          │  │ DATOS DETECTADOS POR IA              │  │
+│  │   Vista Previa           │  │ Confianza: 98% ✅                    │  │
+│  │                          │  │                                      │  │
+│  │   [Documento PDF]        │  │ Tipo: Factura C                      │  │
+│  │                          │  │ Número: F-001-00045678               │  │
+│  │   Página 1 de 1          │  │ Fecha: 13/11/2025                    │  │
+│  │                          │  │ CUIT: 30-12345678-9                  │  │
+│  │   🔍 [+] [-] ↻          │  │ Subtotal: $50,000.00                 │  │
+│  │                          │  │ IVA (21%): $10,500.00                │  │
+│  └──────────────────────────┘  │ Total: $60,500.00                    │  │
+│                                 │ OC Relacionada: OC-2024-1234 ✅      │  │
+│                                 └──────────────────────────────────────┘  │
+│                                                                            │
+│  ⚠️ CAMPOS ADICIONALES REQUERIDOS POR EL CLIENTE                          │
+│  ┌──────────────────────────────────────────────────────────────────────┐ │
+│  │  Centro de Costos *     [Seleccionar... ▼]                           │ │
+│  │  Proyecto               [Infraestructura IT ▼]                       │ │
+│  │  Observaciones          [Servicios de mantenimiento noviembre    ]   │ │
+│  └──────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│  [← Volver]                                    [✓ CONFIRMAR Y ENVIAR]     │
+└────────────────────────────────────────────────────────────────────────────┘</div>
+        </div>
+
+        <div class="card">
+            <h3>Paso 4: Confirmación</h3>
+            <div class="wireframe">┌────────────────────────────────────────────────────────────────┐
+│  ✅ Comprobante enviado exitosamente                           │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  Tu factura F-001-00045678 ha sido presentada                 │
+│  y está siendo revisada por Empresa A SA.                     │
+│                                                                │
+│  📧 Recibirás notificaciones sobre el estado por:             │
+│  • Email                                                       │
+│  • WhatsApp (si está configurado)                             │
+│  • Notificaciones en el portal                                │
+│                                                                │
+│  Tiempo estimado de aprobación: 24-48 horas                   │
+│                                                                │
+│  [👁️ Ver mi documento]  [📤 Subir otro]  [❌ Cerrar]          │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘</div>
+        </div>
+
+        <!-- DETALLE DE DOCUMENTO -->
+        <h2>🔍 Detalle de Documento</h2>
+
+        <div class="card">
+            <h3>Modal de Detalle Completo</h3>
+            <div class="wireframe">┌──────────────────────────────────────────────────────────────────────────┐
+│  Factura F-001-00045678                          [⭐] [📤 Compartir] [❌] │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌────────────────────────┐  ┌────────────────────────────────────────┐ │
+│  │                        │  │ INFORMACIÓN                            │ │
+│  │  Vista Previa          │  │                                        │ │
+│  │  (Axioma Docs)         │  │ Estado: 📤 PRESENTADO                 │ │
+│  │                        │  │ Fecha: 13/11/2025 14:30               │ │
+│  │  [Documento]           │  │ Cliente: Empresa A SA                 │ │
+│  │                        │  │ CUIT: 30-12345678-9                   │ │
+│  │                        │  │                                        │ │
+│  │  🔍 [+][-] ↻ 🖨️ ⬇️    │  │ MONTOS                                 │ │
+│  │                        │  │ Subtotal:      $ 50,000.00            │ │
+│  └────────────────────────┘  │ IVA (21%):     $ 10,500.00            │ │
+│                              │ Total:         $ 60,500.00            │ │
+│  ┌────────────────────────┐  │                                        │ │
+│  │  TIMELINE              │  │ OC RELACIONADA                         │ │
+│  │                        │  │ OC-2024-1234                          │ │
+│  │ ✅ Presentado          │  │ Monto OC: $500,000                    │ │
+│  │ 13/11 14:30            │  │ Facturado: $310,500 (62%)             │ │
+│  │ Por: Mi Empresa        │  │ [👁️ Ver OC]                            │ │
+│  │                        │  │                                        │ │
+│  │ ⏳ En revisión         │  │ CAMPOS ADICIONALES                     │ │
+│  │ Pendiente...           │  │ Centro de Costos: IT-001              │ │
+│  │                        │  │ Proyecto: Infraestructura IT          │ │
+│  └────────────────────────┘  │                                        │ │
+│                              │ ARCHIVOS ADJUNTOS (1)                  │ │
+│                              │ 📎 factura.pdf (1.2 MB)  [👁️] [⬇️]    │ │
+│                              └────────────────────────────────────────┘ │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ COMENTARIOS Y COMUNICACIONES (0)                                   │ │
+│  │                                                                    │ │
+│  │ No hay comentarios aún.                                            │ │
+│  │                                                                    │ │
+│  │ ┌────────────────────────────────────────────────────────────────┐│ │
+│  │ │ 💬 Agregar comentario...                                       ││ │
+│  │ └────────────────────────────────────────────────────────────────┘│ │
+│  │ [📎 Adjuntar]                                         [Enviar]    │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+│  ACCIONES: [💬 Contactar cliente]  [⬇️ Descargar PDF]                   │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+        </div>
+
+        <!-- CAMPOS ADICIONALES -->
+        <h2>⚙️ Campos Adicionales Configurables</h2>
+
+        <div class="card">
+            <h3>Tipos de Campos Soportados</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Ejemplo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Lista desplegable</strong></td>
+                        <td>Select con opciones predefinidas</td>
+                        <td>Centro de Costos</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Texto corto</strong></td>
+                        <td>Input de texto (max 100 chars)</td>
+                        <td>Número de Remito</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Texto largo</strong></td>
+                        <td>Textarea (max 500 chars)</td>
+                        <td>Observaciones</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fecha</strong></td>
+                        <td>Date picker</td>
+                        <td>Fecha de Vencimiento</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Número</strong></td>
+                        <td>Input numérico</td>
+                        <td>Cantidad</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Archivo</strong></td>
+                        <td>Upload de archivo adicional</td>
+                        <td>Remito PDF</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- FILTROS -->
+        <h2>🔍 Filtros y Búsqueda</h2>
+
+        <div class="card">
+            <h3>Panel de Filtros</h3>
+            <div class="wireframe">┌────────────────────────────────────────────────────────────────┐
+│  🔍 Filtros Avanzados                                    [❌]  │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  Rango de Fechas                                               │
+│  Desde: [01/11/2025] Hasta: [30/11/2025]                      │
+│                                                                │
+│  Estado                                                        │
+│  ☑️ 📤 Presentado                                              │
+│  ☑️ 👀 En Revisión                                             │
+│  ☑️ ✅ Aprobado                                                │
+│  ☑️ 💰 Pagado                                                  │
+│  ☐ ❌ Rechazado                                                │
+│                                                                │
+│  Tipo de Comprobante                                           │
+│  ☑️ 📄 Factura                                                 │
+│  ☑️ 📝 Nota de Crédito                                         │
+│  ☑️ 📝 Nota de Débito                                          │
+│                                                                │
+│  Monto                                                         │
+│  Mínimo: [$          ] Máximo: [$          ]                  │
+│                                                                │
+│  [Limpiar filtros]                        [Aplicar filtros]   │
+└────────────────────────────────────────────────────────────────┘</div>
+        </div>
+
+        <!-- VISTA MÓVIL -->
+        <h2>📱 Vista Móvil</h2>
+
+        <div class="card">
+            <h3>Lista Compacta</h3>
+            <div class="wireframe">┌──────────────────────────┐
+│ Documentos          ☰    │
+├──────────────────────────┤
+│ 🔍 Buscar...             │
+│ [Filtros ▼]              │
+├──────────────────────────┤
+│                          │
+│ ┌────────────────────┐  │
+│ │ 📄 F-001-00045678  │  │
+│ │ $60,500.00     📤  │  │
+│ │ 13/11/25 • OC-1234 │  │
+│ │         [👁️ Ver]   │  │
+│ └────────────────────┘  │
+│                          │
+│ ┌────────────────────┐  │
+│ │ 📄 F-002-00045679  │  │
+│ │ $30,000.00     💰  │  │
+│ │ 10/11/25 • OC-1234 │  │
+│ │         [👁️ Ver]   │  │
+│ └────────────────────┘  │
+│                          │
+│ [+ Ver más]              │
+│                          │
+│ [📤 Subir Comprobante]   │
+│                          │
+└──────────────────────────┘</div>
+        </div>
+
+        <!-- DISEÑO Y UX -->
+        <h2>🎨 Diseño y UX</h2>
+
+        <div class="grid-2">
+            <div class="card">
+                <h3>Paleta de Colores</h3>
+                <p>
+                    <span class="color-swatch"><span class="color-box" style="background:#FFFFFF"></span> Fondo: <code>#FFFFFF</code></span>
+                    <span class="color-swatch"><span class="color-box" style="background:#F9FAFB"></span> Gris claro: <code>#F9FAFB</code></span>
+                    <span class="color-swatch"><span class="color-box" style="background:#E5E7EB"></span> Bordes: <code>#E5E7EB</code></span>
+                    <span class="color-swatch"><span class="color-box" style="background:#1F2937"></span> Texto: <code>#1F2937</code></span>
+                    <span class="color-swatch"><span class="color-box" style="background:#6B7280"></span> Texto medio: <code>#6B7280</code></span>
+                    <span class="color-swatch"><span class="color-box" style="background:#8E6AAA"></span> Primario: <code>#8E6AAA</code></span>
+                    <span class="color-swatch"><span class="color-box" style="background:#352151"></span> Hover: <code>#352151</code></span>
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Tipografía</h3>
+                <ul>
+                    <li><strong>Títulos:</strong> 24px, Bold, Gris oscuro</li>
+                    <li><strong>Subtítulos:</strong> 18px, Semibold, Gris oscuro</li>
+                    <li><strong>Cuerpo:</strong> 14px, Regular, Gris medio</li>
+                    <li><strong>Tabla:</strong> 13px, Regular, Gris oscuro</li>
+                    <li><strong>Labels:</strong> 12px, Medium, Gris medio</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Espaciado</h3>
+            <ul>
+                <li><strong>Padding cards:</strong> 16px</li>
+                <li><strong>Margin entre elementos:</strong> 12px</li>
+                <li><strong>Gap en grids:</strong> 16px</li>
+                <li><strong>Padding tabla:</strong> 12px vertical, 16px horizontal</li>
+            </ul>
+        </div>
+
+        <!-- FLUJO DE ESTADOS -->
+        <h2>🔄 Flujo de Estados</h2>
+
+        <div class="card">
+            <div class="flow-diagram">
+                <span class="flow-step">📤 Upload Archivo</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">⏳ Procesando Parse</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">✏️ Revisión Datos</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">📤 Presentado</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">👀 En Revisión</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">✅ Aprobado / ❌ Rechazado</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">💰 Pagado</span>
+            </div>
+        </div>
+
+        <!-- CHECKLIST -->
+        <h2>✅ Checklist de Implementación</h2>
+
+        <div class="grid-2">
+            <div class="card">
+                <h4>Fase 1: Tabla y Listado</h4>
+                <ul class="checklist">
+                    <li>Componente de tabla responsive</li>
+                    <li>Estados con iconos y tooltips</li>
+                    <li>Paginación</li>
+                    <li>Búsqueda básica</li>
+                    <li>Filtros por estado y fecha</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h4>Fase 2: Upload y Parse</h4>
+                <ul class="checklist">
+                    <li>Modal de upload drag & drop</li>
+                    <li>Integración con Parse API</li>
+                    <li>Loading states durante procesamiento</li>
+                    <li>Vista previa del documento</li>
+                    <li>Formulario de revisión de datos</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h4>Fase 3: Campos Adicionales</h4>
+                <ul class="checklist">
+                    <li>Sistema de campos configurables</li>
+                    <li>CRUD de campos (admin)</li>
+                    <li>Validaciones dinámicas</li>
+                    <li>Guardado de valores por proveedor</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h4>Fase 4: Detalle y Comunicación</h4>
+                <ul class="checklist">
+                    <li>Modal de detalle completo</li>
+                    <li>Timeline de eventos</li>
+                    <li>Sistema de comentarios</li>
+                    <li>Adjuntar documentos adicionales</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <h4>Fase 5: Notificaciones</h4>
+            <ul class="checklist">
+                <li>Notificaciones push</li>
+                <li>Emails automáticos</li>
+                <li>WhatsApp (opcional)</li>
+                <li>Toast notifications</li>
+            </ul>
+        </div>
+
+    </div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
-import { authenticate } from '../middleware/auth';
+import { authenticate, loadUserRoles } from '../middleware/auth';
+import { getPermissionsForRoles, Role as AuthRole, Permission } from '../middleware/authorization';
 import { hashPassword } from '../utils/password';
 
 const router = Router();
@@ -84,6 +85,63 @@ router.get('/roles/available', authenticate, async (req: Request, res: Response)
     res.json({ roles: AVAILABLE_ROLES });
   } catch (error) {
     console.error('Error fetching available roles:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/users/me/permissions
+ * Get current user's roles and permissions for a tenant
+ */
+router.get('/me/permissions', authenticate, loadUserRoles, async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string || req.query.tenantId as string;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    // Get membership
+    const membership = await prisma.tenantMembership.findFirst({
+      where: {
+        userId: req.user!.id,
+        tenantId: tenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        roles: true,
+        isActive: true,
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.json({
+        roles: [],
+        permissions: [],
+        isActive: false,
+        isMember: false,
+      });
+    }
+
+    const roles = membership.roles as AuthRole[];
+    const permissions = getPermissionsForRoles(roles);
+
+    res.json({
+      roles,
+      permissions,
+      isActive: membership.isActive,
+      isMember: true,
+      tenant: membership.tenant,
+    });
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

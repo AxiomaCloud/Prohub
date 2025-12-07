@@ -21,6 +21,8 @@ import approvalRulesRoutes from './routes/approvalRules'
 import approvalWorkflowsRoutes from './routes/approvalWorkflows'
 import parametrosRoutes from './routes/parametros'
 import attachmentsRoutes from './routes/attachments'
+import paymentsRoutes from './routes/payments'
+import rfqRoutes from './routes/rfq'
 
 // Cargar variables de entorno
 dotenv.config()
@@ -105,6 +107,8 @@ app.use('/api/approval-rules', approvalRulesRoutes)
 app.use('/api/approval-workflows', approvalWorkflowsRoutes)
 app.use('/api/parametros', parametrosRoutes)
 app.use('/api/attachments', attachmentsRoutes)
+app.use('/api/payments', paymentsRoutes)
+app.use('/api/rfq', rfqRoutes)
 
 // Ruta de prueba
 app.get('/api/test', (req: Request, res: Response) => {

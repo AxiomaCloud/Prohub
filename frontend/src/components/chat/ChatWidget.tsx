@@ -193,7 +193,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
       const welcomeMessage: ExtendedChatMessage = {
         id: 'welcome',
         role: 'assistant',
-        content: `👋 ¡Hola! Soy **AXIO**, tu asistente inteligente de Hub.
+        content: `👋 ¡Hola! Soy **Axio**, tu asistente inteligente de Hub.
 
 Puedo ayudarte a:
 • Crear requerimientos de compra con lenguaje natural
@@ -234,7 +234,7 @@ Puedo ayudarte a:
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               <div>
-                <h3 className="font-semibold">AXIO</h3>
+                <h3 className="font-semibold">Axio</h3>
                 <p className="text-xs opacity-90">
                   {isAvailable ? 'Conectado' : 'No disponible'}
                 </p>

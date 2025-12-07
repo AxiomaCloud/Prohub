@@ -344,6 +344,250 @@ export class NotificationService {
     });
   }
 
+  // ============================================
+  // NOTIFICACIONES DE DOCUMENTOS
+  // ============================================
+
+  /**
+   * Notifica cuando un documento es subido
+   */
+  static async notifyDocumentUploaded(
+    documentNumber: string,
+    documentType: string,
+    uploaderName: string,
+    providerName: string,
+    clientEmail: string,
+    documentId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: documentNumber,
+      titulo: `${documentType} - ${documentNumber}`,
+      solicitante: uploaderName,
+      proveedor: providerName,
+      actionUrl: `${FRONTEND_URL}/documentos/${documentId}`,
+    };
+
+    await this.sendNotification('DOC_UPLOADED', clientEmail, context);
+  }
+
+  /**
+   * Notifica cuando un documento cambia de estado
+   */
+  static async notifyDocumentStatusChanged(
+    documentNumber: string,
+    oldStatus: string,
+    newStatus: string,
+    changedByName: string,
+    recipientEmail: string,
+    documentId: string,
+    tenantId: string,
+    comment?: string
+  ): Promise<void> {
+    const statusLabels: Record<string, string> = {
+      PROCESSING: 'Procesando',
+      PRESENTED: 'Presentado',
+      IN_REVIEW: 'En Revisión',
+      APPROVED: 'Aprobado',
+      PAID: 'Pagado',
+      REJECTED: 'Rechazado',
+    };
+
+    const context: NotificationContext = {
+      tenantId,
+      numero: documentNumber,
+      titulo: `Estado: ${statusLabels[oldStatus] || oldStatus} → ${statusLabels[newStatus] || newStatus}`,
+      aprobador: changedByName,
+      comentario: comment,
+      actionUrl: `${FRONTEND_URL}/documentos/${documentId}`,
+    };
+
+    // Determinar el tipo de evento según el nuevo estado
+    let eventType: NotificationEventType = 'DOC_STATUS_CHANGED';
+    if (newStatus === 'APPROVED') eventType = 'DOC_APPROVED';
+    if (newStatus === 'REJECTED') eventType = 'DOC_REJECTED';
+
+    await this.sendNotification(eventType, recipientEmail, context);
+  }
+
+  /**
+   * Notifica cuando se agrega un comentario a un documento
+   */
+  static async notifyDocumentComment(
+    documentNumber: string,
+    commenterName: string,
+    comment: string,
+    recipientEmail: string,
+    documentId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: documentNumber,
+      solicitante: commenterName,
+      comentario: comment,
+      actionUrl: `${FRONTEND_URL}/documentos/${documentId}`,
+    };
+
+    await this.sendNotification('DOC_COMMENT', recipientEmail, context);
+  }
+
+  // ============================================
+  // NOTIFICACIONES DE PROVEEDORES
+  // ============================================
+
+  /**
+   * Notifica cuando un proveedor es invitado
+   */
+  static async notifySupplierInvited(
+    supplierEmail: string,
+    supplierName: string,
+    clientName: string,
+    inviteUrl: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      proveedor: supplierName,
+      titulo: `Invitación de ${clientName}`,
+      actionUrl: inviteUrl,
+    };
+
+    await this.sendNotification('SUPPLIER_INVITED', supplierEmail, context);
+  }
+
+  /**
+   * Notifica cuando un proveedor es aprobado
+   */
+  static async notifySupplierApproved(
+    supplierEmail: string,
+    supplierName: string,
+    clientName: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      proveedor: supplierName,
+      titulo: `Aprobación de ${clientName}`,
+      actionUrl: `${FRONTEND_URL}/proveedores`,
+    };
+
+    await this.sendNotification('SUPPLIER_APPROVED', supplierEmail, context);
+  }
+
+  /**
+   * Notifica cuando un proveedor es rechazado
+   */
+  static async notifySupplierRejected(
+    supplierEmail: string,
+    supplierName: string,
+    clientName: string,
+    reason: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      proveedor: supplierName,
+      titulo: `Rechazo de ${clientName}`,
+      comentario: reason,
+      actionUrl: `${FRONTEND_URL}/proveedores`,
+    };
+
+    await this.sendNotification('SUPPLIER_REJECTED', supplierEmail, context);
+  }
+
+  /**
+   * Notifica cuando hay un proveedor pendiente de aprobación
+   */
+  static async notifySupplierPendingApproval(
+    approverEmail: string,
+    supplierName: string,
+    supplierId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      proveedor: supplierName,
+      titulo: `Proveedor pendiente de aprobación`,
+      actionUrl: `${FRONTEND_URL}/proveedores/${supplierId}`,
+    };
+
+    await this.sendNotification('SUPPLIER_PENDING_APPROVAL', approverEmail, context);
+  }
+
+  // ============================================
+  // NOTIFICACIONES DE PAGOS
+  // ============================================
+
+  /**
+   * Notifica cuando se emite un pago
+   */
+  static async notifyPaymentIssued(
+    paymentNumber: string,
+    amount: number,
+    currency: string,
+    issuerName: string,
+    recipientEmail: string,
+    paymentId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: paymentNumber,
+      montoTotal: this.formatCurrency(amount),
+      titulo: `Pago ${paymentNumber} de ${issuerName}`,
+      actionUrl: `${FRONTEND_URL}/pagos/${paymentId}`,
+    };
+
+    await this.sendNotification('PAYMENT_ISSUED', recipientEmail, context);
+  }
+
+  /**
+   * Notifica cuando un pago es marcado como pagado
+   */
+  static async notifyPaymentCompleted(
+    paymentNumber: string,
+    amount: number,
+    issuerName: string,
+    recipientEmail: string,
+    paymentId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: paymentNumber,
+      montoTotal: this.formatCurrency(amount),
+      titulo: `Pago completado - ${paymentNumber}`,
+      actionUrl: `${FRONTEND_URL}/pagos/${paymentId}`,
+    };
+
+    await this.sendNotification('PAYMENT_COMPLETED', recipientEmail, context);
+  }
+
+  /**
+   * Notifica cuando hay un pago programado próximo
+   */
+  static async notifyPaymentScheduled(
+    paymentNumber: string,
+    amount: number,
+    scheduledDate: Date,
+    recipientEmail: string,
+    paymentId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: paymentNumber,
+      montoTotal: this.formatCurrency(amount),
+      fechaAprobacion: scheduledDate.toLocaleDateString('es-AR'),
+      titulo: `Pago programado - ${paymentNumber}`,
+      actionUrl: `${FRONTEND_URL}/pagos/${paymentId}`,
+    };
+
+    await this.sendNotification('PAYMENT_SCHEDULED', recipientEmail, context);
+  }
+
   // Helpers
   private static formatCurrency(amount: any): string {
     if (!amount) return '$0';

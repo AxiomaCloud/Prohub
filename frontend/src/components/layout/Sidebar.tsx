@@ -45,7 +45,10 @@ import {
   ClipboardList,
   PackageCheck,
   LayoutDashboard,
-  Network
+  Network,
+  FileSearch,
+  ClipboardCheck,
+  Bell
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '@/contexts/AuthContext';
@@ -100,7 +103,10 @@ const IconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   PackageCheck,
   LayoutDashboard,
   Menu,
-  Network
+  Network,
+  FileSearch,
+  ClipboardCheck,
+  Bell
 };
 
 // Helper para obtener el componente de ícono desde el nombre

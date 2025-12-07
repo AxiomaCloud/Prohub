@@ -102,10 +102,19 @@ async function seedMenu() {
     {
       id: '2-6',
       parentId: '2',
+      title: 'Cotizaciones',
+      icon: 'FileSearch',
+      url: '/compras/cotizaciones',
+      orderIndex: 6,
+      description: 'Solicitud de cotizaciones y licitaciones',
+    },
+    {
+      id: '2-7',
+      parentId: '2',
       title: 'Recepción',
       icon: 'PackageCheck',
       url: '/compras/recepcion',
-      orderIndex: 6,
+      orderIndex: 7,
       description: 'Recepción de compras y mercadería',
     },
   ];

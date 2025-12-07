@@ -93,3 +93,16 @@ export async function optionalAuthenticate(req: Request, res: Response, next: Ne
     next();
   }
 }
+
+// Re-export authorization middleware for convenience
+export {
+  loadUserRoles,
+  requireRole,
+  requirePermission,
+  requireAllPermissions,
+  requireTenantMembership,
+  requireAdmin,
+  requireSuperAdmin,
+  Permissions,
+  Roles,
+} from './authorization';

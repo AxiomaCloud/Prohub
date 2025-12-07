@@ -358,6 +358,12 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
             email: true
           }
         },
+        purchaseOrder: {
+          select: {
+            id: true,
+            number: true
+          }
+        },
         _count: {
           select: {
             comments: true,
@@ -507,6 +513,109 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
 });
 
 /**
+ * PATCH /api/documents/:id
+ * Update document data (for review step before presenting)
+ */
+router.patch('/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      number,
+      type,
+      amount,
+      taxAmount,
+      totalAmount,
+      currency,
+      date,
+      dueDate,
+      purchaseOrderId,
+      confirm // If true, change status to PRESENTED
+    } = req.body;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const document = await prisma.document.findUnique({
+      where: { id }
+    });
+
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Build update data
+    const updateData: any = {};
+
+    if (number !== undefined) updateData.number = number;
+    if (type !== undefined) updateData.type = type;
+    if (amount !== undefined) updateData.amount = parseFloat(amount);
+    if (taxAmount !== undefined) updateData.taxAmount = parseFloat(taxAmount);
+    if (totalAmount !== undefined) updateData.totalAmount = parseFloat(totalAmount);
+    if (currency !== undefined) updateData.currency = currency;
+    if (date !== undefined) updateData.date = date ? new Date(date) : null;
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+    if (purchaseOrderId !== undefined) updateData.purchaseOrderId = purchaseOrderId || null;
+
+    // If confirming, change status to PRESENTED
+    if (confirm) {
+      updateData.status = 'PRESENTED';
+    }
+
+    const updatedDocument = await prisma.document.update({
+      where: { id },
+      data: updateData,
+      include: {
+        providerTenant: {
+          select: {
+            id: true,
+            name: true,
+            taxId: true
+          }
+        },
+        clientTenant: {
+          select: {
+            id: true,
+            name: true,
+            taxId: true
+          }
+        },
+        uploader: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    // Create event if status changed
+    if (confirm) {
+      await prisma.documentEvent.create({
+        data: {
+          documentId: id,
+          fromStatus: document.status,
+          toStatus: 'PRESENTED',
+          reason: 'Document reviewed and presented',
+          userId: req.user.id
+        }
+      });
+    }
+
+    console.log(`✅ [DOCUMENTS] Document updated: ${updatedDocument.number} (${id})`);
+
+    res.json(updatedDocument);
+  } catch (error) {
+    console.error('❌ [DOCUMENTS] Error updating document:', error);
+    res.status(500).json({
+      error: 'Error updating document',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * PATCH /api/documents/:id/status
  * Update document status
  */
@@ -560,6 +669,101 @@ router.patch('/:id/status', authenticate, async (req: Request, res: Response) =>
     console.error('❌ [DOCUMENTS] Error updating status:', error);
     res.status(500).json({
       error: 'Error updating document status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/documents/:id/comments
+ * Add a comment to a document
+ */
+router.post('/:id/comments', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    if (!content || content.trim() === '') {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+
+    const document = await prisma.document.findUnique({
+      where: { id }
+    });
+
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const comment = await prisma.documentComment.create({
+      data: {
+        documentId: id,
+        userId: req.user.id,
+        content: content.trim()
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    console.log(`✅ [DOCUMENTS] Comment added to document ${id}`);
+
+    res.status(201).json(comment);
+  } catch (error) {
+    console.error('❌ [DOCUMENTS] Error adding comment:', error);
+    res.status(500).json({
+      error: 'Error adding comment',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * DELETE /api/documents/:id/comments/:commentId
+ * Delete a comment from a document
+ */
+router.delete('/:id/comments/:commentId', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id, commentId } = req.params;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const comment = await prisma.documentComment.findUnique({
+      where: { id: commentId }
+    });
+
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    // Only allow the author to delete their own comments
+    if (comment.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to delete this comment' });
+    }
+
+    await prisma.documentComment.delete({
+      where: { id: commentId }
+    });
+
+    console.log(`✅ [DOCUMENTS] Comment ${commentId} deleted from document ${id}`);
+
+    res.json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    console.error('❌ [DOCUMENTS] Error deleting comment:', error);
+    res.status(500).json({
+      error: 'Error deleting comment',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
