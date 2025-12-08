@@ -15,6 +15,8 @@ import {
   Upload,
   X,
   AlertCircle,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -56,6 +58,18 @@ interface UploadedDoc {
   url: string;
 }
 
+interface CuentaBancaria {
+  id: string;
+  banco: string;
+  tipoCuenta: string;
+  numeroCuenta: string;
+  cbu: string;
+  alias: string;
+  titularCuenta: string;
+  moneda: string;
+  esPrincipal: boolean;
+}
+
 const STEPS = [
   { id: 'bienvenida', title: 'Bienvenida', icon: CheckCircle },
   { id: 'empresa', title: 'Datos de Empresa', icon: Building2 },
@@ -84,6 +98,44 @@ const TIPOS_CUENTA = [
   { value: 'CAJA_AHORRO', label: 'Caja de Ahorro' },
 ];
 
+const BANCOS_ARGENTINA = [
+  { value: 'BANCO_NACION', label: 'Banco de la Nación Argentina' },
+  { value: 'BANCO_PROVINCIA', label: 'Banco de la Provincia de Buenos Aires' },
+  { value: 'BANCO_CIUDAD', label: 'Banco Ciudad de Buenos Aires' },
+  { value: 'BANCO_GALICIA', label: 'Banco Galicia' },
+  { value: 'BANCO_SANTANDER', label: 'Banco Santander Argentina' },
+  { value: 'BANCO_BBVA', label: 'BBVA Argentina' },
+  { value: 'BANCO_MACRO', label: 'Banco Macro' },
+  { value: 'BANCO_HSBC', label: 'HSBC Argentina' },
+  { value: 'BANCO_ICBC', label: 'ICBC Argentina' },
+  { value: 'BANCO_SUPERVIELLE', label: 'Banco Supervielle' },
+  { value: 'BANCO_PATAGONIA', label: 'Banco Patagonia' },
+  { value: 'BANCO_CREDICOOP', label: 'Banco Credicoop' },
+  { value: 'BANCO_HIPOTECARIO', label: 'Banco Hipotecario' },
+  { value: 'BANCO_COMAFI', label: 'Banco Comafi' },
+  { value: 'BANCO_ITAU', label: 'Banco Itaú Argentina' },
+  { value: 'BANCO_COLUMBIA', label: 'Banco Columbia' },
+  { value: 'BANCO_PIANO', label: 'Banco Piano' },
+  { value: 'BANCO_SAN_JUAN', label: 'Banco San Juan' },
+  { value: 'BANCO_SANTA_CRUZ', label: 'Banco Santa Cruz' },
+  { value: 'BANCO_SANTA_FE', label: 'Nuevo Banco de Santa Fe' },
+  { value: 'BANCO_ENTRE_RIOS', label: 'Nuevo Banco de Entre Ríos' },
+  { value: 'BANCO_CHUBUT', label: 'Banco del Chubut' },
+  { value: 'BANCO_CORRIENTES', label: 'Banco de Corrientes' },
+  { value: 'BANCO_FORMOSA', label: 'Banco de Formosa' },
+  { value: 'BANCO_NEUQUEN', label: 'Banco Provincia del Neuquén' },
+  { value: 'BANCO_LA_PAMPA', label: 'Banco de La Pampa' },
+  { value: 'BANCO_RIOJA', label: 'Banco Rioja' },
+  { value: 'BANCO_SANTIAGO_ESTERO', label: 'Banco de Santiago del Estero' },
+  { value: 'BANCO_TIERRA_FUEGO', label: 'Banco de Tierra del Fuego' },
+  { value: 'BANCO_TUCUMAN', label: 'Banco de Tucumán' },
+  { value: 'BRUBANK', label: 'Brubank' },
+  { value: 'UALA', label: 'Ualá' },
+  { value: 'MERCADOPAGO', label: 'Mercado Pago' },
+  { value: 'NARANJA_X', label: 'Naranja X' },
+  { value: 'OTRO', label: 'Otro' },
+];
+
 const TIPOS_DOCUMENTO = [
   { value: 'CONSTANCIA_CUIT', label: 'Constancia de CUIT/CUIL' },
   { value: 'CONSTANCIA_IIBB', label: 'Constancia de Ingresos Brutos' },
@@ -105,6 +157,7 @@ function OnboardingContent() {
   const [supplier, setSupplier] = useState<SupplierData | null>(null);
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [cuentasBancarias, setCuentasBancarias] = useState<CuentaBancaria[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -163,41 +216,56 @@ function OnboardingContent() {
 
         if (response.ok) {
           const data = await response.json();
-          setSupplier(data);
+          const supplierData = data.proveedor || data;
+          setSupplier(supplierData);
           // Pre-llenar formulario con datos existentes
           setFormData(prev => ({
             ...prev,
-            nombre: data.nombre || '',
-            nombreFantasia: data.nombreFantasia || '',
-            cuit: data.cuit || '',
-            condicionFiscal: data.condicionFiscal || '',
-            tipoFactura: data.tipoFactura || '',
-            direccion: data.direccion || '',
-            numero: data.numero || '',
-            piso: data.piso || '',
-            localidad: data.localidad || '',
-            provincia: data.provincia || '',
-            codigoPostal: data.codigoPostal || '',
-            telefono: data.telefono || '',
-            whatsapp: data.whatsapp || '',
-            email: data.email || '',
-            emailFacturacion: data.emailFacturacion || '',
-            contactoNombre: data.contactoNombre || '',
-            contactoCargo: data.contactoCargo || '',
-            banco: data.banco || '',
-            tipoCuenta: data.tipoCuenta || '',
-            numeroCuenta: data.numeroCuenta || '',
-            cbu: data.cbu || '',
-            alias: data.alias || '',
-            titularCuenta: data.titularCuenta || '',
+            nombre: supplierData.nombre || '',
+            nombreFantasia: supplierData.nombreFantasia || '',
+            cuit: supplierData.cuit || '',
+            condicionFiscal: supplierData.condicionFiscal || '',
+            tipoFactura: supplierData.tipoFactura || '',
+            direccion: supplierData.direccion || '',
+            numero: supplierData.numero || '',
+            piso: supplierData.piso || '',
+            localidad: supplierData.localidad || '',
+            provincia: supplierData.provincia || '',
+            codigoPostal: supplierData.codigoPostal || '',
+            telefono: supplierData.telefono || '',
+            whatsapp: supplierData.whatsapp || '',
+            email: supplierData.email || '',
+            emailFacturacion: supplierData.emailFacturacion || '',
+            contactoNombre: supplierData.contactoNombre || '',
+            contactoCargo: supplierData.contactoCargo || '',
+            banco: supplierData.banco || '',
+            tipoCuenta: supplierData.tipoCuenta || '',
+            numeroCuenta: supplierData.numeroCuenta || '',
+            cbu: supplierData.cbu || '',
+            alias: supplierData.alias || '',
+            titularCuenta: supplierData.titularCuenta || '',
           }));
           // Cargar documentos existentes
-          if (data.documentos) {
-            setUploadedDocs(data.documentos.map((d: any) => ({
+          if (supplierData.documentos) {
+            setUploadedDocs(supplierData.documentos.map((d: any) => ({
               id: d.id,
               tipo: d.tipo,
               nombre: d.nombre,
               url: d.url,
+            })));
+          }
+          // Cargar cuentas bancarias existentes
+          if (supplierData.cuentasBancarias && supplierData.cuentasBancarias.length > 0) {
+            setCuentasBancarias(supplierData.cuentasBancarias.map((c: any) => ({
+              id: c.id,
+              banco: c.banco || '',
+              tipoCuenta: c.tipoCuenta || '',
+              numeroCuenta: c.numeroCuenta || '',
+              cbu: c.cbu || '',
+              alias: c.alias || '',
+              titularCuenta: c.titularCuenta || '',
+              moneda: c.moneda || 'ARS',
+              esPrincipal: c.esPrincipal || false,
             })));
           }
         } else {
@@ -218,6 +286,46 @@ function OnboardingContent() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Funciones para manejar cuentas bancarias
+  const agregarCuentaBancaria = () => {
+    const nuevaCuenta: CuentaBancaria = {
+      id: `temp-${Date.now()}`,
+      banco: '',
+      tipoCuenta: '',
+      numeroCuenta: '',
+      cbu: '',
+      alias: '',
+      titularCuenta: '',
+      moneda: 'ARS',
+      esPrincipal: cuentasBancarias.length === 0, // La primera es principal por defecto
+    };
+    setCuentasBancarias([...cuentasBancarias, nuevaCuenta]);
+  };
+
+  const actualizarCuentaBancaria = (id: string, field: keyof CuentaBancaria, value: any) => {
+    setCuentasBancarias(prev => prev.map(cuenta =>
+      cuenta.id === id ? { ...cuenta, [field]: value } : cuenta
+    ));
+  };
+
+  const eliminarCuentaBancaria = (id: string) => {
+    setCuentasBancarias(prev => {
+      const nuevas = prev.filter(cuenta => cuenta.id !== id);
+      // Si eliminamos la principal, hacer principal a la primera
+      if (nuevas.length > 0 && !nuevas.some(c => c.esPrincipal)) {
+        nuevas[0].esPrincipal = true;
+      }
+      return nuevas;
+    });
+  };
+
+  const marcarComoPrincipal = (id: string) => {
+    setCuentasBancarias(prev => prev.map(cuenta => ({
+      ...cuenta,
+      esPrincipal: cuenta.id === id
+    })));
+  };
+
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -234,6 +342,22 @@ function OnboardingContent() {
     setSaving(true);
     try {
       const authToken = localStorage.getItem('token') || token;
+
+      // Incluir cuentas bancarias en los datos a guardar
+      const dataToSave = {
+        ...formData,
+        cuentasBancarias: cuentasBancarias.map(cuenta => ({
+          banco: cuenta.banco,
+          tipoCuenta: cuenta.tipoCuenta,
+          numeroCuenta: cuenta.numeroCuenta,
+          cbu: cuenta.cbu,
+          alias: cuenta.alias,
+          titularCuenta: cuenta.titularCuenta,
+          moneda: cuenta.moneda,
+          esPrincipal: cuenta.esPrincipal,
+        })),
+      };
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${supplierId}`,
         {
@@ -242,7 +366,7 @@ function OnboardingContent() {
             'Content-Type': 'application/json',
             ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(dataToSave),
         }
       );
 
@@ -694,80 +818,178 @@ function OnboardingContent() {
           {/* Step: Datos Bancarios */}
           {currentStep === 3 && (
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-4">
-                Datos Bancarios
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-text-primary">
+                  Datos Bancarios
+                </h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={agregarCuentaBancaria}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Agregar Cuenta
+                </Button>
+              </div>
+
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-yellow-800">
-                  Estos datos se utilizaran para procesar sus pagos. Asegurese de que sean correctos.
+                  Estos datos se utilizaran para procesar sus pagos. Puede agregar multiples cuentas bancarias.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Banco
-                  </label>
-                  <Input
-                    value={formData.banco}
-                    onChange={(e) => handleChange('banco', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Tipo de Cuenta
-                  </label>
-                  <select
-                    value={formData.tipoCuenta}
-                    onChange={(e) => handleChange('tipoCuenta', e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg"
+
+              {cuentasBancarias.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                  <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-text-secondary mb-4">No hay cuentas bancarias agregadas</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={agregarCuentaBancaria}
+                    className="flex items-center gap-2 mx-auto"
                   >
-                    <option value="">Seleccionar...</option>
-                    {TIPOS_CUENTA.map((tc) => (
-                      <option key={tc.value} value={tc.value}>
-                        {tc.label}
-                      </option>
-                    ))}
-                  </select>
+                    <Plus className="w-4 h-4" />
+                    Agregar Primera Cuenta
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Numero de Cuenta
-                  </label>
-                  <Input
-                    value={formData.numeroCuenta}
-                    onChange={(e) => handleChange('numeroCuenta', e.target.value)}
-                  />
+              ) : (
+                <div className="space-y-6">
+                  {cuentasBancarias.map((cuenta, index) => (
+                    <div
+                      key={cuenta.id}
+                      className={`border rounded-lg p-4 ${
+                        cuenta.esPrincipal
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-text-primary">
+                            Cuenta {index + 1}
+                          </span>
+                          {cuenta.esPrincipal && (
+                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!cuenta.esPrincipal && (
+                            <button
+                              type="button"
+                              onClick={() => marcarComoPrincipal(cuenta.id)}
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                            >
+                              Marcar como principal
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => eliminarCuentaBancaria(cuenta.id)}
+                            className="p-1 text-red-500 hover:bg-red-100 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-1">
+                            Banco *
+                          </label>
+                          <select
+                            value={cuenta.banco}
+                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'banco', e.target.value)}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-white"
+                          >
+                            <option value="">Seleccionar banco...</option>
+                            {BANCOS_ARGENTINA.map((banco) => (
+                              <option key={banco.value} value={banco.value}>
+                                {banco.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-1">
+                            Tipo de Cuenta *
+                          </label>
+                          <select
+                            value={cuenta.tipoCuenta}
+                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'tipoCuenta', e.target.value)}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-white"
+                          >
+                            <option value="">Seleccionar...</option>
+                            {TIPOS_CUENTA.map((tc) => (
+                              <option key={tc.value} value={tc.value}>
+                                {tc.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-1">
+                            Numero de Cuenta
+                          </label>
+                          <Input
+                            value={cuenta.numeroCuenta}
+                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'numeroCuenta', e.target.value)}
+                            placeholder="Ej: 123456789"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-1">
+                            CBU *
+                          </label>
+                          <Input
+                            value={cuenta.cbu}
+                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'cbu', e.target.value)}
+                            maxLength={22}
+                            className="font-mono"
+                            placeholder="22 digitos"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-1">
+                            Alias CBU
+                          </label>
+                          <Input
+                            value={cuenta.alias}
+                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'alias', e.target.value)}
+                            placeholder="Ej: MI.ALIAS.CBU"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-1">
+                            Titular de la Cuenta *
+                          </label>
+                          <Input
+                            value={cuenta.titularCuenta}
+                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'titularCuenta', e.target.value)}
+                            placeholder="Nombre del titular"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-1">
+                            Moneda
+                          </label>
+                          <select
+                            value={cuenta.moneda}
+                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'moneda', e.target.value)}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-white"
+                          >
+                            <option value="ARS">Pesos Argentinos (ARS)</option>
+                            <option value="USD">Dolares (USD)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    CBU *
-                  </label>
-                  <Input
-                    value={formData.cbu}
-                    onChange={(e) => handleChange('cbu', e.target.value)}
-                    maxLength={22}
-                    className="font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Alias CBU
-                  </label>
-                  <Input
-                    value={formData.alias}
-                    onChange={(e) => handleChange('alias', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    Titular de la Cuenta
-                  </label>
-                  <Input
-                    value={formData.titularCuenta}
-                    onChange={(e) => handleChange('titularCuenta', e.target.value)}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           )}
 

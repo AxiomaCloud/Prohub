@@ -464,6 +464,7 @@ model Supplier {
 
   // Relaciones
   documentos      SupplierDocument[]
+  cuentasBancarias SupplierBankAccount[]
   ordenesCompra   PurchaseOrderCircuit[]
 
   // RFQ - Cotizaciones
@@ -557,6 +558,29 @@ enum SupplierDocumentStatus {
   APPROVED
   REJECTED
   EXPIRED
+}
+
+// Cuentas bancarias del proveedor
+model SupplierBankAccount {
+  id          String    @id @default(cuid())
+  supplierId  String
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  banco           String        // Código del banco (BANCO_NACION, BANCO_GALICIA, etc.)
+  tipoCuenta      TipoCuentaBancaria
+  numeroCuenta    String?
+  cbu             String
+  alias           String?
+  titularCuenta   String
+  moneda          String        @default("ARS")
+  esPrincipal     Boolean       @default(false)
+
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([supplierId])
+  @@map("supplier_bank_accounts")
 }
 
 // Configuración de onboarding por tenant
@@ -858,7 +882,8 @@ model PurchaseRequest {
   // Datos del requerimiento
   categoria     String                // Tecnología, Oficina, Servicios, etc.
   centroCostos  String?               // Centro de costos
-  justificacion String?               @db.Text
+  descripcion   String?               @db.Text  // Descripción breve del requerimiento
+  justificacion String?               @db.Text  // Observaciones adicionales
 
   // Montos
   montoEstimado Decimal?            // Presupuesto estimado

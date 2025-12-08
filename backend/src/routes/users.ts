@@ -53,11 +53,35 @@ router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
             id: true,
             roles: true,
             isActive: true,
+            supplierId: true,
+            supplier: {
+              select: {
+                id: true,
+                nombre: true,
+                cuit: true,
+              },
+            },
           },
         },
       },
       orderBy: {
         name: 'asc',
+      },
+    });
+
+    // Obtener lista de proveedores del tenant para el selector
+    const suppliers = await prisma.supplier.findMany({
+      where: {
+        tenantId: tenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        cuit: true,
+      },
+      orderBy: {
+        nombre: 'asc',
       },
     });
 
@@ -67,9 +91,11 @@ router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
       roles: user.tenantMemberships[0]?.roles || [],
       membershipActive: user.tenantMemberships[0]?.isActive ?? false,
       hasMembership: user.tenantMemberships.length > 0,
+      supplierId: user.tenantMemberships[0]?.supplierId || null,
+      supplier: user.tenantMemberships[0]?.supplier || null,
     }));
 
-    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES });
+    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES, suppliers });
   } catch (error) {
     console.error('Error fetching users with roles:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -523,54 +549,65 @@ router.put('/:id/roles', authenticate, async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/users/with-roles
- * Get all users with their roles for a specific tenant
+ * PUT /api/users/:id/supplier
+ * Link or unlink a user to/from a supplier
  */
-router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
+router.put('/:id/supplier', authenticate, async (req: Request, res: Response) => {
   try {
-    const tenantId = req.query.tenantId as string;
+    const { id } = req.params;
+    const { tenantId, supplierId } = req.body;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'tenantId is required' });
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        avatar: true,
-        emailVerified: true,
-        superuser: true,
-        createdAt: true,
-        tenantMemberships: {
-          where: {
-            tenantId: tenantId,
-          },
-          select: {
-            id: true,
-            roles: true,
-            isActive: true,
-          },
+    // Check if membership exists
+    const existingMembership = await prisma.tenantMembership.findUnique({
+      where: {
+        userId_tenantId: {
+          userId: id,
+          tenantId: tenantId,
         },
-      },
-      orderBy: {
-        name: 'asc',
       },
     });
 
-    // Transform to include roles directly
-    const usersWithRoles = users.map(user => ({
-      ...user,
-      roles: user.tenantMemberships[0]?.roles || [],
-      membershipActive: user.tenantMemberships[0]?.isActive ?? false,
-      hasMembership: user.tenantMemberships.length > 0,
-    }));
+    if (!existingMembership) {
+      return res.status(404).json({ error: 'El usuario no tiene membresía en este tenant' });
+    }
 
-    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES });
+    // Si supplierId es null o vacío, desvincular
+    // Si supplierId tiene valor, vincular al proveedor
+    const updatedMembership = await prisma.tenantMembership.update({
+      where: {
+        userId_tenantId: {
+          userId: id,
+          tenantId: tenantId,
+        },
+      },
+      data: {
+        supplierId: supplierId || null,
+      },
+      include: {
+        supplier: {
+          select: {
+            id: true,
+            nombre: true,
+            cuit: true,
+          },
+        },
+      },
+    });
+
+    const action = supplierId ? 'vinculado a' : 'desvinculado de';
+    const supplierName = updatedMembership.supplier?.nombre || 'proveedor';
+
+    res.json({
+      message: `Usuario ${action} ${supplierName}`,
+      supplierId: updatedMembership.supplierId,
+      supplier: updatedMembership.supplier,
+    });
   } catch (error) {
-    console.error('Error fetching users with roles:', error);
+    console.error('Error updating user supplier:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

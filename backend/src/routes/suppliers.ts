@@ -475,6 +475,10 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
         documentos: {
           orderBy: { createdAt: 'desc' },
         },
+        cuentasBancarias: {
+          where: { isActive: true },
+          orderBy: { esPrincipal: 'desc' },
+        },
       },
     });
 
@@ -559,7 +563,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 router.put('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const { cuentasBancarias, ...data } = req.body;
 
     // Limpiar CUIT si viene
     if (data.cuit) {
@@ -595,7 +599,7 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
         ...(data.contactoNombre !== undefined && { contactoNombre: data.contactoNombre }),
         ...(data.contactoCargo !== undefined && { contactoCargo: data.contactoCargo }),
 
-        // Datos bancarios
+        // Datos bancarios (legacy - para cuenta principal)
         ...(data.banco !== undefined && { banco: data.banco }),
         ...(data.tipoCuenta && { tipoCuenta: data.tipoCuenta }),
         ...(data.numeroCuenta !== undefined && { numeroCuenta: data.numeroCuenta }),
@@ -619,10 +623,62 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
       },
       include: {
         documentos: true,
+        cuentasBancarias: true,
       },
     });
 
-    res.json({ proveedor: supplier });
+    // Manejar cuentas bancarias si vienen en el request
+    if (cuentasBancarias && Array.isArray(cuentasBancarias)) {
+      // Eliminar cuentas existentes
+      await prisma.supplierBankAccount.deleteMany({
+        where: { supplierId: id },
+      });
+
+      // Crear nuevas cuentas
+      if (cuentasBancarias.length > 0) {
+        await prisma.supplierBankAccount.createMany({
+          data: cuentasBancarias.map((cuenta: any) => ({
+            supplierId: id,
+            banco: cuenta.banco,
+            tipoCuenta: cuenta.tipoCuenta || 'CUENTA_CORRIENTE',
+            numeroCuenta: cuenta.numeroCuenta || null,
+            cbu: cuenta.cbu,
+            alias: cuenta.alias || null,
+            titularCuenta: cuenta.titularCuenta,
+            moneda: cuenta.moneda || 'ARS',
+            esPrincipal: cuenta.esPrincipal || false,
+          })),
+        });
+
+        // También actualizar los campos legacy con la cuenta principal
+        const cuentaPrincipal = cuentasBancarias.find((c: any) => c.esPrincipal) || cuentasBancarias[0];
+        if (cuentaPrincipal) {
+          await prisma.supplier.update({
+            where: { id },
+            data: {
+              banco: cuentaPrincipal.banco,
+              tipoCuenta: cuentaPrincipal.tipoCuenta || 'CUENTA_CORRIENTE',
+              numeroCuenta: cuentaPrincipal.numeroCuenta || null,
+              cbu: cuentaPrincipal.cbu,
+              alias: cuentaPrincipal.alias || null,
+              titularCuenta: cuentaPrincipal.titularCuenta,
+              monedaCuenta: cuentaPrincipal.moneda || 'ARS',
+            },
+          });
+        }
+      }
+    }
+
+    // Obtener el proveedor actualizado con las cuentas
+    const updatedSupplier = await prisma.supplier.findUnique({
+      where: { id },
+      include: {
+        documentos: true,
+        cuentasBancarias: true,
+      },
+    });
+
+    res.json({ proveedor: updatedSupplier });
   } catch (error) {
     console.error('Error al actualizar proveedor:', error);
     res.status(500).json({ error: 'Error al actualizar proveedor' });

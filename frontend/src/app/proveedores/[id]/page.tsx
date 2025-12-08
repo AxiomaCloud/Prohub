@@ -21,10 +21,24 @@ import {
   Trash2,
   Download,
   Eye,
+  Plus,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { BankDataForm } from '@/components/suppliers/BankDataForm';
 import { CompanyDataForm } from '@/components/suppliers/CompanyDataForm';
+
+interface SupplierBankAccount {
+  id: string;
+  banco: string;
+  tipoCuenta: string;
+  numeroCuenta: string | null;
+  cbu: string;
+  alias: string | null;
+  titularCuenta: string;
+  moneda: string;
+  esPrincipal: boolean;
+}
 
 interface Supplier {
   id: string;
@@ -55,6 +69,7 @@ interface Supplier {
   titularCuenta: string | null;
   cuitTitular: string | null;
   monedaCuenta: string | null;
+  cuentasBancarias?: SupplierBankAccount[];
   notifEmail: boolean;
   notifWhatsapp: boolean;
   notifSms: boolean;
@@ -133,6 +148,8 @@ export default function SupplierDetailPage() {
   const [editMode, setEditMode] = useState<'none' | 'bank' | 'company'>('none');
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [editingBankAccount, setEditingBankAccount] = useState<SupplierBankAccount | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const supplierId = params.id as string;
@@ -266,6 +283,108 @@ export default function SupplierDetailPage() {
     const clean = cuit.replace(/\D/g, '');
     if (clean.length !== 11) return cuit;
     return `${clean.slice(0, 2)}-${clean.slice(2, 10)}-${clean.slice(10)}`;
+  };
+
+  // Funciones para manejo de cuentas bancarias
+  const handleAddBankAccount = () => {
+    setEditingBankAccount(null);
+    setShowBankModal(true);
+  };
+
+  const handleEditBankAccount = (cuenta: SupplierBankAccount) => {
+    setEditingBankAccount(cuenta);
+    setShowBankModal(true);
+  };
+
+  const handleDeleteBankAccount = async (cuentaId: string) => {
+    if (!confirm('¿Eliminar esta cuenta bancaria?')) return;
+
+    try {
+      const cuentasActuales = supplier?.cuentasBancarias || [];
+      const nuevasCuentas = cuentasActuales.filter(c => c.id !== cuentaId);
+
+      await fetch(`${API_URL}/api/suppliers/${supplierId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ cuentasBancarias: nuevasCuentas }),
+      });
+      await fetchSupplier();
+    } catch (error) {
+      console.error('Error deleting bank account:', error);
+    }
+  };
+
+  const handleSetPrincipal = async (cuentaId: string) => {
+    try {
+      const cuentasActuales = supplier?.cuentasBancarias || [];
+      const nuevasCuentas = cuentasActuales.map(c => ({
+        ...c,
+        esPrincipal: c.id === cuentaId,
+      }));
+
+      await fetch(`${API_URL}/api/suppliers/${supplierId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ cuentasBancarias: nuevasCuentas }),
+      });
+      await fetchSupplier();
+    } catch (error) {
+      console.error('Error setting principal account:', error);
+    }
+  };
+
+  const handleSaveBankAccount = async (data: any) => {
+    setIsSaving(true);
+    try {
+      const cuentasActuales = supplier?.cuentasBancarias || [];
+      let nuevasCuentas;
+
+      if (editingBankAccount) {
+        // Editar cuenta existente
+        nuevasCuentas = cuentasActuales.map(c =>
+          c.id === editingBankAccount.id ? { ...c, ...data } : c
+        );
+      } else {
+        // Agregar nueva cuenta
+        const nuevaCuenta = {
+          ...data,
+          id: `temp-${Date.now()}`, // ID temporal, el backend lo reemplazará
+          esPrincipal: cuentasActuales.length === 0, // Primera cuenta es principal
+        };
+        nuevasCuentas = [...cuentasActuales, nuevaCuenta];
+      }
+
+      // Si la nueva cuenta es principal, desmarcar las demás
+      if (data.esPrincipal) {
+        nuevasCuentas = nuevasCuentas.map(c => ({
+          ...c,
+          esPrincipal: editingBankAccount ? c.id === editingBankAccount.id : c.id === nuevasCuentas[nuevasCuentas.length - 1].id,
+        }));
+      }
+
+      await fetch(`${API_URL}/api/suppliers/${supplierId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ cuentasBancarias: nuevasCuentas }),
+      });
+
+      await fetchSupplier();
+      setShowBankModal(false);
+      setEditingBankAccount(null);
+    } catch (error) {
+      console.error('Error saving bank account:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -445,25 +564,130 @@ export default function SupplierDetailPage() {
                   Datos Bancarios
                 </h2>
                 <button
-                  onClick={() => setEditMode('bank')}
-                  className="text-secondary hover:text-secondary-hover flex items-center gap-1 text-sm"
+                  onClick={handleAddBankAccount}
+                  className="px-4 py-2 bg-secondary hover:bg-secondary-hover text-white rounded-lg flex items-center gap-2 text-sm"
                 >
-                  <Edit className="w-4 h-4" />
-                  Editar
+                  <Plus className="w-4 h-4" />
+                  Agregar Cuenta
                 </button>
               </div>
 
-                {supplier.cbu ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InfoItem label="Banco" value={supplier.banco} />
-                    <InfoItem label="Tipo de Cuenta" value={supplier.tipoCuenta?.replace('_', ' ')} />
-                    <InfoItem label="Número de Cuenta" value={supplier.numeroCuenta} />
-                    <InfoItem label="Moneda" value={supplier.monedaCuenta === 'ARS' ? 'Pesos Argentinos' : 'Dólares'} />
-                    <InfoItem label="CBU/CVU" value={supplier.cbu} mono />
-                    <InfoItem label="Alias" value={supplier.alias} />
-                    <InfoItem label="Titular de la Cuenta" value={supplier.titularCuenta} />
-                    <InfoItem label="CUIT del Titular" value={supplier.cuitTitular && formatCuit(supplier.cuitTitular)} />
-                  </div>
+              {/* Mostrar grilla de cuentas bancarias si hay múltiples */}
+              {supplier.cuentasBancarias && supplier.cuentasBancarias.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Banco</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">CBU/CVU</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Alias</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Titular</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Moneda</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Principal</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supplier.cuentasBancarias.map((cuenta) => (
+                        <tr
+                          key={cuenta.id}
+                          className={`border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${
+                            cuenta.esPrincipal ? 'bg-green-50 dark:bg-green-900/10' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
+                            {cuenta.banco}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                            {cuenta.tipoCuenta.replace('_', ' ')}
+                          </td>
+                          <td className="py-3 px-4 text-sm font-mono text-gray-900 dark:text-white">
+                            {cuenta.cbu}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                            {cuenta.alias || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
+                            {cuenta.titularCuenta}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                            {cuenta.moneda === 'ARS' ? 'ARS' : 'USD'}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {cuenta.esPrincipal ? (
+                              <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
+                            ) : (
+                              <button
+                                onClick={() => handleSetPrincipal(cuenta.id)}
+                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                                title="Marcar como principal"
+                              >
+                                <Star className="w-4 h-4 text-gray-400 hover:text-yellow-500" />
+                              </button>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleEditBankAccount(cuenta)}
+                                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                                title="Editar"
+                              >
+                                <Edit className="w-4 h-4 text-gray-500" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBankAccount(cuenta.id)}
+                                className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : supplier.cbu ? (
+                /* Fallback para datos bancarios legacy (una sola cuenta) */
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Banco</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">CBU/CVU</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Alias</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Titular</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Moneda</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                        <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
+                          {supplier.banco || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                          {supplier.tipoCuenta?.replace('_', ' ') || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-mono text-gray-900 dark:text-white">
+                          {supplier.cbu}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                          {supplier.alias || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
+                          {supplier.titularCuenta || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                          {supplier.monedaCuenta === 'ARS' ? 'ARS' : supplier.monedaCuenta === 'USD' ? 'USD' : '-'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -581,6 +805,19 @@ export default function SupplierDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Modal para agregar/editar cuenta bancaria individual */}
+      {showBankModal && (
+        <BankAccountModal
+          cuenta={editingBankAccount}
+          onSave={handleSaveBankAccount}
+          onCancel={() => {
+            setShowBankModal(false);
+            setEditingBankAccount(null);
+          }}
+          isLoading={isSaving}
+        />
+      )}
     </div>
   );
 }
@@ -667,6 +904,254 @@ function DocumentUploadButton({
         onChange={handleFileChange}
         className="hidden"
       />
+    </div>
+  );
+}
+
+// Lista de bancos de Argentina
+const BANCOS_ARGENTINA = [
+  { value: 'BANCO_NACION', label: 'Banco de la Nación Argentina' },
+  { value: 'BANCO_PROVINCIA', label: 'Banco de la Provincia de Buenos Aires' },
+  { value: 'BANCO_CIUDAD', label: 'Banco de la Ciudad de Buenos Aires' },
+  { value: 'BANCO_GALICIA', label: 'Banco Galicia' },
+  { value: 'BANCO_SANTANDER', label: 'Banco Santander' },
+  { value: 'BANCO_BBVA', label: 'BBVA Argentina' },
+  { value: 'BANCO_MACRO', label: 'Banco Macro' },
+  { value: 'BANCO_HSBC', label: 'HSBC Argentina' },
+  { value: 'BANCO_ICBC', label: 'ICBC Argentina' },
+  { value: 'BANCO_SUPERVIELLE', label: 'Banco Supervielle' },
+  { value: 'BANCO_PATAGONIA', label: 'Banco Patagonia' },
+  { value: 'BANCO_HIPOTECARIO', label: 'Banco Hipotecario' },
+  { value: 'BANCO_CREDICOOP', label: 'Banco Credicoop' },
+  { value: 'BANCO_COMAFI', label: 'Banco Comafi' },
+  { value: 'BANCO_ITAU', label: 'Banco Itaú Argentina' },
+  { value: 'BANCO_COLUMBIA', label: 'Banco Columbia' },
+  { value: 'BANCO_SAN_JUAN', label: 'Banco San Juan' },
+  { value: 'BANCO_ENTRE_RIOS', label: 'Nuevo Banco de Entre Ríos' },
+  { value: 'BANCO_SANTA_FE', label: 'Nuevo Banco de Santa Fe' },
+  { value: 'BANCO_CHUBUT', label: 'Banco del Chubut' },
+  { value: 'BANCO_TIERRA_DEL_FUEGO', label: 'Banco de Tierra del Fuego' },
+  { value: 'BANCO_CORRIENTES', label: 'Nuevo Banco de Corrientes' },
+  { value: 'BANCO_MUNICIPAL_ROSARIO', label: 'Banco Municipal de Rosario' },
+  { value: 'BANCO_ROELA', label: 'Banco Roela' },
+  { value: 'BANCO_MARIVA', label: 'Banco Mariva' },
+  { value: 'BANCO_BICA', label: 'Banco Bica' },
+  { value: 'BANCO_COINAG', label: 'Banco Coinag' },
+  { value: 'BANCO_PIANO', label: 'Banco Piano' },
+  { value: 'BRUBANK', label: 'Brubank' },
+  { value: 'UALALA', label: 'Uala' },
+  { value: 'MERCADOPAGO', label: 'Mercado Pago' },
+  { value: 'NARANJA_X', label: 'Naranja X' },
+  { value: 'CUENTA_DNI', label: 'Cuenta DNI' },
+  { value: 'OTRO', label: 'Otro' },
+];
+
+const TIPOS_CUENTA = [
+  { value: 'CUENTA_CORRIENTE', label: 'Cuenta Corriente' },
+  { value: 'CAJA_AHORRO', label: 'Caja de Ahorro' },
+  { value: 'CUENTA_UNICA', label: 'Cuenta Única' },
+  { value: 'CVU', label: 'CVU (Virtual)' },
+];
+
+function BankAccountModal({
+  cuenta,
+  onSave,
+  onCancel,
+  isLoading,
+}: {
+  cuenta: SupplierBankAccount | null;
+  onSave: (data: any) => Promise<void>;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [formData, setFormData] = useState({
+    banco: cuenta?.banco || '',
+    tipoCuenta: cuenta?.tipoCuenta || 'CUENTA_CORRIENTE',
+    numeroCuenta: cuenta?.numeroCuenta || '',
+    cbu: cuenta?.cbu || '',
+    alias: cuenta?.alias || '',
+    titularCuenta: cuenta?.titularCuenta || '',
+    moneda: cuenta?.moneda || 'ARS',
+    esPrincipal: cuenta?.esPrincipal || false,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validaciones
+    if (!formData.banco) {
+      alert('Seleccione un banco');
+      return;
+    }
+    if (!formData.cbu || formData.cbu.replace(/\s/g, '').length !== 22) {
+      alert('El CBU debe tener 22 dígitos');
+      return;
+    }
+    if (!formData.titularCuenta) {
+      alert('Ingrese el titular de la cuenta');
+      return;
+    }
+
+    await onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+            {cuenta ? 'Editar Cuenta Bancaria' : 'Agregar Cuenta Bancaria'}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Banco */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Banco *
+              </label>
+              <select
+                value={formData.banco}
+                onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              >
+                <option value="">Seleccionar banco...</option>
+                {BANCOS_ARGENTINA.map((banco) => (
+                  <option key={banco.value} value={banco.value}>
+                    {banco.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tipo de cuenta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Tipo de Cuenta *
+              </label>
+              <select
+                value={formData.tipoCuenta}
+                onChange={(e) => setFormData({ ...formData, tipoCuenta: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              >
+                {TIPOS_CUENTA.map((tipo) => (
+                  <option key={tipo.value} value={tipo.value}>
+                    {tipo.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Número de cuenta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Número de Cuenta
+              </label>
+              <input
+                type="text"
+                value={formData.numeroCuenta}
+                onChange={(e) => setFormData({ ...formData, numeroCuenta: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Opcional"
+              />
+            </div>
+
+            {/* CBU */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                CBU/CVU *
+              </label>
+              <input
+                type="text"
+                value={formData.cbu}
+                onChange={(e) => setFormData({ ...formData, cbu: e.target.value.replace(/\D/g, '').slice(0, 22) })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                placeholder="22 dígitos"
+                maxLength={22}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">{formData.cbu.length}/22 dígitos</p>
+            </div>
+
+            {/* Alias */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Alias
+              </label>
+              <input
+                type="text"
+                value={formData.alias}
+                onChange={(e) => setFormData({ ...formData, alias: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Ej: MI.ALIAS.CUENTA"
+              />
+            </div>
+
+            {/* Titular */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Titular de la Cuenta *
+              </label>
+              <input
+                type="text"
+                value={formData.titularCuenta}
+                onChange={(e) => setFormData({ ...formData, titularCuenta: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Nombre del titular"
+                required
+              />
+            </div>
+
+            {/* Moneda */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Moneda
+              </label>
+              <select
+                value={formData.moneda}
+                onChange={(e) => setFormData({ ...formData, moneda: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="ARS">Pesos Argentinos (ARS)</option>
+                <option value="USD">Dólares (USD)</option>
+              </select>
+            </div>
+
+            {/* Cuenta Principal */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="esPrincipal"
+                checked={formData.esPrincipal}
+                onChange={(e) => setFormData({ ...formData, esPrincipal: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <label htmlFor="esPrincipal" className="text-sm text-gray-700 dark:text-gray-300">
+                Marcar como cuenta principal
+              </label>
+            </div>
+
+            {/* Botones */}
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="px-4 py-2 bg-secondary hover:bg-secondary-hover text-white rounded-lg disabled:opacity-50"
+              >
+                {isLoading ? 'Guardando...' : cuenta ? 'Guardar Cambios' : 'Agregar Cuenta'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

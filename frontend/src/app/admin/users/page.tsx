@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users, UserPlus, Edit, Trash2, X, Search, Mail, CheckCircle2, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2, X, Search, Mail, CheckCircle2, Shield, ChevronDown, ChevronUp, Building2, Link, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useConfirmDialog } from '@/hooks/useConfirm';
@@ -29,6 +29,12 @@ interface AvailableRole {
   description: string;
 }
 
+interface Supplier {
+  id: string;
+  nombre: string;
+  cuit: string;
+}
+
 interface User {
   id: string;
   email: string;
@@ -40,6 +46,8 @@ interface User {
   roles?: string[];
   membershipActive?: boolean;
   hasMembership?: boolean;
+  supplierId?: string | null;
+  supplier?: Supplier | null;
   tenantMemberships?: Array<{
     tenant: {
       id: string;
@@ -63,11 +71,15 @@ export default function UsersPage() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [availableRoles, setAvailableRoles] = useState<AvailableRole[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showUserModal, setShowUserModal] = useState(false);
   const [showRolesModal, setShowRolesModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedUserForRoles, setSelectedUserForRoles] = useState<User | null>(null);
+  const [selectedUserForSupplier, setSelectedUserForSupplier] = useState<User | null>(null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(Object.keys(ROLE_CATEGORIES));
@@ -99,9 +111,10 @@ export default function UsersPage() {
     try {
       setLoading(true);
       if (currentTenant?.id) {
-        const response = await get<{ users: User[], availableRoles: AvailableRole[] }>(`/api/users/with-roles?tenantId=${currentTenant.id}`);
+        const response = await get<{ users: User[], availableRoles: AvailableRole[], suppliers: Supplier[] }>(`/api/users/with-roles?tenantId=${currentTenant.id}`);
         setUsers(response.users || []);
         setAvailableRoles(response.availableRoles || []);
+        setSuppliers(response.suppliers || []);
       } else {
         const response = await get<{ users: User[] }>('/api/users');
         setUsers(response.users || []);
@@ -167,6 +180,33 @@ export default function UsersPage() {
     setSelectedUserForRoles(user);
     setSelectedRoles(user.roles || []);
     setShowRolesModal(true);
+  };
+
+  const handleManageSupplier = (user: User) => {
+    setSelectedUserForSupplier(user);
+    setSelectedSupplierId(user.supplierId || '');
+    setShowSupplierModal(true);
+  };
+
+  const handleSaveSupplier = async () => {
+    if (!selectedUserForSupplier || !currentTenant?.id) return;
+
+    try {
+      setLoading(true);
+      await put(`/api/users/${selectedUserForSupplier.id}/supplier`, {
+        tenantId: currentTenant.id,
+        supplierId: selectedSupplierId || null,
+      });
+      toast.success(selectedSupplierId ? 'Usuario vinculado al proveedor' : 'Usuario desvinculado del proveedor');
+      setShowSupplierModal(false);
+      await loadUsers();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Error al actualizar proveedor';
+      toast.error(errorMessage);
+      console.error('Error saving supplier:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleRole = (role: string) => {
@@ -383,6 +423,9 @@ export default function UsersPage() {
                           Roles
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                          Proveedor
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                           Estado
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
@@ -430,6 +473,19 @@ export default function UsersPage() {
                               )}
                             </div>
                           </td>
+                          <td className="px-6 py-4">
+                            {user.supplier ? (
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-orange-500" />
+                                <div>
+                                  <p className="text-sm font-medium text-text-primary">{user.supplier.nombre}</p>
+                                  <p className="text-xs text-text-secondary">{user.supplier.cuit}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-text-secondary italic">No vinculado</span>
+                            )}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               {user.emailVerified ? (
@@ -453,6 +509,13 @@ export default function UsersPage() {
                                 title="Gestionar roles"
                               >
                                 <Shield className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleManageSupplier(user)}
+                                className={`p-1 rounded ${user.supplier ? 'text-orange-600 hover:text-orange-700' : 'text-gray-400 hover:text-gray-600'}`}
+                                title={user.supplier ? 'Cambiar/desvincular proveedor' : 'Vincular a proveedor'}
+                              >
+                                {user.supplier ? <Unlink className="w-4 h-4" /> : <Link className="w-4 h-4" />}
                               </button>
                               <button
                                 onClick={() => handleEditUser(user)}
@@ -706,6 +769,85 @@ export default function UsersPage() {
                 </Button>
                 <Button onClick={handleSaveRoles} disabled={loading}>
                   {loading ? 'Guardando...' : 'Guardar Roles'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Proveedor */}
+        {showSupplierModal && selectedUserForSupplier && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <div>
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    Vincular a Proveedor
+                  </h3>
+                  <p className="text-sm text-text-secondary">
+                    {selectedUserForSupplier.name} ({selectedUserForSupplier.email})
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSupplierModal(false)}
+                  className="text-text-secondary hover:text-text-primary"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Proveedor
+                  </label>
+                  <select
+                    value={selectedSupplierId}
+                    onChange={(e) => setSelectedSupplierId(e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  >
+                    <option value="">Sin vincular (Usuario interno)</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.nombre} - {supplier.cuit}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedSupplierId ? (
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-orange-800">
+                      <Building2 className="w-4 h-4" />
+                      <span className="text-sm font-medium">Usuario del Portal de Proveedores</span>
+                    </div>
+                    <p className="text-xs text-orange-600 mt-1">
+                      Este usuario podrá acceder al portal de proveedores y ver información de esta empresa.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-blue-800">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm font-medium">Usuario Interno</span>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Este usuario accederá al sistema como usuario interno del tenant.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 p-6 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowSupplierModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveSupplier} disabled={loading}>
+                  {loading ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             </div>
