@@ -343,7 +343,7 @@ export default function SupplierDetailPage() {
     setIsSaving(true);
     try {
       const cuentasActuales = supplier?.cuentasBancarias || [];
-      let nuevasCuentas;
+      let nuevasCuentas: Array<SupplierBankAccount & { esPrincipal: boolean }>;
 
       if (editingBankAccount) {
         // Editar cuenta existente
@@ -362,9 +362,10 @@ export default function SupplierDetailPage() {
 
       // Si la nueva cuenta es principal, desmarcar las demás
       if (data.esPrincipal) {
+        const lastId = nuevasCuentas[nuevasCuentas.length - 1].id;
         nuevasCuentas = nuevasCuentas.map(c => ({
           ...c,
-          esPrincipal: editingBankAccount ? c.id === editingBankAccount.id : c.id === nuevasCuentas[nuevasCuentas.length - 1].id,
+          esPrincipal: editingBankAccount ? c.id === editingBankAccount.id : c.id === lastId,
         }));
       }
 
