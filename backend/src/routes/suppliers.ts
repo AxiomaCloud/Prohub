@@ -347,6 +347,371 @@ router.delete('/me/users/:userIdToDelete', authenticate, async (req: Request, re
 });
 
 // ============================================
+// ONBOARDING PÚBLICO (sin autenticación)
+// ============================================
+
+// GET /api/suppliers/onboarding/:id - Obtener datos del proveedor para onboarding (PÚBLICO)
+router.get('/onboarding/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const supplier = await prisma.supplier.findUnique({
+      where: { id },
+      include: {
+        documentos: {
+          orderBy: { createdAt: 'desc' },
+        },
+        cuentasBancarias: {
+          where: { isActive: true },
+          orderBy: { esPrincipal: 'desc' },
+        },
+      },
+    });
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    // Solo permitir acceso si está en estado de onboarding
+    const estadosPermitidos = ['INVITED', 'PENDING_COMPLETION'];
+    if (!estadosPermitidos.includes(supplier.status)) {
+      return res.status(403).json({
+        error: 'El proceso de onboarding ya fue completado o el proveedor no está habilitado para edición',
+        status: supplier.status
+      });
+    }
+
+    console.log(`📋 [Onboarding] Acceso público a proveedor: ${supplier.nombre} (${id})`);
+
+    res.json({ proveedor: supplier });
+  } catch (error) {
+    console.error('Error al obtener proveedor para onboarding:', error);
+    res.status(500).json({ error: 'Error al obtener proveedor' });
+  }
+});
+
+// PUT /api/suppliers/onboarding/:id - Actualizar datos del proveedor durante onboarding (PÚBLICO)
+router.put('/onboarding/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { cuentasBancarias, ...data } = req.body;
+
+    // Verificar que el proveedor existe y está en estado de onboarding
+    const existingSupplier = await prisma.supplier.findUnique({
+      where: { id },
+    });
+
+    if (!existingSupplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    const estadosPermitidos = ['INVITED', 'PENDING_COMPLETION'];
+    if (!estadosPermitidos.includes(existingSupplier.status)) {
+      return res.status(403).json({
+        error: 'El proceso de onboarding ya fue completado',
+        status: existingSupplier.status
+      });
+    }
+
+    // Limpiar CUIT si viene
+    if (data.cuit) {
+      data.cuit = data.cuit.replace(/-/g, '');
+    }
+    if (data.cuitTitular) {
+      data.cuitTitular = data.cuitTitular.replace(/-/g, '');
+    }
+
+    // Actualizar a PENDING_COMPLETION si estaba en INVITED
+    const nuevoEstado = existingSupplier.status === 'INVITED' ? 'PENDING_COMPLETION' : existingSupplier.status;
+
+    const supplier = await prisma.supplier.update({
+      where: { id },
+      data: {
+        // Datos básicos
+        ...(data.nombre && { nombre: data.nombre }),
+        ...(data.nombreFantasia !== undefined && { nombreFantasia: data.nombreFantasia }),
+        ...(data.condicionFiscal && { condicionFiscal: data.condicionFiscal }),
+        ...(data.tipoFactura && { tipoFactura: data.tipoFactura }),
+
+        // Domicilio
+        ...(data.direccion !== undefined && { direccion: data.direccion }),
+        ...(data.numero !== undefined && { numero: data.numero }),
+        ...(data.piso !== undefined && { piso: data.piso }),
+        ...(data.localidad !== undefined && { localidad: data.localidad }),
+        ...(data.provincia !== undefined && { provincia: data.provincia }),
+        ...(data.codigoPostal !== undefined && { codigoPostal: data.codigoPostal }),
+        ...(data.pais !== undefined && { pais: data.pais }),
+
+        // Contacto
+        ...(data.telefono !== undefined && { telefono: data.telefono }),
+        ...(data.whatsapp !== undefined && { whatsapp: data.whatsapp }),
+        ...(data.email !== undefined && { email: data.email }),
+        ...(data.emailFacturacion !== undefined && { emailFacturacion: data.emailFacturacion }),
+        ...(data.contactoNombre !== undefined && { contactoNombre: data.contactoNombre }),
+        ...(data.contactoCargo !== undefined && { contactoCargo: data.contactoCargo }),
+
+        // Datos bancarios (legacy - para cuenta principal)
+        ...(data.banco !== undefined && { banco: data.banco }),
+        ...(data.tipoCuenta && { tipoCuenta: data.tipoCuenta }),
+        ...(data.numeroCuenta !== undefined && { numeroCuenta: data.numeroCuenta }),
+        ...(data.cbu !== undefined && { cbu: data.cbu }),
+        ...(data.alias !== undefined && { alias: data.alias }),
+        ...(data.titularCuenta !== undefined && { titularCuenta: data.titularCuenta }),
+        ...(data.cuitTitular !== undefined && { cuitTitular: data.cuitTitular }),
+        ...(data.monedaCuenta !== undefined && { monedaCuenta: data.monedaCuenta }),
+
+        // Notificaciones
+        ...(data.notifEmail !== undefined && { notifEmail: data.notifEmail }),
+        ...(data.notifWhatsapp !== undefined && { notifWhatsapp: data.notifWhatsapp }),
+        ...(data.notifSms !== undefined && { notifSms: data.notifSms }),
+        ...(data.notifDocStatus !== undefined && { notifDocStatus: data.notifDocStatus }),
+        ...(data.notifPagos !== undefined && { notifPagos: data.notifPagos }),
+        ...(data.notifComentarios !== undefined && { notifComentarios: data.notifComentarios }),
+        ...(data.notifOC !== undefined && { notifOC: data.notifOC }),
+
+        // Estado
+        status: nuevoEstado,
+      },
+      include: {
+        documentos: true,
+        cuentasBancarias: true,
+      },
+    });
+
+    // Manejar cuentas bancarias si vienen en el request
+    if (cuentasBancarias && Array.isArray(cuentasBancarias)) {
+      // Eliminar cuentas existentes
+      await prisma.supplierBankAccount.deleteMany({
+        where: { supplierId: id },
+      });
+
+      // Crear nuevas cuentas
+      if (cuentasBancarias.length > 0) {
+        await prisma.supplierBankAccount.createMany({
+          data: cuentasBancarias.map((cuenta: any) => ({
+            supplierId: id,
+            banco: cuenta.banco,
+            tipoCuenta: cuenta.tipoCuenta || 'CUENTA_CORRIENTE',
+            numeroCuenta: cuenta.numeroCuenta || null,
+            cbu: cuenta.cbu,
+            alias: cuenta.alias || null,
+            titularCuenta: cuenta.titularCuenta,
+            moneda: cuenta.moneda || 'ARS',
+            esPrincipal: cuenta.esPrincipal || false,
+          })),
+        });
+
+        // También actualizar los campos legacy con la cuenta principal
+        const cuentaPrincipal = cuentasBancarias.find((c: any) => c.esPrincipal) || cuentasBancarias[0];
+        if (cuentaPrincipal) {
+          await prisma.supplier.update({
+            where: { id },
+            data: {
+              banco: cuentaPrincipal.banco,
+              tipoCuenta: cuentaPrincipal.tipoCuenta || 'CUENTA_CORRIENTE',
+              numeroCuenta: cuentaPrincipal.numeroCuenta || null,
+              cbu: cuentaPrincipal.cbu,
+              alias: cuentaPrincipal.alias || null,
+              titularCuenta: cuentaPrincipal.titularCuenta,
+              monedaCuenta: cuentaPrincipal.moneda || 'ARS',
+            },
+          });
+        }
+      }
+    }
+
+    // Obtener el proveedor actualizado con las cuentas
+    const updatedSupplier = await prisma.supplier.findUnique({
+      where: { id },
+      include: {
+        documentos: true,
+        cuentasBancarias: true,
+      },
+    });
+
+    console.log(`📋 [Onboarding] Datos actualizados para: ${supplier.nombre}`);
+
+    res.json({ proveedor: updatedSupplier });
+  } catch (error) {
+    console.error('Error al actualizar proveedor en onboarding:', error);
+    res.status(500).json({ error: 'Error al actualizar proveedor' });
+  }
+});
+
+// POST /api/suppliers/onboarding/:id/documents - Subir documento durante onboarding (PÚBLICO)
+router.post(
+  '/onboarding/:id/documents',
+  upload.single('file'),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { tipo, nombre } = req.body;
+
+      // Verificar que el proveedor existe y está en estado de onboarding
+      const existingSupplier = await prisma.supplier.findUnique({
+        where: { id },
+      });
+
+      if (!existingSupplier) {
+        return res.status(404).json({ error: 'Proveedor no encontrado' });
+      }
+
+      const estadosPermitidos = ['INVITED', 'PENDING_COMPLETION'];
+      if (!estadosPermitidos.includes(existingSupplier.status)) {
+        return res.status(403).json({ error: 'El proceso de onboarding ya fue completado' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'No se recibió ningún archivo' });
+      }
+
+      if (!tipo) {
+        return res.status(400).json({ error: 'El tipo de documento es requerido' });
+      }
+
+      const document = await prisma.supplierDocument.create({
+        data: {
+          supplierId: id,
+          tipo,
+          nombre: nombre || req.file.originalname,
+          fileUrl: `/uploads/suppliers/${req.file.filename}`,
+          fileName: req.file.originalname,
+          fileType: req.file.mimetype,
+          fileSize: req.file.size,
+        },
+      });
+
+      console.log(`📎 [Onboarding] Documento subido: ${tipo} para ${existingSupplier.nombre}`);
+
+      res.status(201).json({ documento: document });
+    } catch (error) {
+      console.error('Error al subir documento en onboarding:', error);
+      res.status(500).json({ error: 'Error al subir documento' });
+    }
+  }
+);
+
+// DELETE /api/suppliers/onboarding/:supplierId/documents/:docId - Eliminar documento durante onboarding (PÚBLICO)
+router.delete('/onboarding/:supplierId/documents/:docId', async (req: Request, res: Response) => {
+  try {
+    const { supplierId, docId } = req.params;
+
+    // Verificar que el proveedor existe y está en estado de onboarding
+    const existingSupplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+    });
+
+    if (!existingSupplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    const estadosPermitidos = ['INVITED', 'PENDING_COMPLETION'];
+    if (!estadosPermitidos.includes(existingSupplier.status)) {
+      return res.status(403).json({ error: 'El proceso de onboarding ya fue completado' });
+    }
+
+    const doc = await prisma.supplierDocument.findUnique({
+      where: { id: docId },
+    });
+
+    if (doc) {
+      // Eliminar archivo físico
+      const filePath = path.join(__dirname, '../..', doc.fileUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      await prisma.supplierDocument.delete({
+        where: { id: docId },
+      });
+    }
+
+    res.json({ message: 'Documento eliminado' });
+  } catch (error) {
+    console.error('Error al eliminar documento en onboarding:', error);
+    res.status(500).json({ error: 'Error al eliminar documento' });
+  }
+});
+
+// POST /api/suppliers/onboarding/:id/complete - Finalizar onboarding (PÚBLICO)
+router.post('/onboarding/:id/complete', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que tiene los datos mínimos
+    const supplier = await prisma.supplier.findUnique({
+      where: { id },
+      include: { documentos: true },
+    });
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    // Verificar estado
+    const estadosPermitidos = ['INVITED', 'PENDING_COMPLETION'];
+    if (!estadosPermitidos.includes(supplier.status)) {
+      return res.status(403).json({ error: 'El proceso de onboarding ya fue completado' });
+    }
+
+    // Validaciones mínimas
+    const errors: string[] = [];
+    if (!supplier.cbu) errors.push('Datos bancarios incompletos');
+    if (!supplier.condicionFiscal) errors.push('Condición fiscal requerida');
+    if (!supplier.email) errors.push('Email requerido');
+
+    // Verificar documentos requeridos según config del tenant
+    const config = await prisma.tenantSupplierConfig.findUnique({
+      where: { tenantId: supplier.tenantId },
+    });
+
+    if (config?.reqConstanciaAFIP) {
+      const hasAFIP = supplier.documentos.some((d) => d.tipo === 'CONSTANCIA_AFIP');
+      if (!hasAFIP) errors.push('Constancia de AFIP requerida');
+    }
+
+    if (config?.reqConstanciaCBU) {
+      const hasCBU = supplier.documentos.some((d) => d.tipo === 'CONSTANCIA_CBU');
+      if (!hasCBU) errors.push('Constancia de CBU requerida');
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        error: 'Faltan datos para completar el onboarding',
+        details: errors,
+      });
+    }
+
+    // Determinar el nuevo estado
+    const newStatus = config?.aprobacionAutomatica ? 'ACTIVE' : 'PENDING_APPROVAL';
+
+    const updated = await prisma.supplier.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        completoOnboarding: true,
+        onboardingCompletadoAt: new Date(),
+        ...(newStatus === 'ACTIVE' && { aprobadoAt: new Date() }),
+      },
+    });
+
+    console.log(`✅ [Onboarding] Completado para: ${supplier.nombre} - Estado: ${newStatus}`);
+
+    res.json({
+      proveedor: updated,
+      message:
+        newStatus === 'ACTIVE'
+          ? 'Registro completado. Tu cuenta está activa.'
+          : 'Registro completado. Pendiente de aprobación.',
+      requiresApproval: newStatus === 'PENDING_APPROVAL',
+    });
+  } catch (error) {
+    console.error('Error al completar onboarding:', error);
+    res.status(500).json({ error: 'Error al completar onboarding' });
+  }
+});
+
+// ============================================
 // LISTADO Y BÚSQUEDA
 // ============================================
 

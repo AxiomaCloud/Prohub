@@ -206,12 +206,9 @@ function OnboardingContent() {
       }
 
       try {
-        const authToken = localStorage.getItem('token') || token;
+        // Usar endpoint público de onboarding (no requiere autenticación)
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${supplierId}`,
-          {
-            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-          }
+          `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}`
         );
 
         if (response.ok) {
@@ -341,8 +338,6 @@ function OnboardingContent() {
   const handleSaveStep = async () => {
     setSaving(true);
     try {
-      const authToken = localStorage.getItem('token') || token;
-
       // Incluir cuentas bancarias en los datos a guardar
       const dataToSave = {
         ...formData,
@@ -358,13 +353,13 @@ function OnboardingContent() {
         })),
       };
 
+      // Usar endpoint público de onboarding (no requiere autenticación)
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${supplierId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}`,
         {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
           },
           body: JSON.stringify(dataToSave),
         }
@@ -394,12 +389,11 @@ function OnboardingContent() {
       formDataUpload.append('file', file);
       formDataUpload.append('tipo', tipo);
 
-      const authToken = localStorage.getItem('token') || token;
+      // Usar endpoint público de onboarding (no requiere autenticación)
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${supplierId}/documents`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}/documents`,
         {
           method: 'POST',
-          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
           body: formDataUpload,
         }
       );
@@ -426,12 +420,11 @@ function OnboardingContent() {
 
   const handleDeleteDoc = async (docId: string) => {
     try {
-      const authToken = localStorage.getItem('token') || token;
+      // Usar endpoint público de onboarding (no requiere autenticación)
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${supplierId}/documents/${docId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}/documents/${docId}`,
         {
           method: 'DELETE',
-          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
         }
       );
 
@@ -447,29 +440,25 @@ function OnboardingContent() {
   const handleCompleteOnboarding = async () => {
     setSaving(true);
     try {
-      const authToken = localStorage.getItem('token') || token;
-
-      // Primero guardar datos finales
+      // Primero guardar datos finales usando endpoint público
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${supplierId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}`,
         {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
           },
           body: JSON.stringify(formData),
         }
       );
 
-      // Luego marcar onboarding como completado
+      // Luego marcar onboarding como completado usando endpoint público
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${supplierId}/complete-onboarding`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}/complete`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
           },
         }
       );
