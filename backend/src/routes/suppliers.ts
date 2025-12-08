@@ -901,7 +901,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     if (email) {
       try {
         const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const onboardingUrl = `${baseUrl}/proveedores/onboarding?id=${supplier.id}`;
+        const onboardingUrl = `${baseUrl}/onboarding?id=${supplier.id}`;
 
         await NotificationService.notifySupplierInvited(
           email,
@@ -1672,7 +1672,7 @@ router.post('/:id/resend-invitation', authenticate, async (req: Request, res: Re
 
     // URL del portal de onboarding
     const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const inviteUrl = `${FRONTEND_URL}/proveedores/onboarding?id=${supplier.id}`;
+    const inviteUrl = `${FRONTEND_URL}/onboarding?id=${supplier.id}`;
 
     // Enviar email de invitación
     await NotificationService.notifySupplierInvited(

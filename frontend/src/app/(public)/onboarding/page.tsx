@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
 // Tipos
 interface SupplierData {
@@ -99,7 +99,7 @@ const TIPOS_CUENTA = [
 ];
 
 const BANCOS_ARGENTINA = [
-  { value: 'BANCO_NACION', label: 'Banco de la Nación Argentina' },
+  { value: 'BANCO_NACION', label: 'Banco de la Nacion Argentina' },
   { value: 'BANCO_PROVINCIA', label: 'Banco de la Provincia de Buenos Aires' },
   { value: 'BANCO_CIUDAD', label: 'Banco Ciudad de Buenos Aires' },
   { value: 'BANCO_GALICIA', label: 'Banco Galicia' },
@@ -113,24 +113,24 @@ const BANCOS_ARGENTINA = [
   { value: 'BANCO_CREDICOOP', label: 'Banco Credicoop' },
   { value: 'BANCO_HIPOTECARIO', label: 'Banco Hipotecario' },
   { value: 'BANCO_COMAFI', label: 'Banco Comafi' },
-  { value: 'BANCO_ITAU', label: 'Banco Itaú Argentina' },
+  { value: 'BANCO_ITAU', label: 'Banco Itau Argentina' },
   { value: 'BANCO_COLUMBIA', label: 'Banco Columbia' },
   { value: 'BANCO_PIANO', label: 'Banco Piano' },
   { value: 'BANCO_SAN_JUAN', label: 'Banco San Juan' },
   { value: 'BANCO_SANTA_CRUZ', label: 'Banco Santa Cruz' },
   { value: 'BANCO_SANTA_FE', label: 'Nuevo Banco de Santa Fe' },
-  { value: 'BANCO_ENTRE_RIOS', label: 'Nuevo Banco de Entre Ríos' },
+  { value: 'BANCO_ENTRE_RIOS', label: 'Nuevo Banco de Entre Rios' },
   { value: 'BANCO_CHUBUT', label: 'Banco del Chubut' },
   { value: 'BANCO_CORRIENTES', label: 'Banco de Corrientes' },
   { value: 'BANCO_FORMOSA', label: 'Banco de Formosa' },
-  { value: 'BANCO_NEUQUEN', label: 'Banco Provincia del Neuquén' },
+  { value: 'BANCO_NEUQUEN', label: 'Banco Provincia del Neuquen' },
   { value: 'BANCO_LA_PAMPA', label: 'Banco de La Pampa' },
   { value: 'BANCO_RIOJA', label: 'Banco Rioja' },
   { value: 'BANCO_SANTIAGO_ESTERO', label: 'Banco de Santiago del Estero' },
   { value: 'BANCO_TIERRA_FUEGO', label: 'Banco de Tierra del Fuego' },
-  { value: 'BANCO_TUCUMAN', label: 'Banco de Tucumán' },
+  { value: 'BANCO_TUCUMAN', label: 'Banco de Tucuman' },
   { value: 'BRUBANK', label: 'Brubank' },
-  { value: 'UALA', label: 'Ualá' },
+  { value: 'UALA', label: 'Uala' },
   { value: 'MERCADOPAGO', label: 'Mercado Pago' },
   { value: 'NARANJA_X', label: 'Naranja X' },
   { value: 'OTRO', label: 'Otro' },
@@ -200,13 +200,13 @@ function OnboardingContent() {
   useEffect(() => {
     const loadSupplier = async () => {
       if (!supplierId) {
-        setError('No se proporcionó ID de proveedor');
+        setError('No se proporciono ID de proveedor');
         setLoading(false);
         return;
       }
 
       try {
-        // Usar endpoint público de onboarding (no requiere autenticación)
+        // Usar endpoint publico de onboarding (no requiere autenticacion)
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}`
         );
@@ -266,11 +266,12 @@ function OnboardingContent() {
             })));
           }
         } else {
-          setError('No se pudo cargar la información del proveedor');
+          const errData = await response.json().catch(() => ({}));
+          setError(errData.error || 'No se pudo cargar la informacion del proveedor');
         }
       } catch (err) {
         console.error('Error loading supplier:', err);
-        setError('Error de conexión');
+        setError('Error de conexion');
       } finally {
         setLoading(false);
       }
@@ -294,7 +295,7 @@ function OnboardingContent() {
       alias: '',
       titularCuenta: '',
       moneda: 'ARS',
-      esPrincipal: cuentasBancarias.length === 0, // La primera es principal por defecto
+      esPrincipal: cuentasBancarias.length === 0,
     };
     setCuentasBancarias([...cuentasBancarias, nuevaCuenta]);
   };
@@ -308,7 +309,6 @@ function OnboardingContent() {
   const eliminarCuentaBancaria = (id: string) => {
     setCuentasBancarias(prev => {
       const nuevas = prev.filter(cuenta => cuenta.id !== id);
-      // Si eliminamos la principal, hacer principal a la primera
       if (nuevas.length > 0 && !nuevas.some(c => c.esPrincipal)) {
         nuevas[0].esPrincipal = true;
       }
@@ -338,7 +338,6 @@ function OnboardingContent() {
   const handleSaveStep = async () => {
     setSaving(true);
     try {
-      // Incluir cuentas bancarias en los datos a guardar
       const dataToSave = {
         ...formData,
         cuentasBancarias: cuentasBancarias.map(cuenta => ({
@@ -353,14 +352,11 @@ function OnboardingContent() {
         })),
       };
 
-      // Usar endpoint público de onboarding (no requiere autenticación)
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}`,
         {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dataToSave),
         }
       );
@@ -373,7 +369,7 @@ function OnboardingContent() {
       }
     } catch (err) {
       console.error('Error saving:', err);
-      toast.error('Error de conexión');
+      toast.error('Error de conexion');
     } finally {
       setSaving(false);
     }
@@ -389,13 +385,9 @@ function OnboardingContent() {
       formDataUpload.append('file', file);
       formDataUpload.append('tipo', tipo);
 
-      // Usar endpoint público de onboarding (no requiere autenticación)
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}/documents`,
-        {
-          method: 'POST',
-          body: formDataUpload,
-        }
+        { method: 'POST', body: formDataUpload }
       );
 
       if (response.ok) {
@@ -412,7 +404,7 @@ function OnboardingContent() {
       }
     } catch (err) {
       console.error('Error uploading:', err);
-      toast.error('Error de conexión');
+      toast.error('Error de conexion');
     } finally {
       setUploading(false);
     }
@@ -420,12 +412,9 @@ function OnboardingContent() {
 
   const handleDeleteDoc = async (docId: string) => {
     try {
-      // Usar endpoint público de onboarding (no requiere autenticación)
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}/documents/${docId}`,
-        {
-          method: 'DELETE',
-        }
+        { method: 'DELETE' }
       );
 
       if (response.ok) {
@@ -440,40 +429,30 @@ function OnboardingContent() {
   const handleCompleteOnboarding = async () => {
     setSaving(true);
     try {
-      // Primero guardar datos finales usando endpoint público
       await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}`,
         {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         }
       );
 
-      // Luego marcar onboarding como completado usando endpoint público
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}/complete`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+        { method: 'POST', headers: { 'Content-Type': 'application/json' } }
       );
 
       if (response.ok) {
-        toast.success('Onboarding completado exitosamente');
-        // Redirigir al portal o login
+        toast.success('Registro completado exitosamente');
         router.push('/auth/login?onboarding=complete');
       } else {
         const err = await response.json();
-        toast.error(err.error || 'Error al completar onboarding');
+        toast.error(err.error || 'Error al completar registro');
       }
     } catch (err) {
       console.error('Error completing onboarding:', err);
-      toast.error('Error de conexión');
+      toast.error('Error de conexion');
     } finally {
       setSaving(false);
     }
@@ -484,8 +463,8 @@ function OnboardingContent() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-palette-purple mx-auto mb-4" />
-          <p className="text-text-secondary">Cargando información...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-gray-500">Cargando informacion...</p>
         </div>
       </div>
     );
@@ -497,9 +476,9 @@ function OnboardingContent() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-text-primary mb-2">Error</h1>
-          <p className="text-text-secondary mb-6">{error}</p>
-          <Button onClick={() => router.push('/')}>Volver al inicio</Button>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Error</h1>
+          <p className="text-gray-500 mb-6">{error}</p>
+          <Button onClick={() => window.location.href = '/'}>Volver al inicio</Button>
         </div>
       </div>
     );
@@ -509,16 +488,18 @@ function OnboardingContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
+
       {/* Header */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <Building2 className="w-10 h-10 text-palette-purple" />
+            <Building2 className="w-10 h-10 text-purple-600" />
             <div>
-              <h1 className="text-xl font-bold text-text-primary">
+              <h1 className="text-xl font-bold text-gray-900">
                 Registro de Proveedor
               </h1>
-              <p className="text-sm text-text-secondary">
+              <p className="text-sm text-gray-500">
                 Complete sus datos para finalizar el registro
               </p>
             </div>
@@ -527,7 +508,7 @@ function OnboardingContent() {
       </div>
 
       {/* Progress */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {STEPS.map((step, index) => {
@@ -542,7 +523,7 @@ function OnboardingContent() {
                       isCompleted
                         ? 'bg-green-500 text-white'
                         : isActive
-                        ? 'bg-palette-purple text-white'
+                        ? 'bg-purple-600 text-white'
                         : 'bg-gray-200 text-gray-500'
                     }`}
                   >
@@ -564,10 +545,10 @@ function OnboardingContent() {
             })}
           </div>
           <div className="mt-2 text-center">
-            <p className="text-sm font-medium text-text-primary">
+            <p className="text-sm font-medium text-gray-900">
               {currentStepData.title}
             </p>
-            <p className="text-xs text-text-secondary">
+            <p className="text-xs text-gray-500">
               Paso {currentStep + 1} de {STEPS.length}
             </p>
           </div>
@@ -576,15 +557,15 @@ function OnboardingContent() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-border p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           {/* Step: Bienvenida */}
           {currentStep === 0 && (
             <div className="text-center py-8">
               <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-text-primary mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Bienvenido, {supplier?.nombre}
               </h2>
-              <p className="text-text-secondary max-w-lg mx-auto mb-8">
+              <p className="text-gray-500 max-w-lg mx-auto mb-8">
                 Ha sido invitado a registrarse como proveedor. Complete los siguientes
                 pasos para finalizar su registro y comenzar a operar.
               </p>
@@ -592,6 +573,11 @@ function OnboardingContent() {
                 <p className="text-sm text-blue-800">
                   <strong>CUIT:</strong> {supplier?.cuit}
                 </p>
+                {supplier?.email && (
+                  <p className="text-sm text-blue-800 mt-1">
+                    <strong>Email:</strong> {supplier.email}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -599,12 +585,12 @@ function OnboardingContent() {
           {/* Step: Datos de Empresa */}
           {currentStep === 1 && (
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Datos de la Empresa
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Razon Social *
                   </label>
                   <Input
@@ -613,7 +599,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nombre de Fantasia
                   </label>
                   <Input
@@ -622,13 +608,12 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     CUIT *
                   </label>
                   <Input
                     value={formData.cuit}
                     onChange={(e) => {
-                      // Formatear CUIT: XX-XXXXXXXX-X
                       const value = e.target.value.replace(/\D/g, '');
                       let formatted = value;
                       if (value.length > 2) {
@@ -646,13 +631,13 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Condicion Fiscal *
                   </label>
                   <select
                     value={formData.condicionFiscal}
                     onChange={(e) => handleChange('condicionFiscal', e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   >
                     <option value="">Seleccionar...</option>
                     {CONDICIONES_FISCALES.map((cf) => (
@@ -663,13 +648,13 @@ function OnboardingContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Tipo de Factura
                   </label>
                   <select
                     value={formData.tipoFactura}
                     onChange={(e) => handleChange('tipoFactura', e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   >
                     <option value="">Seleccionar...</option>
                     {TIPOS_FACTURA.map((tf) => (
@@ -681,12 +666,12 @@ function OnboardingContent() {
                 </div>
               </div>
 
-              <h3 className="text-md font-medium text-text-primary mt-6 mb-3">
+              <h3 className="text-md font-medium text-gray-900 mt-6 mb-3">
                 Domicilio Fiscal
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Direccion
                   </label>
                   <Input
@@ -696,7 +681,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Numero
                   </label>
                   <Input
@@ -705,7 +690,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Piso/Depto
                   </label>
                   <Input
@@ -714,7 +699,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Localidad
                   </label>
                   <Input
@@ -723,7 +708,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Provincia
                   </label>
                   <Input
@@ -738,12 +723,12 @@ function OnboardingContent() {
           {/* Step: Contacto */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Datos de Contacto
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email Principal *
                   </label>
                   <Input
@@ -753,7 +738,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email Facturacion
                   </label>
                   <Input
@@ -763,7 +748,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Telefono
                   </label>
                   <Input
@@ -773,7 +758,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     WhatsApp
                   </label>
                   <Input
@@ -783,7 +768,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nombre del Contacto
                   </label>
                   <Input
@@ -792,7 +777,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Cargo del Contacto
                   </label>
                   <Input
@@ -808,7 +793,7 @@ function OnboardingContent() {
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-primary">
+                <h2 className="text-lg font-semibold text-gray-900">
                   Datos Bancarios
                 </h2>
                 <Button
@@ -824,14 +809,14 @@ function OnboardingContent() {
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-yellow-800">
-                  Estos datos se utilizaran para procesar sus pagos. Puede agregar multiples cuentas bancarias.
+                  Estos datos se utilizaran para procesar sus pagos.
                 </p>
               </div>
 
               {cuentasBancarias.length === 0 ? (
                 <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                   <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-text-secondary mb-4">No hay cuentas bancarias agregadas</p>
+                  <p className="text-gray-500 mb-4">No hay cuentas bancarias agregadas</p>
                   <Button
                     type="button"
                     variant="outline"
@@ -848,14 +833,12 @@ function OnboardingContent() {
                     <div
                       key={cuenta.id}
                       className={`border rounded-lg p-4 ${
-                        cuenta.esPrincipal
-                          ? 'border-green-300 bg-green-50'
-                          : 'border-gray-200'
+                        cuenta.esPrincipal ? 'border-green-300 bg-green-50' : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-text-primary">
+                          <span className="text-sm font-medium text-gray-900">
                             Cuenta {index + 1}
                           </span>
                           {cuenta.esPrincipal && (
@@ -886,13 +869,13 @@ function OnboardingContent() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-text-primary mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
                             Banco *
                           </label>
                           <select
                             value={cuenta.banco}
                             onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'banco', e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-lg bg-white"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
                           >
                             <option value="">Seleccionar banco...</option>
                             {BANCOS_ARGENTINA.map((banco) => (
@@ -903,13 +886,13 @@ function OnboardingContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-text-primary mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
                             Tipo de Cuenta *
                           </label>
                           <select
                             value={cuenta.tipoCuenta}
                             onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'tipoCuenta', e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-lg bg-white"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
                           >
                             <option value="">Seleccionar...</option>
                             {TIPOS_CUENTA.map((tc) => (
@@ -920,17 +903,7 @@ function OnboardingContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-text-primary mb-1">
-                            Numero de Cuenta
-                          </label>
-                          <Input
-                            value={cuenta.numeroCuenta}
-                            onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'numeroCuenta', e.target.value)}
-                            placeholder="Ej: 123456789"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-text-primary mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
                             CBU *
                           </label>
                           <Input
@@ -942,7 +915,7 @@ function OnboardingContent() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-text-primary mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
                             Alias CBU
                           </label>
                           <Input
@@ -952,23 +925,22 @@ function OnboardingContent() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-text-primary mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
                             Titular de la Cuenta *
                           </label>
                           <Input
                             value={cuenta.titularCuenta}
                             onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'titularCuenta', e.target.value)}
-                            placeholder="Nombre del titular"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-text-primary mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
                             Moneda
                           </label>
                           <select
                             value={cuenta.moneda}
                             onChange={(e) => actualizarCuentaBancaria(cuenta.id, 'moneda', e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-lg bg-white"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
                           >
                             <option value="ARS">Pesos Argentinos (ARS)</option>
                             <option value="USD">Dolares (USD)</option>
@@ -985,17 +957,16 @@ function OnboardingContent() {
           {/* Step: Documentos */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Documentacion
               </h2>
-              <p className="text-sm text-text-secondary mb-6">
+              <p className="text-sm text-gray-500 mb-6">
                 Adjunte los documentos requeridos para validar su registro.
               </p>
 
-              {/* Uploaded docs */}
               {uploadedDocs.length > 0 && (
                 <div className="space-y-2 mb-6">
-                  <h3 className="text-sm font-medium text-text-primary">
+                  <h3 className="text-sm font-medium text-gray-900">
                     Documentos cargados
                   </h3>
                   {uploadedDocs.map((doc) => (
@@ -1006,10 +977,8 @@ function OnboardingContent() {
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-green-600" />
                         <div>
-                          <p className="text-sm font-medium text-text-primary">
-                            {doc.nombre}
-                          </p>
-                          <p className="text-xs text-text-secondary">{doc.tipo}</p>
+                          <p className="text-sm font-medium text-gray-900">{doc.nombre}</p>
+                          <p className="text-xs text-gray-500">{doc.tipo}</p>
                         </div>
                       </div>
                       <button
@@ -1023,7 +992,6 @@ function OnboardingContent() {
                 </div>
               )}
 
-              {/* Upload buttons */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {TIPOS_DOCUMENTO.map((tipo) => {
                   const hasDoc = uploadedDocs.some((d) => d.tipo === tipo.value);
@@ -1031,9 +999,7 @@ function OnboardingContent() {
                     <label
                       key={tipo.value}
                       className={`flex items-center gap-3 px-4 py-3 border rounded-lg cursor-pointer transition-colors ${
-                        hasDoc
-                          ? 'border-green-300 bg-green-50'
-                          : 'border-border hover:bg-gray-50'
+                        hasDoc ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       <input
@@ -1046,7 +1012,7 @@ function OnboardingContent() {
                       {hasDoc ? (
                         <CheckCircle className="w-5 h-5 text-green-600" />
                       ) : (
-                        <Upload className="w-5 h-5 text-text-secondary" />
+                        <Upload className="w-5 h-5 text-gray-400" />
                       )}
                       <span className="text-sm">{tipo.label}</span>
                     </label>
@@ -1056,8 +1022,8 @@ function OnboardingContent() {
 
               {uploading && (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-palette-purple mr-2" />
-                  <span className="text-sm text-text-secondary">Subiendo...</span>
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-600 mr-2" />
+                  <span className="text-sm text-gray-500">Subiendo...</span>
                 </div>
               )}
             </div>
@@ -1066,13 +1032,9 @@ function OnboardingContent() {
           {/* Step: Notificaciones */}
           {currentStep === 5 && (
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Preferencias de Notificaciones
               </h2>
-              <p className="text-sm text-text-secondary mb-6">
-                Configure como desea recibir las notificaciones.
-              </p>
-
               <div className="space-y-4">
                 {[
                   { key: 'notifEmail', label: 'Recibir notificaciones por email' },
@@ -1084,15 +1046,15 @@ function OnboardingContent() {
                 ].map((notif) => (
                   <label
                     key={notif.key}
-                    className="flex items-center gap-4 p-4 border border-border rounded-lg hover:bg-gray-50 cursor-pointer"
+                    className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                   >
                     <input
                       type="checkbox"
                       checked={formData[notif.key as keyof typeof formData] as boolean}
                       onChange={(e) => handleChange(notif.key, e.target.checked)}
-                      className="w-5 h-5 rounded border-border text-palette-purple focus:ring-palette-purple"
+                      className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
-                    <span className="text-sm text-text-primary">{notif.label}</span>
+                    <span className="text-sm text-gray-900">{notif.label}</span>
                   </label>
                 ))}
               </div>
@@ -1103,10 +1065,10 @@ function OnboardingContent() {
           {currentStep === 6 && (
             <div className="text-center py-8">
               <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-text-primary mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Confirmar Registro
               </h2>
-              <p className="text-text-secondary max-w-lg mx-auto mb-8">
+              <p className="text-gray-500 max-w-lg mx-auto mb-8">
                 Revise que todos los datos sean correctos. Al confirmar, su solicitud
                 sera enviada para aprobacion.
               </p>
@@ -1116,7 +1078,7 @@ function OnboardingContent() {
                   <p><strong>Empresa:</strong> {formData.nombre}</p>
                   <p><strong>CUIT:</strong> {formData.cuit}</p>
                   <p><strong>Email:</strong> {formData.email}</p>
-                  <p><strong>CBU:</strong> {formData.cbu || 'No informado'}</p>
+                  <p><strong>Cuentas bancarias:</strong> {cuentasBancarias.length} registradas</p>
                   <p><strong>Documentos:</strong> {uploadedDocs.length} cargados</p>
                 </div>
               </div>
@@ -1124,7 +1086,7 @@ function OnboardingContent() {
           )}
 
           {/* Navigation */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+          <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
             <Button
               variant="outline"
               onClick={handleBack}
@@ -1136,9 +1098,7 @@ function OnboardingContent() {
 
             {currentStep < STEPS.length - 1 ? (
               <Button onClick={handleSaveStep} disabled={saving}>
-                {saving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : null}
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Siguiente
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
@@ -1165,8 +1125,8 @@ export default function OnboardingPage() {
       fallback={
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-palette-purple mx-auto mb-4" />
-            <p className="text-text-secondary">Cargando...</p>
+            <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+            <p className="text-gray-500">Cargando...</p>
           </div>
         </div>
       }
