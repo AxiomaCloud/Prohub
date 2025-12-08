@@ -72,6 +72,20 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
             name: true,
             email: true,
           }
+        },
+        ordenesCompra: {
+          select: {
+            id: true,
+            numero: true,
+            estado: true,
+          }
+        },
+        quotationRequests: {
+          select: {
+            id: true,
+            number: true,
+            status: true,
+          }
         }
       },
       orderBy: {
@@ -128,7 +142,12 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       requiereAprobacionEspecificaciones: req.requiresSpecApproval || false,
       especificacionesAprobadas: req.specsApproved || false,
       creadoPorIA: req.creadoPorIA,
-      promptOriginal: req.promptOriginal
+      promptOriginal: req.promptOriginal,
+      // Info de OC y RFQ asociadas
+      ordenesCompra: req.ordenesCompra || [],
+      quotationRequests: req.quotationRequests || [],
+      tieneOC: req.ordenesCompra && req.ordenesCompra.length > 0,
+      tieneRFQ: req.quotationRequests && req.quotationRequests.length > 0,
     }));
 
     res.json({

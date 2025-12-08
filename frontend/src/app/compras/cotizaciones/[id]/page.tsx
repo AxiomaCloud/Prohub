@@ -24,7 +24,129 @@ import {
   Pause,
   Award,
   X,
+  ShoppingCart,
+  Loader2,
 } from 'lucide-react';
+
+// Modal de confirmación personalizado
+interface ConfirmModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'default' | 'danger' | 'success';
+  loading?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ConfirmModal({
+  isOpen,
+  title,
+  message,
+  confirmText = 'Confirmar',
+  cancelText = 'Cancelar',
+  variant = 'default',
+  loading = false,
+  onConfirm,
+  onCancel
+}: ConfirmModalProps) {
+  if (!isOpen) return null;
+
+  const variantStyles = {
+    default: 'bg-palette-purple hover:bg-palette-purple/90',
+    danger: 'bg-red-600 hover:bg-red-700',
+    success: 'bg-green-600 hover:bg-green-700',
+  };
+
+  const iconStyles = {
+    default: 'bg-blue-100 text-blue-600',
+    danger: 'bg-red-100 text-red-600',
+    success: 'bg-green-100 text-green-600',
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-full ${iconStyles[variant]}`}>
+              {variant === 'danger' ? (
+                <AlertCircle className="w-6 h-6" />
+              ) : variant === 'success' ? (
+                <CheckCircle className="w-6 h-6" />
+              ) : (
+                <AlertCircle className="w-6 h-6" />
+              )}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+              <p className="text-text-secondary mt-1">{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 rounded-b-xl">
+          <Button variant="outline" onClick={onCancel} disabled={loading}>
+            {cancelText}
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={loading}
+            className={variantStyles[variant]}
+          >
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {confirmText}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal de alerta/notificación
+interface AlertModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  variant?: 'success' | 'error' | 'info';
+  onClose: () => void;
+}
+
+function AlertModal({ isOpen, title, message, variant = 'info', onClose }: AlertModalProps) {
+  if (!isOpen) return null;
+
+  const styles = {
+    success: { bg: 'bg-green-100', text: 'text-green-600', icon: CheckCircle },
+    error: { bg: 'bg-red-100', text: 'text-red-600', icon: XCircle },
+    info: { bg: 'bg-blue-100', text: 'text-blue-600', icon: AlertCircle },
+  };
+
+  const Icon = styles[variant].icon;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-full ${styles[variant].bg}`}>
+              <Icon className={`w-6 h-6 ${styles[variant].text}`} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+              <p className="text-text-secondary mt-1">{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end px-6 py-4 bg-gray-50 rounded-b-xl">
+          <Button onClick={onClose}>
+            Aceptar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface RFQDetail {
   id: string;
@@ -70,7 +192,8 @@ interface RFQDetail {
     supplierId: string;
     supplier: {
       id: string;
-      name: string;
+      name?: string;
+      nombre?: string;
       email: string;
       cuit?: string;
     };
@@ -89,7 +212,8 @@ interface RFQDetail {
     submittedAt?: string;
     supplier: {
       id: string;
-      name: string;
+      name?: string;
+      nombre?: string;
       email: string;
     };
   }>;
@@ -153,6 +277,44 @@ export default function RFQDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'items' | 'suppliers' | 'quotations'>('items');
 
+  // Estados para modales
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'default' | 'danger' | 'success';
+    action: () => void;
+  }>({ isOpen: false, title: '', message: '', action: () => {} });
+
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'success' | 'error' | 'info';
+    onClose?: () => void;
+  }>({ isOpen: false, title: '', message: '', variant: 'info' });
+
+  const showAlert = (title: string, message: string, variant: 'success' | 'error' | 'info' = 'info', onClose?: () => void) => {
+    setAlertModal({ isOpen: true, title, message, variant, onClose });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    action: () => void,
+    options?: { confirmText?: string; variant?: 'default' | 'danger' | 'success' }
+  ) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: options?.confirmText,
+      variant: options?.variant,
+      action
+    });
+  };
+
   const fetchRFQ = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -165,8 +327,7 @@ export default function RFQDetailPage() {
         const data = await response.json();
         setRfq(data.rfq);
       } else {
-        alert('Error al cargar la RFQ');
-        router.back();
+        showAlert('Error', 'Error al cargar la solicitud de cotización', 'error', () => router.back());
       }
     } catch (error) {
       console.error('Error:', error);
@@ -196,16 +357,63 @@ export default function RFQDetailPage() {
 
       if (response.ok) {
         fetchRFQ();
+        showAlert('Éxito', 'Acción ejecutada correctamente', 'success');
       } else {
         const error = await response.json();
-        alert(error.error || 'Error al ejecutar la accion');
+        showAlert('Error', error.error || 'Error al ejecutar la acción', 'error');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al ejecutar la accion');
+      showAlert('Error', 'Error al ejecutar la acción', 'error');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const executeGeneratePO = async () => {
+    setActionLoading(true);
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/rfq/${id}/generate-po`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        showAlert(
+          'Orden de Compra Generada',
+          data.message || 'La Orden de Compra se generó exitosamente',
+          'success',
+          () => router.push(`/compras/ordenes-compra/${data.purchaseOrder.id}`)
+        );
+      } else {
+        const error = await response.json();
+        showAlert('Error', error.error || 'Error al generar la Orden de Compra', 'error');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showAlert('Error', 'Error al generar la Orden de Compra', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleGeneratePO = () => {
+    showConfirm(
+      'Generar Orden de Compra',
+      '¿Deseas generar una Orden de Compra a partir de esta cotización adjudicada?',
+      executeGeneratePO,
+      { confirmText: 'Generar OC', variant: 'success' }
+    );
   };
 
   if (loading) {
@@ -265,13 +473,26 @@ export default function RFQDetailPage() {
               </Button>
             )}
 
+            {rfq.status === 'AWARDED' && (
+              <Button onClick={handleGeneratePO} disabled={actionLoading}>
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Generar Orden de Compra
+              </Button>
+            )}
+
             {!['AWARDED', 'CANCELLED', 'CLOSED'].includes(rfq.status) && (
               <Button
                 variant="outline"
                 onClick={() => {
-                  if (confirm('¿Cancelar esta solicitud?')) {
-                    handleAction('cancel');
-                  }
+                  showConfirm(
+                    'Cancelar Solicitud',
+                    '¿Estás seguro de que deseas cancelar esta solicitud de cotización? Esta acción no se puede deshacer.',
+                    () => {
+                      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                      handleAction('cancel');
+                    },
+                    { confirmText: 'Sí, cancelar', variant: 'danger' }
+                  );
                 }}
                 disabled={actionLoading}
               >
@@ -371,7 +592,7 @@ export default function RFQDetailPage() {
                   onClick={() => setActiveTab('items')}
                   className={`px-6 py-3 text-sm font-medium border-b-2 -mb-px ${
                     activeTab === 'items'
-                      ? 'border-primary text-primary'
+                      ? 'border-palette-purple text-palette-purple'
                       : 'border-transparent text-text-secondary hover:text-text-primary'
                   }`}
                 >
@@ -382,7 +603,7 @@ export default function RFQDetailPage() {
                   onClick={() => setActiveTab('suppliers')}
                   className={`px-6 py-3 text-sm font-medium border-b-2 -mb-px ${
                     activeTab === 'suppliers'
-                      ? 'border-primary text-primary'
+                      ? 'border-palette-purple text-palette-purple'
                       : 'border-transparent text-text-secondary hover:text-text-primary'
                   }`}
                 >
@@ -393,7 +614,7 @@ export default function RFQDetailPage() {
                   onClick={() => setActiveTab('quotations')}
                   className={`px-6 py-3 text-sm font-medium border-b-2 -mb-px ${
                     activeTab === 'quotations'
-                      ? 'border-primary text-primary'
+                      ? 'border-palette-purple text-palette-purple'
                       : 'border-transparent text-text-secondary hover:text-text-primary'
                   }`}
                 >
@@ -437,7 +658,7 @@ export default function RFQDetailPage() {
                     return (
                       <div key={inv.id} className="flex items-center justify-between border border-border rounded-lg p-4">
                         <div>
-                          <p className="font-medium text-text-primary">{inv.supplier.name}</p>
+                          <p className="font-medium text-text-primary">{inv.supplier.nombre || inv.supplier.name}</p>
                           <p className="text-sm text-text-secondary">{inv.supplier.email}</p>
                           {inv.supplier.cuit && (
                             <p className="text-xs text-text-secondary">CUIT: {inv.supplier.cuit}</p>
@@ -474,7 +695,7 @@ export default function RFQDetailPage() {
                   {rfq.quotations.filter(q => q.status !== 'DRAFT').map((quot) => (
                     <div key={quot.id} className="flex items-center justify-between border border-border rounded-lg p-4">
                       <div>
-                        <p className="font-medium text-text-primary">{quot.supplier.name}</p>
+                        <p className="font-medium text-text-primary">{quot.supplier.nombre || quot.supplier.name}</p>
                         <p className="text-sm text-text-secondary">{quot.number}</p>
                         {quot.submittedAt && (
                           <p className="text-xs text-text-secondary">
@@ -601,6 +822,29 @@ export default function RFQDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modales */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        variant={confirmModal.variant}
+        loading={actionLoading}
+        onConfirm={confirmModal.action}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        onClose={() => {
+          setAlertModal(prev => ({ ...prev, isOpen: false }));
+          if (alertModal.onClose) alertModal.onClose();
+        }}
+      />
     </div>
   );
 }

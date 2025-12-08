@@ -137,7 +137,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
           <select
             value={formData.banco}
             onChange={(e) => handleChange('banco', e.target.value)}
-            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
+            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
               errors.banco ? 'border-red-500' : 'border-gray-300'
             }`}
           >
@@ -165,7 +165,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
               value="CUENTA_CORRIENTE"
               checked={formData.tipoCuenta === 'CUENTA_CORRIENTE'}
               onChange={(e) => handleChange('tipoCuenta', e.target.value as 'CUENTA_CORRIENTE')}
-              className="w-4 h-4 text-purple-600"
+              className="w-4 h-4 text-secondary"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Cuenta Corriente</span>
           </label>
@@ -176,7 +176,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
               value="CAJA_AHORRO"
               checked={formData.tipoCuenta === 'CAJA_AHORRO'}
               onChange={(e) => handleChange('tipoCuenta', e.target.value as 'CAJA_AHORRO')}
-              className="w-4 h-4 text-purple-600"
+              className="w-4 h-4 text-secondary"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Caja de Ahorro</span>
           </label>
@@ -195,7 +195,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
             value={formData.numeroCuenta}
             onChange={(e) => handleChange('numeroCuenta', e.target.value)}
             placeholder="0123456789"
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
           />
         </div>
       </div>
@@ -213,7 +213,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
             onChange={(e) => handleChange('cbu', e.target.value)}
             placeholder="0170099220000012345678"
             maxLength={22}
-            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white font-mono ${
+            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white font-mono ${
               errors.cbu ? 'border-red-500' : 'border-gray-300'
             }`}
           />
@@ -232,7 +232,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
           value={formData.alias}
           onChange={(e) => handleChange('alias', e.target.value.toUpperCase())}
           placeholder="MI.EMPRESA.PAGOS"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white uppercase"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white uppercase"
         />
       </div>
 
@@ -248,7 +248,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
             value={formData.titularCuenta}
             onChange={(e) => handleChange('titularCuenta', e.target.value.toUpperCase())}
             placeholder="MI EMPRESA SRL"
-            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white uppercase ${
+            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white uppercase ${
               errors.titularCuenta ? 'border-red-500' : 'border-gray-300'
             }`}
           />
@@ -268,7 +268,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
           onChange={(e) => handleChange('cuitTitular', e.target.value)}
           placeholder="30-12345678-9"
           maxLength={13}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
         />
       </div>
 
@@ -285,7 +285,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
               value="ARS"
               checked={formData.monedaCuenta === 'ARS'}
               onChange={(e) => handleChange('monedaCuenta', e.target.value as 'ARS')}
-              className="w-4 h-4 text-purple-600"
+              className="w-4 h-4 text-secondary"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Pesos (ARS)</span>
           </label>
@@ -296,7 +296,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
               value="USD"
               checked={formData.monedaCuenta === 'USD'}
               onChange={(e) => handleChange('monedaCuenta', e.target.value as 'USD')}
-              className="w-4 h-4 text-purple-600"
+              className="w-4 h-4 text-secondary"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Dólares (USD)</span>
           </label>
@@ -318,7 +318,7 @@ export const BankDataForm: React.FC<BankDataFormProps> = ({
         <button
           type="submit"
           disabled={isLoading}
-          className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="px-6 py-2 bg-secondary hover:bg-secondary-hover text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
         >
           {isLoading ? (
             <>

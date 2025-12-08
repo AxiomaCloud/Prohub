@@ -1,6 +1,6 @@
 # TODO - Plan de Desarrollo Hub
 
-**Última actualización:** 2025-12-06 (Sesión 5)
+**Última actualización:** 2025-12-07 (Sesión 7)
 
 ---
 
@@ -15,7 +15,8 @@
 | Sistema de Roles | Parcial | 75% |
 | MVP Compras | En progreso | 60% |
 | Notificaciones | Completado | 90% |
-| **Cotizaciones y Licitaciones** | **En progreso** | **60%** |
+| **Cotizaciones y Licitaciones** | **Completado** | **95%** |
+| **Portal Proveedor** | **Completado** | **95%** |
 
 ---
 
@@ -329,27 +330,34 @@
   - Selección de proveedor para adjudicar
   - Botón "Adjudicar" + Generar OC
 
-#### 8.4 Frontend - Proveedor
-- [ ] **Página /portal/cotizaciones** (mis invitaciones)
+#### 8.4 Frontend - Proveedor (COMPLETADO)
+- [x] **Página /portal/cotizaciones** (mis invitaciones)
   - RFQs donde fui invitado
   - Estado: Pendiente, Cotizado, Adjudicado, No adjudicado
-- [ ] **Página /portal/cotizaciones/[id]** (ver y cotizar)
+  - Stats cards (Invitaciones, Por Cotizar, Cotizadas, Adjudicadas)
+  - Filtros por estado
+- [x] **Página /portal/cotizaciones/[id]** (ver y cotizar)
   - Detalle de lo solicitado
   - Formulario para ingresar precios por ítem
   - Plazo de entrega, condiciones
-  - Adjuntar archivos (catálogos, fichas técnicas)
   - Guardar borrador / Enviar cotización
-- [ ] **Notificación de adjudicación**
-  - Ver si ganó o no
-  - Detalle de la OC generada (si ganó)
+  - Botón "No Participar" para declinar
+- [x] **Página /portal/dashboard** (dashboard proveedor)
+  - Resumen de cotizaciones, órdenes, facturas, pagos
+  - Acciones rápidas
+- [x] **Notificación de adjudicación en UI**
+  - Banner verde si ganó, rojo si no
+  - Estado actualizado en listado
+- [ ] **Adjuntar archivos** (catálogos, fichas técnicas) - pendiente
 
-#### 8.5 Notificaciones
-- [ ] Email: Invitación a cotizar (al proveedor)
-- [ ] Email: Recordatorio antes del cierre
-- [ ] Email: RFQ cerrado (a proveedores que cotizaron)
-- [ ] Email: Adjudicación (ganador y no ganadores)
-- [ ] Email: Nueva cotización recibida (al comprador)
-- [ ] Notificaciones in-app para todos los eventos
+#### 8.5 Notificaciones (COMPLETADO)
+- [x] Email: Invitación a cotizar (al proveedor) - NotificationService.notifyRFQInvitation
+- [x] Email: Adjudicación ganador - NotificationService.notifyRFQAwarded
+- [x] Email: Adjudicación no ganadores - NotificationService.notifyRFQNotAwarded
+- [x] Email: Nueva cotización recibida (al comprador) - NotificationService.notifyQuotationReceived
+- [x] Email: Recordatorio antes del cierre - NotificationService.notifyRFQDeadlineReminder
+- [x] Tipos de evento agregados al schema Prisma (RFQ_INVITATION, RFQ_AWARDED, etc.)
+- [ ] Notificaciones in-app (opcional)
 
 #### 8.6 Integraciones
 - [ ] Crear RFQ desde requerimiento aprobado (un click)
@@ -362,6 +370,72 @@
 - [ ] Métricas: tiempo promedio de respuesta, tasa de participación
 - [ ] Historial de precios por proveedor/producto
 - [ ] Comparativo de ahorro vs presupuesto estimado
+
+---
+
+### 9. PORTAL PROVEEDOR
+
+**Descripción:** Portal unificado para que los proveedores accedan a todas sus funcionalidades.
+
+#### 9.1 Páginas del Portal (COMPLETADO)
+- [x] **Página /portal/dashboard** - Dashboard del proveedor
+  - Resumen de cotizaciones, órdenes, facturas, pagos
+  - Stats cards con datos reales
+  - Acciones rápidas
+- [x] **Página /portal/cotizaciones** - Listado de invitaciones RFQ
+  - Estados: Pendiente, Cotizado, Adjudicado, No adjudicado
+  - Filtros y búsqueda
+- [x] **Página /portal/cotizaciones/[id]** - Cotizar una RFQ
+  - Ver detalle de solicitud
+  - Formulario para ingresar precios
+  - Guardar borrador / Enviar cotización
+  - Declinar participación
+- [x] **Página /portal/empresa** - Editar datos de mi empresa
+  - Tabs: Datos Generales, Contacto, Datos Bancarios, Notificaciones
+  - Formulario editable con validaciones
+  - Guardar cambios
+
+#### 9.2 Reutilización de Páginas Existentes (COMPLETADO)
+En lugar de duplicar código, las siguientes páginas detectan si el usuario es proveedor y filtran los datos:
+
+- [x] **/compras/ordenes-compra** - Muestra solo OCs del proveedor
+  - Título cambia a "Mis Órdenes de Compra"
+  - Oculta botón de crear nueva OC
+  - Filtra por proveedorId
+- [x] **/documentos** - Muestra solo facturas del proveedor
+  - Título cambia a "Mis Facturas"
+  - Filtra por supplierId → tenant por CUIT
+- [x] **/pagos** - Muestra solo pagos recibidos por el proveedor
+  - Título cambia a "Mis Pagos"
+  - Filtra por supplierId → tenant por CUIT
+
+#### 9.3 Hook useSupplier (COMPLETADO)
+- [x] **Hook `/frontend/src/hooks/useSupplier.ts`**
+  - Detecta si el usuario actual es proveedor
+  - Retorna: isSupplier, supplierId, supplier, loading, error
+  - Usa endpoint GET /api/suppliers/me
+
+#### 9.4 Backend - API Proveedor (COMPLETADO)
+- [x] **GET /api/suppliers/me** - Obtener datos del proveedor actual
+  - Busca por userId del token JWT
+- [x] **GET /api/documents?supplierId=** - Filtrar documentos por proveedor
+- [x] **GET /api/payments?supplierId=** - Filtrar pagos por proveedor
+- [x] **GET /api/payments/stats/supplier/:supplierId** - Stats de pagos
+
+#### 9.5 Menú del Portal (COMPLETADO)
+- [x] **Script add-portal-menu.ts** - Agrega opciones de menú sin sobrescribir
+  - Dashboard → /portal/dashboard
+  - Cotizaciones → /portal/cotizaciones
+  - Mis Órdenes → /compras/ordenes-compra (reutiliza)
+  - Mis Facturas → /documentos (reutiliza)
+  - Mis Pagos → /pagos (reutiliza)
+  - Mi Empresa → /portal/empresa
+
+#### 9.6 Pendiente
+- [ ] Notificaciones in-app para proveedores
+- [ ] Upload de documentos propios (constancias, certificados)
+- [ ] Historial de transacciones
+- [ ] Comunicación bidireccional (chat con comprador)
 
 ---
 
@@ -432,23 +506,33 @@ frontend/src/
 
 ## PRÓXIMOS PASOS INMEDIATOS
 
-1. **Cotizaciones y Licitaciones (EN PROGRESO - 60%):**
+1. **Cotizaciones y Licitaciones (85% COMPLETADO):**
    - [x] Schema Prisma (modelos RFQ) - COMPLETADO
    - [x] Menú en sidebar - COMPLETADO
    - [x] API Backend (`/api/rfq`) - CRUD completo - COMPLETADO
    - [x] Frontend comprador completo - COMPLETADO
-     - Listado con stats, filtros, paginación
-     - Crear nueva RFQ (manual o desde requerimiento)
-     - Detalle con tabs (Items, Proveedores, Cotizaciones)
-     - Cuadro comparativo con adjudicación
-   - [ ] Frontend proveedor (portal para cotizar)
-   - [ ] Notificaciones RFQ (emails + in-app)
+   - [x] Frontend proveedor - COMPLETADO
+     - `/portal/cotizaciones` - Listado de invitaciones
+     - `/portal/cotizaciones/[id]` - Formulario de cotización
+     - `/portal/dashboard` - Dashboard del proveedor
+   - [x] Notificaciones RFQ (emails) - COMPLETADO
+     - Invitación, Adjudicación, Recordatorio
+   - [ ] Agregar opciones de menú Portal Proveedor (manual desde admin)
+   - [ ] Adjuntar archivos a cotizaciones
 
-2. **Sistema de Roles (pendiente):**
+2. **Portal Proveedor (70% COMPLETADO):**
+   - [x] Dashboard con resumen
+   - [x] Cotizaciones (listar, ver, cotizar)
+   - [ ] Mis Órdenes de Compra (pendiente)
+   - [ ] Mis Facturas (pendiente)
+   - [ ] Mis Pagos (pendiente)
+   - [ ] Datos de Mi Empresa (pendiente)
+
+3. **Sistema de Roles (pendiente):**
    - [ ] Selector de empresa en UI (multi-tenant)
    - [ ] Panel de gestión de roles (admin)
 
-3. **Mejoras menores:**
+4. **Mejoras menores:**
    - [ ] Exportación Excel/CSV en pagos
    - [ ] Wizard de onboarding para proveedores
    - [ ] Push notifications (opcional)

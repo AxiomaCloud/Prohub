@@ -93,7 +93,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
           invitedSuppliers: {
             include: {
               supplier: {
-                select: { id: true, name: true, email: true }
+                select: { id: true, nombre: true, email: true }
               }
             }
           },
@@ -235,14 +235,14 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
         invitedSuppliers: {
           include: {
             supplier: {
-              select: { id: true, name: true, email: true, cuit: true }
+              select: { id: true, nombre: true, email: true, cuit: true }
             }
           }
         },
         quotations: {
           include: {
             supplier: {
-              select: { id: true, name: true, email: true, cuit: true }
+              select: { id: true, nombre: true, email: true, cuit: true }
             },
             items: true
           }
@@ -259,7 +259,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
           select: { id: true, name: true, email: true }
         },
         awardedTo: {
-          select: { id: true, name: true, email: true, cuit: true }
+          select: { id: true, nombre: true, email: true, cuit: true }
         }
       }
     });
@@ -292,7 +292,8 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       currency,
       estimatedBudget,
       items,
-      supplierIds
+      supplierIds,
+      attachments // [{fileName, fileUrl, fileType, fileSize}]
     } = req.body;
 
     if (!tenantId || !title || !deadline) {
@@ -320,6 +321,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
         paymentTerms,
         currency: currency || 'ARS',
         budget: estimatedBudget || null,
+        attachments: attachments || null,
         status: 'DRAFT',
         items: items && items.length > 0 ? {
           create: items.map((item: any, index: number) => ({
@@ -342,7 +344,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
         invitedSuppliers: {
           include: {
             supplier: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, nombre: true, email: true }
             }
           }
         }
@@ -371,7 +373,8 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
       paymentTerms,
       currency,
       estimatedBudget,
-      items
+      items,
+      attachments
     } = req.body;
 
     // Verificar que existe y está en DRAFT
@@ -416,13 +419,14 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
         deliveryDeadline: deliveryDeadline ? new Date(deliveryDeadline) : undefined,
         paymentTerms,
         currency,
-        budget: estimatedBudget
+        budget: estimatedBudget,
+        attachments: attachments !== undefined ? attachments : undefined
       },
       include: {
         items: true,
         invitedSuppliers: {
           include: {
-            supplier: { select: { id: true, name: true, email: true } }
+            supplier: { select: { id: true, nombre: true, email: true } }
           }
         }
       }
@@ -528,7 +532,7 @@ router.post('/:id/invite', authenticate, async (req: Request, res: Response) => 
       include: {
         invitedSuppliers: {
           include: {
-            supplier: { select: { id: true, name: true, email: true } }
+            supplier: { select: { id: true, nombre: true, email: true } }
           }
         }
       }
@@ -630,19 +634,46 @@ router.post('/:id/publish', authenticate, async (req: Request, res: Response) =>
       })
     ]);
 
-    // TODO: Enviar notificaciones por email a cada proveedor
-
     const updated = await prisma.quotationRequest.findUnique({
       where: { id },
       include: {
         items: true,
         invitedSuppliers: {
           include: {
-            supplier: { select: { id: true, name: true, email: true } }
+            supplier: { select: { id: true, nombre: true, email: true } }
           }
         }
       }
     });
+
+    // Obtener tenant por separado
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: updated?.tenantId || '' },
+      select: { id: true, name: true }
+    });
+
+    // Enviar notificaciones por email a cada proveedor
+    if (updated) {
+      try {
+        for (const invitation of updated.invitedSuppliers) {
+          if (invitation.supplier.email) {
+            await NotificationService.notifyRFQInvitation(
+              invitation.supplier.email,
+              invitation.supplier.nombre,
+              updated.number,
+              updated.title,
+              updated.deadline,
+              tenant?.name || '',
+              updated.id,
+              updated.tenantId
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error('Error enviando notificaciones de invitacion:', notifError);
+        // No fallar la operacion por errores de notificacion
+      }
+    }
 
     res.json({ rfq: updated, message: 'RFQ publicada exitosamente' });
   } catch (error) {
@@ -745,11 +776,11 @@ router.get('/:id/quotations', authenticate, async (req: Request, res: Response) 
       where: { quotationRequestId: id },
       include: {
         supplier: {
-          select: { id: true, name: true, email: true, cuit: true }
+          select: { id: true, nombre: true, email: true, cuit: true }
         },
         items: {
           include: {
-            requestItem: true
+            quotationRequestItem: true
           }
         }
       },
@@ -779,7 +810,7 @@ router.get('/:id/comparison', authenticate, async (req: Request, res: Response) 
           where: { status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'ACCEPTED', 'AWARDED'] } },
           include: {
             supplier: {
-              select: { id: true, name: true, email: true, cuit: true }
+              select: { id: true, nombre: true, email: true, cuit: true }
             },
             items: true
           }
@@ -798,7 +829,7 @@ router.get('/:id/comparison', authenticate, async (req: Request, res: Response) 
         number: rfq.number,
         title: rfq.title,
         currency: rfq.currency,
-        estimatedBudget: rfq.estimatedBudget ? Number(rfq.estimatedBudget) : null
+        estimatedBudget: rfq.budget ? Number(rfq.budget) : null
       },
       items: rfq.items.map(item => ({
         id: item.id,
@@ -809,7 +840,7 @@ router.get('/:id/comparison', authenticate, async (req: Request, res: Response) 
       suppliers: rfq.quotations.map(q => ({
         quotationId: q.id,
         supplierId: q.supplierId,
-        supplierName: q.supplier.name,
+        supplierName: q.supplier.nombre,
         totalAmount: Number(q.totalAmount),
         deliveryDays: q.deliveryDays,
         paymentTerms: q.paymentTerms,
@@ -921,19 +952,63 @@ router.post('/:id/award', authenticate, async (req: Request, res: Response) => {
       })
     ]);
 
-    // TODO: Enviar notificaciones
-
+    // Obtener datos completos para notificaciones
     const updated = await prisma.quotationRequest.findUnique({
       where: { id },
       include: {
-        awardedTo: { select: { id: true, name: true, email: true } },
+        awardedTo: { select: { id: true, nombre: true, email: true } },
         quotations: {
           include: {
-            supplier: { select: { id: true, name: true } }
+            supplier: { select: { id: true, nombre: true, email: true } }
           }
         }
       }
     });
+
+    // Obtener tenant por separado
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: updated?.tenantId || '' },
+      select: { id: true, name: true }
+    });
+
+    if (updated) {
+      // Enviar notificaciones
+      try {
+        const awardedQuotation = updated.quotations.find(q => q.id === quotationId);
+
+        // Notificar al ganador
+        if (awardedQuotation?.supplier.email) {
+          await NotificationService.notifyRFQAwarded(
+            awardedQuotation.supplier.email,
+            awardedQuotation.supplier.nombre,
+            updated.number,
+            updated.title,
+            Number(awardedQuotation.totalAmount),
+            tenant?.name || '',
+            updated.id,
+            updated.tenantId
+          );
+        }
+
+        // Notificar a los no ganadores
+        for (const quotation of updated.quotations) {
+          if (quotation.id !== quotationId && quotation.supplier.email) {
+            await NotificationService.notifyRFQNotAwarded(
+              quotation.supplier.email,
+              quotation.supplier.nombre,
+              updated.number,
+              updated.title,
+              tenant?.name || '',
+              updated.id,
+              updated.tenantId
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error('Error enviando notificaciones de adjudicacion:', notifError);
+        // No fallar la operacion por errores de notificacion
+      }
+    }
 
     res.json({ rfq: updated, message: 'RFQ adjudicada exitosamente' });
   } catch (error) {
@@ -957,7 +1032,7 @@ router.post('/:id/generate-po', authenticate, async (req: Request, res: Response
           where: { status: 'AWARDED' },
           include: {
             items: {
-              include: { requestItem: true }
+              include: { quotationRequestItem: true }
             },
             supplier: true
           }
@@ -979,56 +1054,72 @@ router.post('/:id/generate-po', authenticate, async (req: Request, res: Response
       return res.status(400).json({ error: 'No hay cotización adjudicada' });
     }
 
+    // Verificar que tenga purchaseRequestId
+    if (!rfq.purchaseRequestId) {
+      return res.status(400).json({ error: 'La RFQ no tiene requerimiento asociado' });
+    }
+
     // Generar número de OC
     const year = new Date().getFullYear();
     const prefix = `OC-${year}-`;
-    const lastOC = await prisma.purchaseOrder.findFirst({
-      where: { number: { startsWith: prefix } },
-      orderBy: { number: 'desc' }
+    const lastOC = await prisma.purchaseOrderCircuit.findFirst({
+      where: {
+        tenantId: rfq.tenantId,
+        numero: { startsWith: prefix }
+      },
+      orderBy: { numero: 'desc' }
     });
 
     let nextNumber = 1;
     if (lastOC) {
-      const lastNum = parseInt(lastOC.number.replace(prefix, ''), 10);
+      const lastNum = parseInt(lastOC.numero.replace(prefix, ''), 10);
       nextNumber = lastNum + 1;
     }
     const ocNumber = `${prefix}${String(nextNumber).padStart(5, '0')}`;
 
-    // Crear la OC
-    const purchaseOrder = await prisma.purchaseOrder.create({
+    // Calcular totales
+    const subtotal = Number(awardedQuotation.totalAmount) || 0;
+    const impuestos = subtotal * 0.21; // IVA 21%
+    const total = subtotal + impuestos;
+
+    // Crear la OC usando PurchaseOrderCircuit
+    const purchaseOrder = await prisma.purchaseOrderCircuit.create({
       data: {
-        number: ocNumber,
+        numero: ocNumber,
         tenantId: rfq.tenantId,
-        supplierId: awardedQuotation.supplierId,
+        proveedorId: awardedQuotation.supplierId,
         purchaseRequestId: rfq.purchaseRequestId,
-        quotationRequestId: rfq.id,
-        supplierQuotationId: awardedQuotation.id,
-        currency: rfq.currency,
-        subtotal: awardedQuotation.totalAmount,
-        taxAmount: 0, // TODO: Calcular impuestos
-        total: awardedQuotation.totalAmount,
-        status: 'PENDING_APPROVAL',
-        paymentTerms: awardedQuotation.paymentTerms,
-        deliveryDate: awardedQuotation.deliveryDays
+        moneda: rfq.currency,
+        subtotal: subtotal,
+        impuestos: impuestos,
+        total: total,
+        estado: 'PENDIENTE_APROBACION',
+        condicionPago: awardedQuotation.paymentTerms,
+        fechaEntregaEstimada: awardedQuotation.deliveryDays
           ? new Date(Date.now() + awardedQuotation.deliveryDays * 24 * 60 * 60 * 1000)
           : null,
-        createdById: req.user?.id!,
+        creadoPorId: req.user?.id!,
         items: {
-          create: awardedQuotation.items.map((item, index) => ({
-            description: item.requestItem?.description || '',
-            quantity: item.quantity,
-            unit: item.requestItem?.unit || 'UN',
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            purchaseRequestItemId: item.requestItem?.id,
-            orderIndex: index
+          create: awardedQuotation.items.map((item) => ({
+            descripcion: item.quotationRequestItem?.description || '',
+            cantidad: Number(item.quantity),
+            unidad: item.quotationRequestItem?.unit || 'Unidad',
+            precioUnitario: Number(item.unitPrice),
+            total: Number(item.totalPrice),
+            purchaseRequestItemId: item.quotationRequestItem?.purchaseRequestItemId || null,
           }))
         }
       },
       include: {
         items: true,
-        supplier: { select: { id: true, name: true } }
+        proveedor: { select: { id: true, nombre: true } }
       }
+    });
+
+    // Actualizar estado del requerimiento
+    await prisma.purchaseRequest.update({
+      where: { id: rfq.purchaseRequestId },
+      data: { estado: 'OC_GENERADA' }
     });
 
     res.json({
@@ -1052,15 +1143,49 @@ router.post('/:id/generate-po', authenticate, async (req: Request, res: Response
 router.get('/supplier-portal/invitations', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
+    console.log('📋 [RFQ] Buscando invitaciones para userId:', userId);
 
     // Obtener el proveedor asociado al usuario
-    const supplier = await prisma.supplier.findFirst({
+    // Primero buscar directamente por userId
+    let supplier = await prisma.supplier.findFirst({
       where: { userId }
     });
+    console.log('📋 [RFQ] Supplier por userId:', supplier?.id || 'No encontrado');
+
+    // Si no encuentra, buscar por TenantMembership.supplierId
+    if (!supplier && userId) {
+      const membership = await prisma.tenantMembership.findFirst({
+        where: {
+          userId,
+          supplierId: { not: null },
+          roles: { has: 'PROVIDER' }
+        }
+      });
+      console.log('📋 [RFQ] Membership encontrado:', membership?.id, 'supplierId:', membership?.supplierId);
+
+      if (membership?.supplierId) {
+        supplier = await prisma.supplier.findUnique({
+          where: { id: membership.supplierId }
+        });
+        console.log('📋 [RFQ] Supplier por membership:', supplier?.id || 'No encontrado');
+
+        // Auto-actualizar userId en Supplier para futuras búsquedas
+        if (supplier && !supplier.userId) {
+          await prisma.supplier.update({
+            where: { id: supplier.id },
+            data: { userId }
+          });
+          console.log('📋 [RFQ] Actualizado userId en Supplier');
+        }
+      }
+    }
 
     if (!supplier) {
+      console.log('📋 [RFQ] No se encontró proveedor para userId:', userId);
       return res.status(404).json({ error: 'No eres un proveedor registrado' });
     }
+
+    console.log('📋 [RFQ] Buscando invitaciones para supplierId:', supplier.id);
 
     const invitations = await prisma.quotationRequestSupplier.findMany({
       where: {
@@ -1073,12 +1198,12 @@ router.get('/supplier-portal/invitations', authenticate, async (req: Request, re
         quotationRequest: {
           include: {
             items: true,
-            tenant: { select: { id: true, name: true } }
           }
         }
       },
       orderBy: { invitedAt: 'desc' }
     });
+    console.log('📋 [RFQ] Invitaciones encontradas:', invitations.length);
 
     // Obtener cotizaciones del proveedor
     const quotations = await prisma.supplierQuotation.findMany({
@@ -1086,6 +1211,12 @@ router.get('/supplier-portal/invitations', authenticate, async (req: Request, re
     });
 
     const quotationMap = new Map(quotations.map(q => [q.quotationRequestId, q]));
+
+    // Obtener tenant para mostrar nombre
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: supplier.tenantId },
+      select: { id: true, name: true }
+    });
 
     const mappedInvitations = invitations.map(inv => ({
       id: inv.id,
@@ -1101,7 +1232,7 @@ router.get('/supplier-portal/invitations', authenticate, async (req: Request, re
         deadline: inv.quotationRequest.deadline,
         deliveryDeadline: inv.quotationRequest.deliveryDeadline,
         currency: inv.quotationRequest.currency,
-        tenant: inv.quotationRequest.tenant,
+        tenant: tenant,
         itemCount: inv.quotationRequest.items.length
       },
       myQuotation: quotationMap.get(inv.quotationRequestId) || null
@@ -1123,9 +1254,26 @@ router.get('/supplier-portal/:id', authenticate, async (req: Request, res: Respo
     const { id } = req.params;
     const userId = req.user?.id;
 
-    const supplier = await prisma.supplier.findFirst({
+    // Buscar proveedor directamente o por TenantMembership
+    let supplier = await prisma.supplier.findFirst({
       where: { userId }
     });
+
+    if (!supplier && userId) {
+      const membership = await prisma.tenantMembership.findFirst({
+        where: {
+          userId,
+          supplierId: { not: null },
+          roles: { has: 'PROVIDER' }
+        }
+      });
+
+      if (membership?.supplierId) {
+        supplier = await prisma.supplier.findUnique({
+          where: { id: membership.supplierId }
+        });
+      }
+    }
 
     if (!supplier) {
       return res.status(404).json({ error: 'No eres un proveedor registrado' });
@@ -1154,10 +1302,15 @@ router.get('/supplier-portal/:id', authenticate, async (req: Request, res: Respo
     const rfq = await prisma.quotationRequest.findUnique({
       where: { id },
       include: {
-        items: { orderBy: { orderIndex: 'asc' } },
-        tenant: { select: { id: true, name: true } }
+        items: { orderBy: { orderIndex: 'asc' } }
       }
     });
+
+    // Obtener tenant por separado
+    const tenant = rfq ? await prisma.tenant.findUnique({
+      where: { id: rfq.tenantId },
+      select: { id: true, name: true }
+    }) : null;
 
     // Obtener cotización existente del proveedor
     const existingQuotation = await prisma.supplierQuotation.findFirst({
@@ -1168,7 +1321,7 @@ router.get('/supplier-portal/:id', authenticate, async (req: Request, res: Respo
       include: { items: true }
     });
 
-    res.json({ rfq, myQuotation: existingQuotation });
+    res.json({ rfq: rfq ? { ...rfq, tenant } : null, myQuotation: existingQuotation });
   } catch (error) {
     console.error('Error al obtener RFQ para proveedor:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -1193,9 +1346,26 @@ router.post('/supplier-portal/:id/quotation', authenticate, async (req: Request,
 
     const userId = req.user?.id;
 
-    const supplier = await prisma.supplier.findFirst({
+    // Buscar proveedor directamente o por TenantMembership
+    let supplier = await prisma.supplier.findFirst({
       where: { userId }
     });
+
+    if (!supplier && userId) {
+      const membership = await prisma.tenantMembership.findFirst({
+        where: {
+          userId,
+          supplierId: { not: null },
+          roles: { has: 'PROVIDER' }
+        }
+      });
+
+      if (membership?.supplierId) {
+        supplier = await prisma.supplier.findUnique({
+          where: { id: membership.supplierId }
+        });
+      }
+    }
 
     if (!supplier) {
       return res.status(404).json({ error: 'No eres un proveedor registrado' });
@@ -1346,9 +1516,26 @@ router.post('/supplier-portal/:id/decline', authenticate, async (req: Request, r
     const { reason } = req.body;
     const userId = req.user?.id;
 
-    const supplier = await prisma.supplier.findFirst({
+    // Buscar proveedor directamente o por TenantMembership
+    let supplier = await prisma.supplier.findFirst({
       where: { userId }
     });
+
+    if (!supplier && userId) {
+      const membership = await prisma.tenantMembership.findFirst({
+        where: {
+          userId,
+          supplierId: { not: null },
+          roles: { has: 'PROVIDER' }
+        }
+      });
+
+      if (membership?.supplierId) {
+        supplier = await prisma.supplier.findUnique({
+          where: { id: membership.supplierId }
+        });
+      }
+    }
 
     if (!supplier) {
       return res.status(404).json({ error: 'No eres un proveedor registrado' });

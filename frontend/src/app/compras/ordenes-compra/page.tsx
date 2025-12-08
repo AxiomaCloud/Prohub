@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useCompras } from '@/lib/compras-context';
+import { useSupplier } from '@/hooks/useSupplier';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { OrdenCompra, Requerimiento, Proveedor, ItemOC } from '@/types/compras';
@@ -764,6 +765,7 @@ function DetalleOCModal({
 export default function OrdenesCompraPage() {
   const router = useRouter();
   const { ordenesCompra, requerimientos, proveedores, agregarOrdenCompra, usuarioActual } = useCompras();
+  const { isSupplier, supplierId, loading: supplierLoading } = useSupplier();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('');
@@ -774,10 +776,22 @@ export default function OrdenesCompraPage() {
   const circuitoModal = useCircuitoCompraModal();
 
   // Requerimientos disponibles para generar OC (aprobados o con OC parcial)
+  // Excluir los que tienen RFQ activa (deben generar OC desde la RFQ adjudicada)
   const requerimientosAprobados = useMemo(() => {
     return requerimientos.filter(r => {
       // Incluir APROBADO y OC_GENERADA para permitir OCs parciales
       if (r.estado !== 'APROBADO' && r.estado !== 'OC_GENERADA') return false;
+
+      // Excluir si tiene RFQ activa (no cancelada/cerrada)
+      // Los requerimientos con RFQ deben generar OC desde la RFQ adjudicada
+      if (r.tieneRFQ) {
+        const rfqActivas = r.quotationRequests?.filter((rfq: any) =>
+          !['CANCELLED', 'CLOSED'].includes(rfq.status)
+        );
+        if (rfqActivas && rfqActivas.length > 0) {
+          return false;
+        }
+      }
 
       // Verificar si aún tiene items sin OC
       const itemsConOC = new Set<string>();
@@ -797,9 +811,13 @@ export default function OrdenesCompraPage() {
     });
   }, [requerimientos, ordenesCompra]);
 
-  // Filtrar OC
+  // Filtrar OC (si es proveedor, solo ver las suyas)
   const ordenesCompraFiltradas = useMemo(() => {
     return ordenesCompra.filter((oc) => {
+      // Si es proveedor, solo mostrar OCs donde él es el proveedor
+      if (isSupplier && supplierId) {
+        if (oc.proveedorId !== supplierId) return false;
+      }
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchNumero = oc.numero.toLowerCase().includes(query);
@@ -809,7 +827,7 @@ export default function OrdenesCompraPage() {
       if (filtroEstado && oc.estado !== filtroEstado) return false;
       return true;
     });
-  }, [ordenesCompra, searchQuery, filtroEstado]);
+  }, [ordenesCompra, searchQuery, filtroEstado, isSupplier, supplierId]);
 
   // Calcular progreso de recepción para una OC
   const calcularProgresoRecepcion = (oc: OrdenCompra) => {
@@ -842,8 +860,18 @@ export default function OrdenesCompraPage() {
     }
   };
 
-  // Verificar permisos
-  if (usuarioActual.rol !== 'APROBADOR' && usuarioActual.rol !== 'ADMIN') {
+  // Loading state mientras se verifica si es proveedor
+  if (supplierLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-palette-purple"></div>
+      </div>
+    );
+  }
+
+  // Verificar permisos (permitir proveedores para ver sus OCs)
+  const tieneAcceso = usuarioActual.rol === 'APROBADOR' || usuarioActual.rol === 'ADMIN' || isSupplier;
+  if (!tieneAcceso) {
     return (
       <div className="p-6">
         <div className="bg-white rounded-lg shadow-sm border border-border p-12 text-center">
@@ -868,19 +896,24 @@ export default function OrdenesCompraPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Ordenes de Compra"
-        subtitle={`${ordenesCompra.length} orden${ordenesCompra.length !== 1 ? 'es' : ''} en total`}
+        title={isSupplier ? "Mis Órdenes de Compra" : "Ordenes de Compra"}
+        subtitle={isSupplier
+          ? `${ordenesCompraFiltradas.length} orden${ordenesCompraFiltradas.length !== 1 ? 'es' : ''} recibida${ordenesCompraFiltradas.length !== 1 ? 's' : ''}`
+          : `${ordenesCompra.length} orden${ordenesCompra.length !== 1 ? 'es' : ''} en total`
+        }
         icon={ShoppingCart}
         action={
-          <Button onClick={() => setShowNuevaOCModal(true)} disabled={requerimientosAprobados.length === 0}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva OC
-          </Button>
+          !isSupplier && (
+            <Button onClick={() => setShowNuevaOCModal(true)} disabled={requerimientosAprobados.length === 0}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nueva OC
+            </Button>
+          )
         }
       />
 
-      {/* Info si hay requerimientos aprobados */}
-      {requerimientosAprobados.length > 0 && (
+      {/* Info si hay requerimientos aprobados (solo para compradores) */}
+      {!isSupplier && requerimientosAprobados.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-green-600" />

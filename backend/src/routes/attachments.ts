@@ -286,6 +286,45 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/attachments/upload-generic
+ * Sube un archivo sin asociarlo a ninguna entidad
+ * Útil para RFQ y otras entidades que guardan adjuntos como JSON
+ */
+router.post(
+  '/upload-generic',
+  authenticate,
+  upload.single('file'),
+  async (req: Request, res: Response) => {
+    try {
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ error: 'No se recibió ningún archivo' });
+      }
+
+      const fileUrl = `/api/attachments/download/${file.filename}`;
+
+      console.log(`✅ Archivo genérico subido: ${file.originalname} -> ${file.filename}`);
+
+      res.status(201).json({
+        fileName: file.originalname,
+        fileUrl,
+        fileType: file.mimetype,
+        fileSize: file.size,
+      });
+    } catch (error) {
+      console.error('Error al subir archivo:', error);
+      if (req.file) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {}
+      }
+      res.status(500).json({ error: 'Error al subir el archivo' });
+    }
+  }
+);
+
+/**
  * GET /api/attachments/purchase-request/:purchaseRequestId
  * Lista adjuntos de un requerimiento
  */

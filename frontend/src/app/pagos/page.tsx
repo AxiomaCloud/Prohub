@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSupplier } from '@/hooks/useSupplier'
 import {
   Card,
   CardContent,
@@ -30,6 +31,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -80,6 +82,7 @@ const statusLabels: Record<string, string> = {
 
 export default function PagosPage() {
   const router = useRouter()
+  const { isSupplier, supplierId, loading: supplierLoading } = useSupplier()
   const [payments, setPayments] = useState<Payment[]>([])
   const [stats, setStats] = useState<PaymentStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -90,20 +93,27 @@ export default function PagosPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [exporting, setExporting] = useState(false)
 
   const tenantId = typeof window !== 'undefined'
     ? localStorage.getItem('tenantId') || ''
     : ''
 
   const fetchPayments = useCallback(async () => {
-    if (!tenantId) return
+    if (!tenantId && !isSupplier) return
 
     try {
       const params = new URLSearchParams({
-        tenantId,
         page: page.toString(),
         limit: '20',
       })
+
+      // Si es proveedor, agregar supplierId para filtrar
+      if (isSupplier && supplierId) {
+        params.append('supplierId', supplierId)
+      } else if (tenantId) {
+        params.append('tenantId', tenantId)
+      }
 
       if (search) params.append('search', search)
       if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter)
@@ -129,21 +139,23 @@ export default function PagosPage() {
     } catch (error) {
       console.error('Error fetching payments:', error)
     }
-  }, [tenantId, page, search, statusFilter, dateFrom, dateTo])
+  }, [tenantId, page, search, statusFilter, dateFrom, dateTo, isSupplier, supplierId])
 
   const fetchStats = useCallback(async () => {
-    if (!tenantId) return
+    if (!tenantId && !isSupplier) return
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/payments/stats/${tenantId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+      // Para proveedores, usar el endpoint con supplierId
+      const endpoint = isSupplier && supplierId
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/payments/stats/supplier/${supplierId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/payments/stats/${tenantId}`
+
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
       if (response.ok) {
         const data = await response.json()
@@ -152,16 +164,19 @@ export default function PagosPage() {
     } catch (error) {
       console.error('Error fetching stats:', error)
     }
-  }, [tenantId])
+  }, [tenantId, isSupplier, supplierId])
 
   useEffect(() => {
+    // Esperar a que se cargue la info del proveedor
+    if (supplierLoading) return
+
     const loadData = async () => {
       setLoading(true)
       await Promise.all([fetchPayments(), fetchStats()])
       setLoading(false)
     }
     loadData()
-  }, [fetchPayments, fetchStats])
+  }, [fetchPayments, fetchStats, supplierLoading])
 
   const formatCurrency = (amount: number, currency: string = 'ARS') => {
     return new Intl.NumberFormat('es-AR', {
@@ -198,7 +213,98 @@ export default function PagosPage() {
     }
   }
 
-  if (loading) {
+  const buildExportParams = () => {
+    const params = new URLSearchParams()
+    if (isSupplier && supplierId) {
+      params.append('supplierId', supplierId)
+    } else if (tenantId) {
+      params.append('tenantId', tenantId)
+    }
+    if (search) params.append('search', search)
+    if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter)
+    if (dateFrom) params.append('dateFrom', dateFrom)
+    if (dateTo) params.append('dateTo', dateTo)
+    return params
+  }
+
+  const handleExportCSV = async () => {
+    try {
+      setExporting(true)
+      const token = localStorage.getItem('token')
+      const params = buildExportParams()
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payments/export/csv?${params}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `pagos-${format(new Date(), 'yyyy-MM-dd')}.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true)
+      const token = localStorage.getItem('token')
+      const params = buildExportParams()
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payments/export/excel?${params}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+
+        // Generar Excel usando los datos
+        // Usamos una librería simple: convertimos a CSV con formato Excel
+        const headers = data.headers.join('\t')
+        const rows = data.rows.map((row: Record<string, string | number>) =>
+          data.headers.map((h: string) => row[h] ?? '').join('\t')
+        )
+        const content = [headers, ...rows].join('\n')
+
+        // Crear blob con BOM para Excel
+        const blob = new Blob(['\uFEFF' + content], { type: 'application/vnd.ms-excel;charset=utf-8' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `pagos-${format(new Date(), 'yyyy-MM-dd')}.xls`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      }
+    } catch (error) {
+      console.error('Error exporting Excel:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  if (loading || supplierLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -210,10 +316,35 @@ export default function PagosPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Pagos Recibidos</h1>
+          <h1 className="text-2xl font-bold text-text-primary">
+            {isSupplier ? 'Mis Pagos' : 'Pagos Recibidos'}
+          </h1>
           <p className="text-text-secondary mt-1">
-            Gestiona los pagos y comprobantes de tus facturas
+            {isSupplier
+              ? 'Consulta los pagos recibidos por tus facturas'
+              : 'Gestiona los pagos y comprobantes de tus facturas'
+            }
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={exporting || payments.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={exporting || payments.length === 0}
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Excel
+          </Button>
         </div>
       </div>
 

@@ -183,7 +183,7 @@ export default function DocumentDetailPage() {
 
     setSubmittingComment(true);
     try {
-      const comment = await post<any>(`/api/documents/${document.id}/comments`, {
+      const comment = await post(`/api/documents/${document.id}/comments`, {
         content: newComment.trim()
       });
 

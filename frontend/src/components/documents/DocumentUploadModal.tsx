@@ -284,7 +284,7 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size={step === 'review' ? 'xl' : 'lg'}>
+    <Modal open={isOpen} onClose={handleClose} size={step === 'review' ? 'xl' : 'lg'}>
       <div className="relative">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">

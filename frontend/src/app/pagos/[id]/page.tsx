@@ -525,7 +525,7 @@ export default function PaymentDetailPage() {
                     -{formatCurrency(totalRetenciones)}
                   </span>
                 </div>
-                <Separator />
+                <hr className="my-2" />
                 <div className="flex justify-between">
                   <span className="font-semibold">Neto a Pagar</span>
                   <span className="font-bold text-lg text-green-600">

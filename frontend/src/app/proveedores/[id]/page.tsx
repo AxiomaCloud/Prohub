@@ -22,7 +22,7 @@ import {
   Download,
   Eye,
 } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { BankDataForm } from '@/components/suppliers/BankDataForm';
 import { CompanyDataForm } from '@/components/suppliers/CompanyDataForm';
 
@@ -126,7 +126,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 export default function SupplierDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { token } = useAuthStore();
+  const { token } = useAuth();
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'info' | 'bank' | 'docs'>('info');
@@ -134,7 +134,7 @@ export default function SupplierDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const supplierId = params.id as string;
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function SupplierDetailPage() {
   const fetchSupplier = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${API_URL}/suppliers/${supplierId}`, {
+      const res = await fetch(`${API_URL}/api/suppliers/${supplierId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -159,7 +159,7 @@ export default function SupplierDetailPage() {
   const handleSaveBankData = async (data: any) => {
     setIsSaving(true);
     try {
-      await fetch(`${API_URL}/suppliers/${supplierId}/complete-bank-data`, {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}/complete-bank-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ export default function SupplierDetailPage() {
   const handleSaveCompanyData = async (data: any) => {
     setIsSaving(true);
     try {
-      await fetch(`${API_URL}/suppliers/${supplierId}/complete-company-data`, {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}/complete-company-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ export default function SupplierDetailPage() {
 
   const handleApprove = async () => {
     try {
-      await fetch(`${API_URL}/suppliers/${supplierId}/approve`, {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}/approve`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -213,7 +213,7 @@ export default function SupplierDetailPage() {
     if (!motivo) return;
 
     try {
-      await fetch(`${API_URL}/suppliers/${supplierId}/reject`, {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -234,7 +234,7 @@ export default function SupplierDetailPage() {
       formData.append('file', file);
       formData.append('tipo', tipo);
 
-      await fetch(`${API_URL}/suppliers/${supplierId}/documents`, {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}/documents`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -251,7 +251,7 @@ export default function SupplierDetailPage() {
     if (!confirm('¿Eliminar este documento?')) return;
 
     try {
-      await fetch(`${API_URL}/suppliers/${supplierId}/documents/${docId}`, {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}/documents/${docId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -271,7 +271,7 @@ export default function SupplierDetailPage() {
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -282,7 +282,7 @@ export default function SupplierDetailPage() {
         <p className="text-gray-500">Proveedor no encontrado</p>
         <button
           onClick={() => router.push('/proveedores')}
-          className="mt-4 text-purple-600 hover:text-purple-700"
+          className="mt-4 text-secondary hover:text-secondary-hover"
         >
           Volver al listado
         </button>
@@ -350,7 +350,7 @@ export default function SupplierDetailPage() {
             onClick={() => setActiveTab('info')}
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'info'
-                ? 'border-purple-600 text-purple-600'
+                ? 'border-secondary text-secondary'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -361,7 +361,7 @@ export default function SupplierDetailPage() {
             onClick={() => setActiveTab('bank')}
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'bank'
-                ? 'border-purple-600 text-purple-600'
+                ? 'border-secondary text-secondary'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -372,7 +372,7 @@ export default function SupplierDetailPage() {
             onClick={() => setActiveTab('docs')}
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'docs'
-                ? 'border-purple-600 text-purple-600'
+                ? 'border-secondary text-secondary'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -387,29 +387,19 @@ export default function SupplierDetailPage() {
         {/* Info Tab */}
         {activeTab === 'info' && (
           <div>
-            {editMode === 'company' ? (
-              <CompanyDataForm
-                initialData={supplier}
-                razonSocial={supplier.nombre}
-                cuit={formatCuit(supplier.cuit)}
-                onSubmit={handleSaveCompanyData}
-                onCancel={() => setEditMode('none')}
-                isLoading={isSaving}
-              />
-            ) : (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Información de la Empresa
-                  </h2>
-                  <button
-                    onClick={() => setEditMode('company')}
-                    className="text-purple-600 hover:text-purple-700 flex items-center gap-1 text-sm"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Editar
-                  </button>
-                </div>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Información de la Empresa
+                </h2>
+                <button
+                  onClick={() => setEditMode('company')}
+                  className="text-secondary hover:text-secondary-hover flex items-center gap-1 text-sm"
+                >
+                  <Edit className="w-4 h-4" />
+                  Editar
+                </button>
+              </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <InfoItem label="Condición Fiscal" value={supplier.condicionFiscal?.replace('_', ' ')} />
@@ -443,34 +433,25 @@ export default function SupplierDetailPage() {
                   </div>
                 </div>
               </div>
-            )}
           </div>
         )}
 
         {/* Bank Tab */}
         {activeTab === 'bank' && (
           <div>
-            {editMode === 'bank' ? (
-              <BankDataForm
-                initialData={supplier}
-                onSubmit={handleSaveBankData}
-                onCancel={() => setEditMode('none')}
-                isLoading={isSaving}
-              />
-            ) : (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Datos Bancarios
-                  </h2>
-                  <button
-                    onClick={() => setEditMode('bank')}
-                    className="text-purple-600 hover:text-purple-700 flex items-center gap-1 text-sm"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Editar
-                  </button>
-                </div>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Datos Bancarios
+                </h2>
+                <button
+                  onClick={() => setEditMode('bank')}
+                  className="text-secondary hover:text-secondary-hover flex items-center gap-1 text-sm"
+                >
+                  <Edit className="w-4 h-4" />
+                  Editar
+                </button>
+              </div>
 
                 {supplier.cbu ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -483,20 +464,19 @@ export default function SupplierDetailPage() {
                     <InfoItem label="Titular de la Cuenta" value={supplier.titularCuenta} />
                     <InfoItem label="CUIT del Titular" value={supplier.cuitTitular && formatCuit(supplier.cuitTitular)} />
                   </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">No hay datos bancarios cargados</p>
-                    <button
-                      onClick={() => setEditMode('bank')}
-                      className="text-purple-600 hover:text-purple-700 font-medium"
-                    >
-                      Cargar datos bancarios
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-8">
+                  <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-4">No hay datos bancarios cargados</p>
+                  <button
+                    onClick={() => setEditMode('bank')}
+                    className="text-secondary hover:text-secondary-hover font-medium"
+                  >
+                    Cargar datos bancarios
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -526,7 +506,7 @@ export default function SupplierDetailPage() {
                     className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                   >
                     <div className="flex items-center gap-3">
-                      <FileText className="w-8 h-8 text-purple-600" />
+                      <FileText className="w-8 h-8 text-secondary" />
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{doc.nombre}</p>
                         <p className="text-sm text-gray-500">
@@ -567,6 +547,40 @@ export default function SupplierDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Modal para editar datos de empresa */}
+      {editMode === 'company' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <CompanyDataForm
+                initialData={supplier as any}
+                razonSocial={supplier.nombre}
+                cuit={formatCuit(supplier.cuit)}
+                onSubmit={handleSaveCompanyData}
+                onCancel={() => setEditMode('none')}
+                isLoading={isSaving}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar datos bancarios */}
+      {editMode === 'bank' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <BankDataForm
+                initialData={supplier as any}
+                onSubmit={handleSaveBankData}
+                onCancel={() => setEditMode('none')}
+                isLoading={isSaving}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -626,7 +640,7 @@ function DocumentUploadButton({
       <button
         onClick={() => setShowMenu(!showMenu)}
         disabled={isLoading}
-        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+        className="px-4 py-2 bg-secondary hover:bg-secondary-hover text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
       >
         <Upload className="w-4 h-4" />
         {isLoading ? 'Subiendo...' : 'Subir Documento'}

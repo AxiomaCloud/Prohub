@@ -267,15 +267,24 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 router.put('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, phone, avatar } = req.body;
+    const { name, phone, avatar, password } = req.body;
+
+    // Preparar datos de actualización
+    const updateData: any = {
+      name,
+      phone,
+      avatar,
+    };
+
+    // Si se envía password, hashearla
+    if (password && password.trim() !== '') {
+      updateData.passwordHash = await hashPassword(password);
+      console.log(`🔐 Contraseña actualizada para usuario: ${id}`);
+    }
 
     const user = await prisma.user.update({
       where: { id },
-      data: {
-        name,
-        phone,
-        avatar,
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
@@ -311,6 +320,39 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// EMAIL VERIFICATION
+// ============================================
+
+/**
+ * PUT /api/users/:id/verify-email
+ * Manually verify user email (admin only)
+ */
+router.put('/:id/verify-email', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        emailVerified: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+      },
+    });
+
+    console.log(`✅ Email verificado manualmente para usuario: ${user.email}`);
+    res.json({ message: 'Email verificado correctamente', user });
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(500).json({ error: 'Error al verificar email' });
   }
 });
 

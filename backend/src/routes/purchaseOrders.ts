@@ -98,7 +98,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
           direccion: oc.proveedor.direccion,
           telefono: oc.proveedor.telefono,
           email: oc.proveedor.email,
-          contacto: oc.proveedor.contacto,
+          contacto: oc.proveedor.contactoNombre,
         },
         estado: oc.estado,
         subtotal: parseFloat(oc.subtotal.toString()),

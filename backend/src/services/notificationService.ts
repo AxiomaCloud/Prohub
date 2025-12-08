@@ -516,6 +516,103 @@ export class NotificationService {
     await this.sendNotification('SUPPLIER_PENDING_APPROVAL', approverEmail, context);
   }
 
+  /**
+   * Envía un mensaje personalizado a un proveedor
+   */
+  static async sendSupplierMessage(
+    supplierEmail: string,
+    supplierName: string,
+    clientName: string,
+    message: string
+  ): Promise<void> {
+    // Enviar email directo sin usar template de notificación
+    await EmailService.sendEmail({
+      to: supplierEmail,
+      subject: `Mensaje de ${clientName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Mensaje de ${clientName}</h1>
+          </div>
+          <div style="padding: 30px; background: #f9fafb;">
+            <p style="font-size: 16px; color: #374151;">Hola <strong>${supplierName}</strong>,</p>
+            <p style="font-size: 16px; color: #374151;">Has recibido un mensaje de ${clientName}:</p>
+            <div style="background: white; border-left: 4px solid #6366f1; padding: 20px; margin: 20px 0; border-radius: 4px;">
+              <p style="font-size: 16px; color: #374151; white-space: pre-wrap; margin: 0;">${message}</p>
+            </div>
+            <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+              Para responder a este mensaje, puedes ingresar al portal de proveedores o contactar directamente a ${clientName}.
+            </p>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${FRONTEND_URL}/portal/dashboard" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                Ir al Portal
+              </a>
+            </div>
+          </div>
+          <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+            Este mensaje fue enviado desde el sistema de gestión de proveedores.
+          </div>
+        </div>
+      `,
+    });
+    console.log(`📧 [SUPPLIER MESSAGE] Mensaje enviado a ${supplierEmail}`);
+  }
+
+  /**
+   * Envía credenciales de acceso a un proveedor aprobado
+   */
+  static async sendSupplierCredentials(
+    supplierEmail: string,
+    supplierName: string,
+    clientName: string,
+    userEmail: string,
+    tempPassword: string,
+    loginUrl: string
+  ): Promise<void> {
+    await EmailService.sendEmail({
+      to: supplierEmail,
+      subject: `Tu cuenta ha sido aprobada - ${clientName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">¡Bienvenido al Portal!</h1>
+          </div>
+          <div style="padding: 30px; background: #f9fafb;">
+            <p style="font-size: 16px; color: #374151;">Hola <strong>${supplierName}</strong>,</p>
+            <p style="font-size: 16px; color: #374151;">
+              Tu registro como proveedor de <strong>${clientName}</strong> ha sido aprobado.
+              Ya puedes acceder al portal con las siguientes credenciales:
+            </p>
+            <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+              <p style="margin: 0 0 10px 0;">
+                <strong style="color: #6b7280;">Email:</strong><br>
+                <span style="font-size: 18px; color: #111827;">${userEmail}</span>
+              </p>
+              <p style="margin: 0;">
+                <strong style="color: #6b7280;">Contraseña temporal:</strong><br>
+                <span style="font-size: 18px; font-family: monospace; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">${tempPassword}</span>
+              </p>
+            </div>
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; color: #92400e; font-size: 14px;">
+                <strong>Importante:</strong> Te recomendamos cambiar tu contraseña después del primer inicio de sesión.
+              </p>
+            </div>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${loginUrl}" style="display: inline-block; background: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                Ingresar al Portal
+              </a>
+            </div>
+          </div>
+          <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+            Este mensaje fue enviado desde el sistema de gestión de proveedores.
+          </div>
+        </div>
+      `,
+    });
+    console.log(`📧 [SUPPLIER CREDENTIALS] Credenciales enviadas a ${supplierEmail}`);
+  }
+
   // ============================================
   // NOTIFICACIONES DE PAGOS
   // ============================================
@@ -586,6 +683,131 @@ export class NotificationService {
     };
 
     await this.sendNotification('PAYMENT_SCHEDULED', recipientEmail, context);
+  }
+
+  // ============================================
+  // NOTIFICACIONES DE RFQ (COTIZACIONES)
+  // ============================================
+
+  /**
+   * Notifica a un proveedor que fue invitado a cotizar
+   */
+  static async notifyRFQInvitation(
+    supplierEmail: string,
+    supplierName: string,
+    rfqNumber: string,
+    rfqTitle: string,
+    deadline: Date,
+    clientName: string,
+    rfqId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: rfqNumber,
+      titulo: rfqTitle,
+      proveedor: supplierName,
+      fechaAprobacion: deadline.toLocaleDateString('es-AR'),
+      actionUrl: `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`,
+    };
+
+    await this.sendNotification('RFQ_INVITATION', supplierEmail, context);
+  }
+
+  /**
+   * Notifica a un proveedor que su cotizacion fue adjudicada
+   */
+  static async notifyRFQAwarded(
+    supplierEmail: string,
+    supplierName: string,
+    rfqNumber: string,
+    rfqTitle: string,
+    quotationTotal: number,
+    clientName: string,
+    rfqId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: rfqNumber,
+      titulo: rfqTitle,
+      proveedor: supplierName,
+      montoTotal: this.formatCurrency(quotationTotal),
+      actionUrl: `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`,
+    };
+
+    await this.sendNotification('RFQ_AWARDED', supplierEmail, context);
+  }
+
+  /**
+   * Notifica a un proveedor que su cotizacion no fue seleccionada
+   */
+  static async notifyRFQNotAwarded(
+    supplierEmail: string,
+    supplierName: string,
+    rfqNumber: string,
+    rfqTitle: string,
+    clientName: string,
+    rfqId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: rfqNumber,
+      titulo: rfqTitle,
+      proveedor: supplierName,
+      actionUrl: `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`,
+    };
+
+    await this.sendNotification('RFQ_NOT_AWARDED', supplierEmail, context);
+  }
+
+  /**
+   * Notifica cuando se recibe una nueva cotizacion
+   */
+  static async notifyQuotationReceived(
+    buyerEmail: string,
+    supplierName: string,
+    rfqNumber: string,
+    quotationNumber: string,
+    quotationTotal: number,
+    rfqId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: quotationNumber,
+      titulo: `Cotizacion recibida para ${rfqNumber}`,
+      proveedor: supplierName,
+      montoTotal: this.formatCurrency(quotationTotal),
+      actionUrl: `${FRONTEND_URL}/compras/cotizaciones/${rfqId}`,
+    };
+
+    await this.sendNotification('RFQ_QUOTATION_RECEIVED', buyerEmail, context);
+  }
+
+  /**
+   * Recordatorio de RFQ por vencer
+   */
+  static async notifyRFQDeadlineReminder(
+    supplierEmail: string,
+    supplierName: string,
+    rfqNumber: string,
+    rfqTitle: string,
+    daysRemaining: number,
+    rfqId: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: rfqNumber,
+      titulo: rfqTitle,
+      proveedor: supplierName,
+      comentario: `Quedan ${daysRemaining} dia${daysRemaining > 1 ? 's' : ''} para enviar tu cotizacion`,
+      actionUrl: `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`,
+    };
+
+    await this.sendNotification('RFQ_DEADLINE_REMINDER', supplierEmail, context);
   }
 
   // Helpers

@@ -28,24 +28,27 @@ export default function CircuitoCompraModal({
   const [loading, setLoading] = useState(true);
   const [circuitoData, setCircuitoData] = useState<{
     requerimiento: Requerimiento | null;
+    rfq: { id: string; number: string; title: string; status: string; quotationsCount?: number; awardedSupplier?: string } | null;
     ordenCompra: OrdenCompra | null;
     recepcion: Recepcion | null;
-    origen: 'requerimiento' | 'ordenCompra' | 'recepcion';
+    origen: 'requerimiento' | 'rfq' | 'ordenCompra' | 'recepcion';
   }>({
     requerimiento: null,
+    rfq: null,
     ordenCompra: null,
     recepcion: null,
     origen: 'requerimiento',
   });
 
   // Buscar y construir el circuito completo
-  const buildCircuito = useCallback(() => {
+  const buildCircuito = useCallback(async () => {
     setLoading(true);
 
     let requerimiento: Requerimiento | null = null;
+    let rfq: { id: string; number: string; title: string; status: string; quotationsCount?: number; awardedSupplier?: string } | null = null;
     let ordenCompra: OrdenCompra | null = null;
     let recepcion: Recepcion | null = null;
-    let origen: 'requerimiento' | 'ordenCompra' | 'recepcion' = 'requerimiento';
+    let origen: 'requerimiento' | 'rfq' | 'ordenCompra' | 'recepcion' = 'requerimiento';
 
     // Si se abrió desde un requerimiento
     if (requerimientoId) {
@@ -53,6 +56,19 @@ export default function CircuitoCompraModal({
       requerimiento = requerimientos.find(r => r.id === requerimientoId) || null;
 
       if (requerimiento) {
+        // Buscar RFQ asociada
+        if (requerimiento.quotationRequests && requerimiento.quotationRequests.length > 0) {
+          const rfqData = requerimiento.quotationRequests[0] as any;
+          rfq = {
+            id: rfqData.id,
+            number: rfqData.number,
+            title: rfqData.title || requerimiento.titulo,
+            status: rfqData.status,
+            quotationsCount: rfqData.quotationsCount,
+            awardedSupplier: rfqData.awardedSupplier
+          };
+        }
+
         // Buscar OC asociada (puede haber múltiples, tomamos la primera)
         ordenCompra = requerimiento.ordenCompra ||
           ordenesCompra.find(oc => oc.requerimientoId === requerimientoId) ||
@@ -80,13 +96,23 @@ export default function CircuitoCompraModal({
         // Buscar requerimiento asociado
         requerimiento = requerimientos.find(r => r.id === ordenCompra!.requerimientoId) || null;
 
+        // Buscar RFQ asociada desde el requerimiento
+        if (requerimiento?.quotationRequests && requerimiento.quotationRequests.length > 0) {
+          const rfqData = requerimiento.quotationRequests[0] as any;
+          rfq = {
+            id: rfqData.id,
+            number: rfqData.number,
+            title: rfqData.title || requerimiento.titulo,
+            status: rfqData.status,
+            quotationsCount: rfqData.quotationsCount,
+            awardedSupplier: rfqData.awardedSupplier
+          };
+        }
+
         // Las recepciones ya vienen incluidas en ordenCompra.recepciones
-        // No necesitamos buscar una específica, el Timeline las mostrará todas
-        // Solo buscamos si no hay recepciones en la OC
         if (!ordenCompra.recepciones || ordenCompra.recepciones.length === 0) {
           const recepcionesDeOC = recepciones.filter(r => r.ordenCompraId === ordenCompraId);
           if (recepcionesDeOC.length > 0) {
-            // Añadir las recepciones a la OC para que el Timeline las muestre
             ordenCompra = { ...ordenCompra, recepciones: recepcionesDeOC };
           }
         }
@@ -107,6 +133,19 @@ export default function CircuitoCompraModal({
         if (ordenCompra) {
           requerimiento = requerimientos.find(r => r.id === ordenCompra!.requerimientoId) || null;
 
+          // Buscar RFQ asociada desde el requerimiento
+          if (requerimiento?.quotationRequests && requerimiento.quotationRequests.length > 0) {
+            const rfqData = requerimiento.quotationRequests[0] as any;
+            rfq = {
+              id: rfqData.id,
+              number: rfqData.number,
+              title: rfqData.title || requerimiento.titulo,
+              status: rfqData.status,
+              quotationsCount: rfqData.quotationsCount,
+              awardedSupplier: rfqData.awardedSupplier
+            };
+          }
+
           // Añadir todas las recepciones de esta OC
           if (!ordenCompra.recepciones || ordenCompra.recepciones.length === 0) {
             const recepcionesDeOC = recepciones.filter(r => r.ordenCompraId === ordenCompra!.id);
@@ -120,7 +159,7 @@ export default function CircuitoCompraModal({
       }
     }
 
-    setCircuitoData({ requerimiento, ordenCompra, recepcion, origen });
+    setCircuitoData({ requerimiento, rfq, ordenCompra, recepcion, origen });
     setLoading(false);
   }, [requerimientoId, ordenCompraId, recepcionId, requerimientos, ordenesCompra, recepciones]);
 
@@ -179,9 +218,10 @@ export default function CircuitoCompraModal({
               <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-3" />
               <p className="text-gray-500">Cargando circuito...</p>
             </div>
-          ) : circuitoData.requerimiento || circuitoData.ordenCompra || circuitoData.recepcion ? (
+          ) : circuitoData.requerimiento || circuitoData.rfq || circuitoData.ordenCompra || circuitoData.recepcion ? (
             <CircuitoCompraTimeline
               requerimiento={circuitoData.requerimiento}
+              rfq={circuitoData.rfq}
               ordenCompra={circuitoData.ordenCompra}
               recepcion={circuitoData.recepcion}
               origen={circuitoData.origen}

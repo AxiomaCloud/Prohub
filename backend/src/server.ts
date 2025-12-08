@@ -6,6 +6,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { syncProveedoresToLocal } from './services/parseIntegration'
+import { EmailQueueProcessor } from './services/emailQueueProcessor'
 import authRoutes from './routes/auth'
 import menuRoutes from './routes/menu'
 import usersRoutes from './routes/users'
@@ -126,6 +127,10 @@ app.listen(PORT, async () => {
 
   // Sincronizar proveedores al iniciar
   await syncProveedoresOnStartup()
+
+  // Iniciar procesador de cola de emails (cada 60 segundos)
+  const emailQueueInterval = parseInt(process.env.EMAIL_QUEUE_INTERVAL || '60000')
+  EmailQueueProcessor.start(emailQueueInterval)
 })
 
 export default app

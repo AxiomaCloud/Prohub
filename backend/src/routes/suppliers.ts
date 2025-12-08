@@ -2,9 +2,12 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, SupplierStatus } from '@prisma/client';
 import { authenticate } from '../middleware/auth';
 import { getProveedoresForHub } from '../services/parseIntegration';
+import { NotificationService } from '../services/notificationService';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -37,6 +40,310 @@ const upload = multer({
       cb(new Error('Tipo de archivo no soportado. Solo PDF, JPG y PNG.'));
     }
   },
+});
+
+// ============================================
+// MI PROVEEDOR (PORTAL)
+// ============================================
+
+// GET /api/suppliers/me - Obtener el proveedor del usuario logueado
+router.get('/me', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+
+    console.log(`🏢 [/me] Buscando proveedor para userId: ${userId}, email: ${userEmail}`);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    // Primero buscar por userId
+    let supplier = await prisma.supplier.findFirst({
+      where: { userId },
+      include: {
+        documentos: true,
+      },
+    });
+
+    // Si no se encuentra por userId, buscar por email
+    if (!supplier && userEmail) {
+      console.log(`🏢 [/me] No encontrado por userId, buscando por email: ${userEmail}`);
+      supplier = await prisma.supplier.findFirst({
+        where: { email: userEmail },
+        include: {
+          documentos: true,
+        },
+      });
+
+      // Si se encuentra por email, vincular el userId
+      if (supplier) {
+        console.log(`🏢 [/me] Encontrado por email, vinculando userId: ${userId}`);
+        await prisma.supplier.update({
+          where: { id: supplier.id },
+          data: { userId },
+        });
+      }
+    }
+
+    if (!supplier) {
+      console.log(`🏢 [/me] No se encontró proveedor para userId: ${userId}`);
+      return res.status(404).json({
+        error: 'No eres un proveedor registrado',
+        isSupplier: false
+      });
+    }
+
+    console.log(`🏢 [/me] Proveedor encontrado: ${supplier.nombre} (${supplier.id})`);
+    res.json({
+      supplier,
+      isSupplier: true,
+      supplierId: supplier.id
+    });
+  } catch (error) {
+    console.error('Error al obtener proveedor:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/suppliers/me/users - Listar usuarios del proveedor
+router.get('/me/users', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+
+    // Primero obtener el proveedor del usuario
+    let supplier = await prisma.supplier.findFirst({
+      where: { userId },
+    });
+
+    if (!supplier && userEmail) {
+      supplier = await prisma.supplier.findFirst({
+        where: { email: userEmail },
+      });
+    }
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'No eres un proveedor registrado' });
+    }
+
+    // Obtener todos los usuarios vinculados a este proveedor
+    const memberships = await prisma.tenantMembership.findMany({
+      where: {
+        supplierId: supplier.id,
+        isActive: true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            emailVerified: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // También incluir al usuario principal si no está en memberships
+    const mainUser = await prisma.user.findFirst({
+      where: { id: supplier.userId || '' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+        createdAt: true,
+      },
+    });
+
+    const users = memberships.map(m => ({
+      id: m.user.id,
+      email: m.user.email,
+      name: m.user.name,
+      emailVerified: m.user.emailVerified,
+      createdAt: m.user.createdAt,
+      roles: m.roles,
+      membershipId: m.id,
+      isMainUser: m.user.id === supplier?.userId,
+    }));
+
+    // Si el usuario principal no está en la lista, agregarlo
+    if (mainUser && !users.find(u => u.id === mainUser.id)) {
+      users.unshift({
+        id: mainUser.id,
+        email: mainUser.email,
+        name: mainUser.name,
+        emailVerified: mainUser.emailVerified,
+        createdAt: mainUser.createdAt,
+        roles: ['PROVIDER'],
+        membershipId: null,
+        isMainUser: true,
+      } as any);
+    }
+
+    res.json({ users, supplierId: supplier.id });
+  } catch (error) {
+    console.error('Error al listar usuarios del proveedor:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/suppliers/me/users - Invitar nuevo usuario al proveedor
+router.post('/me/users', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+    const { email, name } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'El email es requerido' });
+    }
+
+    // Obtener el proveedor del usuario
+    let supplier = await prisma.supplier.findFirst({
+      where: { userId },
+    });
+
+    if (!supplier && userEmail) {
+      supplier = await prisma.supplier.findFirst({
+        where: { email: userEmail },
+      });
+    }
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'No eres un proveedor registrado' });
+    }
+
+    // Verificar si el usuario ya existe
+    let newUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // Generar contraseña temporal
+    const tempPassword = crypto.randomBytes(8).toString('hex');
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    if (!newUser) {
+      // Crear nuevo usuario
+      newUser = await prisma.user.create({
+        data: {
+          email,
+          passwordHash: hashedPassword,
+          name: name || email.split('@')[0],
+        },
+      });
+      console.log(`👤 Usuario creado para proveedor: ${email}`);
+    }
+
+    // Verificar si ya tiene membership con este supplier
+    const existingMembership = await prisma.tenantMembership.findFirst({
+      where: {
+        userId: newUser.id,
+        tenantId: supplier.tenantId,
+        supplierId: supplier.id,
+      },
+    });
+
+    if (existingMembership) {
+      return res.status(400).json({ error: 'Este usuario ya está vinculado al proveedor' });
+    }
+
+    // Crear membership
+    await prisma.tenantMembership.create({
+      data: {
+        userId: newUser.id,
+        tenantId: supplier.tenantId,
+        supplierId: supplier.id,
+        roles: ['PROVIDER'],
+        isActive: true,
+        invitedBy: userId,
+        invitedAt: new Date(),
+        joinedAt: new Date(),
+      },
+    });
+
+    // Obtener nombre del tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: supplier.tenantId },
+      select: { name: true },
+    });
+
+    // Enviar email con credenciales
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+    await NotificationService.sendSupplierCredentials(
+      email,
+      name || email.split('@')[0],
+      tenant?.name || 'Hub',
+      email,
+      tempPassword,
+      `${FRONTEND_URL}/auth/login`
+    );
+
+    console.log(`📧 Invitación enviada a usuario del proveedor: ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Usuario invitado correctamente',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+      },
+    });
+  } catch (error) {
+    console.error('Error al invitar usuario al proveedor:', error);
+    res.status(500).json({ error: 'Error al invitar usuario' });
+  }
+});
+
+// DELETE /api/suppliers/me/users/:userId - Desactivar usuario del proveedor
+router.delete('/me/users/:userIdToDelete', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+    const { userIdToDelete } = req.params;
+
+    // Obtener el proveedor del usuario actual
+    let supplier = await prisma.supplier.findFirst({
+      where: { userId },
+    });
+
+    if (!supplier && userEmail) {
+      supplier = await prisma.supplier.findFirst({
+        where: { email: userEmail },
+      });
+    }
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'No eres un proveedor registrado' });
+    }
+
+    // No permitir eliminar al usuario principal
+    if (userIdToDelete === supplier.userId) {
+      return res.status(400).json({ error: 'No puedes eliminar al usuario principal del proveedor' });
+    }
+
+    // Desactivar el membership
+    await prisma.tenantMembership.updateMany({
+      where: {
+        userId: userIdToDelete,
+        supplierId: supplier.id,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    console.log(`🚫 Usuario ${userIdToDelete} desactivado del proveedor ${supplier.nombre}`);
+
+    res.json({ success: true, message: 'Usuario desactivado correctamente' });
+  } catch (error) {
+    console.error('Error al desactivar usuario del proveedor:', error);
+    res.status(500).json({ error: 'Error al desactivar usuario' });
+  }
 });
 
 // ============================================
@@ -215,7 +522,31 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       },
     });
 
-    // TODO: Enviar email de invitación
+    // Obtener nombre del tenant para el email
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    // Enviar email de invitación
+    if (email) {
+      try {
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const onboardingUrl = `${baseUrl}/proveedores/onboarding?id=${supplier.id}`;
+
+        await NotificationService.notifySupplierInvited(
+          email,
+          nombre,
+          tenant?.name || 'Hub',
+          onboardingUrl,
+          tenantId
+        );
+        console.log(`📧 Email de invitación enviado a ${email}`);
+      } catch (emailError) {
+        console.error('Error enviando email de invitación:', emailError);
+        // No fallar si el email no se envía
+      }
+    }
 
     res.status(201).json({ proveedor: supplier });
   } catch (error) {
@@ -488,21 +819,111 @@ router.post('/:id/complete-onboarding', authenticate, async (req: Request, res: 
 router.post('/:id/approve', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const approverUserId = req.user?.id;
 
+    // Obtener el proveedor actual
+    const currentSupplier = await prisma.supplier.findUnique({
+      where: { id },
+    });
+
+    if (!currentSupplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    // Obtener nombre del tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: currentSupplier.tenantId },
+      select: { name: true },
+    });
+
+    let newUserId = currentSupplier.userId;
+    let tempPassword: string | null = null;
+
+    // Si el proveedor no tiene usuario y tiene email, crear uno
+    if (!currentSupplier.userId && currentSupplier.email) {
+      // Verificar si ya existe un usuario con ese email
+      const existingUser = await prisma.user.findUnique({
+        where: { email: currentSupplier.email },
+      });
+
+      if (existingUser) {
+        // Vincular el usuario existente al proveedor
+        newUserId = existingUser.id;
+        console.log(`👤 Usuario existente vinculado al proveedor: ${existingUser.email}`);
+      } else {
+        // Crear nuevo usuario para el proveedor
+        tempPassword = crypto.randomBytes(8).toString('hex'); // Contraseña temporal
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        const newUser = await prisma.user.create({
+          data: {
+            email: currentSupplier.email,
+            passwordHash: hashedPassword,
+            name: currentSupplier.contactoNombre || currentSupplier.nombre,
+          },
+        });
+
+        newUserId = newUser.id;
+
+        // Crear membership con rol PROVIDER
+        await prisma.tenantMembership.create({
+          data: {
+            userId: newUser.id,
+            tenantId: currentSupplier.tenantId,
+            roles: ['PROVIDER'],
+            isActive: true,
+            joinedAt: new Date(),
+          },
+        });
+
+        console.log(`👤 Usuario creado para proveedor: ${currentSupplier.email}`);
+      }
+    }
+
+    // Actualizar el proveedor
     const supplier = await prisma.supplier.update({
       where: { id },
       data: {
         status: 'ACTIVE',
-        aprobadoPor: userId,
+        aprobadoPor: approverUserId,
         aprobadoAt: new Date(),
         isActive: true,
+        userId: newUserId,
       },
     });
 
-    // TODO: Enviar email de aprobación al proveedor
+    // Enviar email de aprobación con credenciales si se creó usuario nuevo
+    if (supplier.email) {
+      try {
+        const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    res.json({ proveedor: supplier, message: 'Proveedor aprobado' });
+        if (tempPassword) {
+          // Enviar email con credenciales
+          await NotificationService.sendSupplierCredentials(
+            supplier.email,
+            supplier.nombre,
+            tenant?.name || 'Hub',
+            supplier.email,
+            tempPassword,
+            `${FRONTEND_URL}/auth/login`
+          );
+          console.log(`📧 Email con credenciales enviado a ${supplier.email}`);
+        } else {
+          // Enviar email de aprobación normal
+          await NotificationService.notifySupplierApproved(
+            supplier.email,
+            supplier.nombre,
+            tenant?.name || 'Hub',
+            supplier.tenantId
+          );
+          console.log(`📧 Email de aprobación enviado a ${supplier.email}`);
+        }
+      } catch (emailError) {
+        console.error('Error enviando email de aprobación:', emailError);
+      }
+    }
+
+    res.json({ proveedor: supplier, message: 'Proveedor aprobado y usuario creado' });
   } catch (error) {
     console.error('Error al aprobar proveedor:', error);
     res.status(500).json({ error: 'Error al aprobar proveedor' });
@@ -530,7 +951,27 @@ router.post('/:id/reject', authenticate, async (req: Request, res: Response) => 
       },
     });
 
-    // TODO: Enviar email de rechazo al proveedor
+    // Obtener nombre del tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: supplier.tenantId },
+      select: { name: true },
+    });
+
+    // Enviar email de rechazo
+    if (supplier.email) {
+      try {
+        await NotificationService.notifySupplierRejected(
+          supplier.email,
+          supplier.nombre,
+          tenant?.name || 'Hub',
+          motivo,
+          supplier.tenantId
+        );
+        console.log(`📧 Email de rechazo enviado a ${supplier.email}`);
+      } catch (emailError) {
+        console.error('Error enviando email de rechazo:', emailError);
+      }
+    }
 
     res.json({ proveedor: supplier, message: 'Proveedor rechazado' });
   } catch (error) {
@@ -728,6 +1169,438 @@ router.put('/config/:tenantId', authenticate, async (req: Request, res: Response
     res.status(500).json({ error: 'Error al actualizar configuración' });
   }
 });
+
+// ============================================
+// COMUNICACIÓN CON PROVEEDORES
+// ============================================
+
+// POST /api/suppliers/:id/send-message - Enviar mensaje al proveedor
+router.post('/:id/send-message', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { message, tenantId } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'El mensaje es requerido' });
+    }
+
+    const supplier = await prisma.supplier.findUnique({
+      where: { id },
+    });
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    if (!supplier.email) {
+      return res.status(400).json({ error: 'El proveedor no tiene email configurado' });
+    }
+
+    // Obtener nombre del tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: supplier.tenantId },
+      select: { name: true },
+    });
+
+    // Enviar email con el mensaje
+    await NotificationService.sendSupplierMessage(
+      supplier.email,
+      supplier.nombre,
+      tenant?.name || 'Hub',
+      message
+    );
+
+    console.log(`📧 Mensaje enviado al proveedor ${supplier.nombre} (${supplier.email})`);
+
+    res.json({ success: true, message: 'Mensaje enviado correctamente' });
+  } catch (error) {
+    console.error('Error al enviar mensaje:', error);
+    res.status(500).json({ error: 'Error al enviar mensaje' });
+  }
+});
+
+// POST /api/suppliers/:id/resend-invitation - Reenviar invitación al proveedor
+router.post('/:id/resend-invitation', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const supplier = await prisma.supplier.findUnique({
+      where: { id },
+    });
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    if (!supplier.email) {
+      return res.status(400).json({ error: 'El proveedor no tiene email configurado' });
+    }
+
+    // Solo permitir reenviar si está en estado INVITED o PENDING_COMPLETION
+    if (!['INVITED', 'PENDING_COMPLETION'].includes(supplier.status)) {
+      return res.status(400).json({
+        error: 'Solo se puede reenviar invitación a proveedores en estado Invitado o Pendiente'
+      });
+    }
+
+    // Obtener nombre del tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: supplier.tenantId },
+      select: { name: true },
+    });
+
+    // URL del portal de onboarding
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const inviteUrl = `${FRONTEND_URL}/proveedores/onboarding?id=${supplier.id}`;
+
+    // Enviar email de invitación
+    await NotificationService.notifySupplierInvited(
+      supplier.email,
+      supplier.nombre,
+      tenant?.name || 'Hub',
+      inviteUrl,
+      supplier.tenantId
+    );
+
+    console.log(`📧 Invitación reenviada al proveedor ${supplier.nombre} (${supplier.email})`);
+
+    res.json({ success: true, message: 'Invitación reenviada correctamente' });
+  } catch (error) {
+    console.error('Error al reenviar invitación:', error);
+    res.status(500).json({ error: 'Error al reenviar invitación' });
+  }
+});
+
+// ============================================
+// PORTAL PROVEEDOR - ÓRDENES DE COMPRA
+// ============================================
+
+// GET /api/suppliers/me/ordenes - Listar órdenes de compra del proveedor
+router.get('/me/ordenes', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+
+    console.log(`📦 [/me/ordenes] Buscando órdenes para userId: ${userId}`);
+
+    // Obtener el proveedor del usuario
+    let supplier = await prisma.supplier.findFirst({
+      where: { userId },
+    });
+
+    if (!supplier && userEmail) {
+      supplier = await prisma.supplier.findFirst({
+        where: { email: userEmail },
+      });
+    }
+
+    if (!supplier) {
+      console.log(`📦 [/me/ordenes] No es proveedor`);
+      return res.status(404).json({ error: 'No eres un proveedor registrado', ordenes: [] });
+    }
+
+    console.log(`📦 [/me/ordenes] Proveedor encontrado: ${supplier.nombre} (${supplier.id})`);
+
+    // Buscar órdenes de compra donde el proveedor es el destinatario
+    const ordenes = await prisma.purchaseOrderCircuit.findMany({
+      where: {
+        proveedorId: supplier.id,
+      },
+      include: {
+        proveedor: {
+          select: {
+            id: true,
+            nombre: true,
+            cuit: true,
+          },
+        },
+        purchaseRequest: {
+          select: {
+            id: true,
+            numero: true,
+            titulo: true,
+          },
+        },
+        items: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    console.log(`📦 [/me/ordenes] Encontradas ${ordenes.length} órdenes`);
+
+    // Mapear al formato esperado por el frontend
+    const ordenesFormateadas = ordenes.map(oc => ({
+      id: oc.id,
+      numero: oc.numero,
+      fechaEmision: oc.fechaEmision?.toISOString() || oc.createdAt.toISOString(),
+      estado: oc.estado,
+      subtotal: Number(oc.subtotal) || 0,
+      impuestos: Number(oc.impuestos) || 0,
+      total: Number(oc.total) || 0,
+      moneda: oc.moneda || 'ARS',
+      requerimiento: oc.purchaseRequest ? {
+        id: oc.purchaseRequest.id,
+        numero: oc.purchaseRequest.numero,
+        titulo: oc.purchaseRequest.titulo,
+      } : null,
+      items: oc.items.map(item => ({
+        id: item.id,
+        descripcion: item.descripcion,
+        cantidad: Number(item.cantidad),
+        unidad: item.unidad,
+        precioUnitario: Number(item.precioUnitario),
+        total: Number(item.total),
+      })),
+      facturas: [], // TODO: Obtener facturas asociadas
+      condicionPago: oc.condicionPago,
+      lugarEntrega: oc.lugarEntrega,
+      fechaEntregaEstimada: oc.fechaEntregaEstimada?.toISOString() || null,
+      observaciones: oc.observaciones,
+    }));
+
+    res.json({ ordenes: ordenesFormateadas });
+  } catch (error) {
+    console.error('Error al listar órdenes del proveedor:', error);
+    res.status(500).json({ error: 'Error al listar órdenes', ordenes: [] });
+  }
+});
+
+// ============================================
+// PORTAL PROVEEDOR - FACTURAS
+// ============================================
+
+// POST /api/suppliers/me/facturas - Subir factura asociada a una OC
+router.post('/me/facturas', authenticate, upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se recibió ningún archivo' });
+    }
+
+    // Obtener el proveedor del usuario
+    let supplier = await prisma.supplier.findFirst({
+      where: { userId },
+    });
+
+    if (!supplier && userEmail) {
+      supplier = await prisma.supplier.findFirst({
+        where: { email: userEmail },
+      });
+    }
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'No eres un proveedor registrado' });
+    }
+
+    const { ordenCompraId, numero, fecha, subtotal, iva, total, items } = req.body;
+
+    console.log(`📄 [/me/facturas] Guardando factura para proveedor ${supplier.nombre}`);
+    console.log(`   OC: ${ordenCompraId}, Número: ${numero}, Total: ${total}`);
+
+    // Verificar que la OC existe y pertenece al proveedor
+    const ordenCompra = await prisma.purchaseOrderCircuit.findFirst({
+      where: {
+        id: ordenCompraId,
+        proveedorId: supplier.id,
+      },
+    });
+
+    if (!ordenCompra) {
+      return res.status(404).json({ error: 'Orden de compra no encontrada' });
+    }
+
+    // Buscar el tenant del proveedor por CUIT
+    let providerTenant = await prisma.tenant.findFirst({
+      where: { taxId: supplier.cuit },
+    });
+
+    // Si no existe, crear un tenant temporal para el proveedor
+    if (!providerTenant) {
+      providerTenant = await prisma.tenant.create({
+        data: {
+          name: supplier.nombre,
+          taxId: supplier.cuit,
+          legalName: supplier.nombre,
+          country: supplier.pais || 'Argentina',
+        },
+      });
+      console.log(`   Tenant creado para proveedor: ${providerTenant.id}`);
+    }
+
+    // El clientTenant es el tenant de la OC
+    const clientTenantId = ordenCompra.tenantId;
+
+    // Determinar el tipo de documento
+    let docType: 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'RECEIPT' = 'INVOICE';
+
+    // Crear el documento
+    // Nota: purchaseOrderId apunta al modelo PurchaseOrder (viejo), no a PurchaseOrderCircuit
+    // Guardamos la referencia a la OC del circuito en parseData
+    const document = await prisma.document.create({
+      data: {
+        number: numero || `FC-${Date.now()}`,
+        type: docType,
+        status: 'PRESENTED',
+        amount: parseFloat(subtotal) || 0,
+        taxAmount: parseFloat(iva) || 0,
+        totalAmount: parseFloat(total) || 0,
+        currency: ordenCompra.moneda || 'ARS',
+        fileUrl: `/uploads/suppliers/${req.file.filename}`,
+        fileName: req.file.originalname,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        providerTenantId: providerTenant.id,
+        clientTenantId: clientTenantId,
+        uploadedBy: userId!,
+        date: fecha ? new Date(fecha) : new Date(),
+        parseStatus: 'COMPLETED',
+        parsedAt: new Date(),
+        parseData: {
+          purchaseOrderCircuitId: ordenCompraId,
+          purchaseOrderNumber: ordenCompra.numero,
+          uploadedFromPortal: true,
+        },
+      },
+      include: {
+        providerTenant: {
+          select: { id: true, name: true, taxId: true },
+        },
+        clientTenant: {
+          select: { id: true, name: true, taxId: true },
+        },
+      },
+    });
+
+    // Crear evento de documento
+    await prisma.documentEvent.create({
+      data: {
+        documentId: document.id,
+        fromStatus: null,
+        toStatus: 'PRESENTED',
+        reason: 'Factura presentada por proveedor desde portal',
+        userId: userId!,
+      },
+    });
+
+    // Parsear los items del matching si vienen
+    let matchItems = [];
+    try {
+      if (items) {
+        matchItems = JSON.parse(items);
+      }
+    } catch (e) {
+      console.warn('No se pudieron parsear los items del matching');
+    }
+
+    console.log(`✅ [/me/facturas] Factura guardada: ${document.id}`);
+
+    res.status(201).json({
+      success: true,
+      document,
+      message: 'Factura guardada correctamente',
+    });
+  } catch (error) {
+    console.error('Error al guardar factura:', error);
+    res.status(500).json({ error: 'Error al guardar la factura' });
+  }
+});
+
+// GET /api/suppliers/me/facturas - Listar facturas del proveedor
+router.get('/me/facturas', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+
+    // Obtener el proveedor del usuario
+    let supplier = await prisma.supplier.findFirst({
+      where: { userId },
+    });
+
+    if (!supplier && userEmail) {
+      supplier = await prisma.supplier.findFirst({
+        where: { email: userEmail },
+      });
+    }
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'No eres un proveedor registrado', facturas: [] });
+    }
+
+    // Buscar el tenant del proveedor por CUIT para obtener sus documentos
+    const supplierTenant = await prisma.tenant.findFirst({
+      where: { taxId: supplier.cuit },
+    });
+
+    if (!supplierTenant) {
+      return res.json({ facturas: [], message: 'No se encontró tenant asociado' });
+    }
+
+    // Obtener documentos donde el proveedor es el emisor
+    const documents = await prisma.document.findMany({
+      where: {
+        providerTenantId: supplierTenant.id,
+        type: { in: ['INVOICE', 'CREDIT_NOTE', 'DEBIT_NOTE'] },
+      },
+      include: {
+        clientTenant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { uploadedAt: 'desc' },
+    });
+
+    // Mapear a formato esperado por el frontend
+    const facturas = documents.map(doc => {
+      // Extraer info de OC del circuito desde parseData si existe
+      const parseData = doc.parseData as any;
+      const ocInfo = parseData?.purchaseOrderCircuitId ? {
+        id: parseData.purchaseOrderCircuitId,
+        numero: parseData.purchaseOrderNumber || '-',
+      } : null;
+
+      return {
+        id: doc.id,
+        numero: doc.number,
+        fecha: doc.date?.toISOString() || doc.uploadedAt.toISOString(),
+        estado: mapDocumentStatus(doc.status),
+        subtotal: Number(doc.amount) || 0,
+        iva: Number(doc.taxAmount) || 0,
+        total: Number(doc.totalAmount) || 0,
+        moneda: doc.currency || 'ARS',
+        ordenCompra: ocInfo,
+        motivoRechazo: (parseData?.rejectionReason as string) || null,
+        fechaAprobacion: null, // No hay campo approvedAt en el modelo
+        fechaPago: doc.status === 'PAID' ? doc.updatedAt.toISOString() : null,
+        archivoUrl: doc.fileUrl || null,
+        cliente: doc.clientTenant?.name || null,
+      };
+    });
+
+    res.json({ facturas });
+  } catch (error) {
+    console.error('Error al listar facturas del proveedor:', error);
+    res.status(500).json({ error: 'Error al listar facturas', facturas: [] });
+  }
+});
+
+// Helper para mapear estados de documento
+function mapDocumentStatus(status: string): 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'PAGADA' {
+  switch (status) {
+    case 'APPROVED':
+      return 'APROBADA';
+    case 'REJECTED':
+      return 'RECHAZADA';
+    case 'PAID':
+      return 'PAGADA';
+    default:
+      return 'PENDIENTE';
+  }
+}
 
 // ============================================
 // ESTADÍSTICAS

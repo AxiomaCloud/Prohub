@@ -100,9 +100,14 @@ model TenantMembership {
   invitedAt DateTime?
   joinedAt  DateTime?
 
+  // Vinculación a proveedor (para usuarios con rol PROVIDER)
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
   @@unique([userId, tenantId])
   @@index([userId])
   @@index([tenantId])
+  @@index([supplierId])
 }
 
 enum Role {
@@ -396,6 +401,7 @@ enum PurchaseOrderCircuitStatus {
 model Supplier {
   id          String    @id @default(cuid())
   tenantId    String
+  userId      String?   // Usuario vinculado (para acceso al portal)
 
   // Datos básicos
   nombre          String        // Razón Social
@@ -464,6 +470,9 @@ model Supplier {
   rfqInvitations  QuotationRequestSupplier[]
   quotations      SupplierQuotation[]
   awardedRFQs     QuotationRequest[] @relation("AwardedRFQs")
+
+  // Usuarios del proveedor (múltiples usuarios pueden pertenecer al mismo proveedor)
+  userMemberships TenantMembership[]
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -535,9 +544,11 @@ model SupplierDocument {
 
 enum SupplierDocumentType {
   CONSTANCIA_CBU
+  CONSTANCIA_CUIT
   CONSTANCIA_AFIP
   CONSTANCIA_IIBB
   CERTIFICADO_RETENCION
+  CERTIFICADO_FISCAL
   OTRO
 }
 
@@ -1016,6 +1027,31 @@ enum NotificationEventType {
   // Delegaciones
   DELEGATION_RECEIVED
   DELEGATION_EXPIRED
+
+  // Documentos
+  DOC_UPLOADED
+  DOC_STATUS_CHANGED
+  DOC_APPROVED
+  DOC_REJECTED
+  DOC_COMMENT
+
+  // Proveedores
+  SUPPLIER_INVITED
+  SUPPLIER_APPROVED
+  SUPPLIER_REJECTED
+  SUPPLIER_PENDING_APPROVAL
+
+  // Pagos
+  PAYMENT_ISSUED
+  PAYMENT_COMPLETED
+  PAYMENT_SCHEDULED
+
+  // RFQ (Cotizaciones)
+  RFQ_INVITATION
+  RFQ_AWARDED
+  RFQ_NOT_AWARDED
+  RFQ_QUOTATION_RECEIVED
+  RFQ_DEADLINE_REMINDER
 }
 
 enum DocumentNotificationType {
@@ -1065,7 +1101,9 @@ model EmailQueue {
   eventType   NotificationEventType
   relatedId   String?
   relatedType String?
+  tenantId    String?
 
+  priority    Int      @default(0)  // Higher = more urgent
   status      EmailQueueStatus @default(PENDING)
   attempts    Int      @default(0)
   maxAttempts Int      @default(3)
@@ -1078,6 +1116,7 @@ model EmailQueue {
   updatedAt   DateTime @updatedAt
 
   @@index([status, scheduledFor])
+  @@index([status, priority])
   @@map("email_queue")
 }
 
@@ -1347,6 +1386,9 @@ model QuotationRequest {
   // Notas adicionales
   notes           String?  @db.Text
   termsAndConditions String? @db.Text
+
+  // Archivos adjuntos (especificaciones, planos, etc.)
+  attachments     Json?    // [{fileName, fileUrl, fileType, fileSize}]
 
   // Fechas de workflow
   publishedAt     DateTime?

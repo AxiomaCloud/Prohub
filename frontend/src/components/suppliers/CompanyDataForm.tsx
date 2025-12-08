@@ -190,7 +190,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
       {/* Sección: Datos de la Empresa */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Building className="w-5 h-5 text-purple-600" />
+          <Building className="w-5 h-5 text-secondary" />
           Datos de la Empresa
         </h3>
 
@@ -205,7 +205,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.nombreFantasia}
               onChange={(e) => handleChange('nombreFantasia', e.target.value)}
               placeholder="Mi Empresa"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -217,7 +217,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
             <select
               value={formData.condicionFiscal}
               onChange={(e) => handleChange('condicionFiscal', e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
                 errors.condicionFiscal ? 'border-red-500' : 'border-gray-300'
               }`}
             >
@@ -247,7 +247,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                     value={tf.value}
                     checked={formData.tipoFactura === tf.value}
                     onChange={(e) => handleChange('tipoFactura', e.target.value)}
-                    className="w-4 h-4 text-purple-600"
+                    className="w-4 h-4 text-secondary"
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">{tf.label}</span>
                 </label>
@@ -263,7 +263,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
       {/* Sección: Domicilio Fiscal */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-purple-600" />
+          <MapPin className="w-5 h-5 text-secondary" />
           Domicilio Fiscal
         </h3>
 
@@ -277,7 +277,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.direccion}
               onChange={(e) => handleChange('direccion', e.target.value)}
               placeholder="Av. Corrientes"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -290,7 +290,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.numero}
               onChange={(e) => handleChange('numero', e.target.value)}
               placeholder="1234"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -303,7 +303,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.piso}
               onChange={(e) => handleChange('piso', e.target.value)}
               placeholder="5 A"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -316,7 +316,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.codigoPostal}
               onChange={(e) => handleChange('codigoPostal', e.target.value)}
               placeholder="C1043"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -329,7 +329,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.localidad}
               onChange={(e) => handleChange('localidad', e.target.value)}
               placeholder="Ciudad Autónoma de Buenos Aires"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -340,7 +340,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
             <select
               value={formData.provincia}
               onChange={(e) => handleChange('provincia', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             >
               <option value="">Seleccionar...</option>
               {PROVINCIAS_ARGENTINA.map((prov) => (
@@ -359,7 +359,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               type="text"
               value={formData.pais}
               onChange={(e) => handleChange('pais', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
         </div>
@@ -368,7 +368,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
       {/* Sección: Datos de Contacto */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Phone className="w-5 h-5 text-purple-600" />
+          <Phone className="w-5 h-5 text-secondary" />
           Datos de Contacto
         </h3>
 
@@ -384,7 +384,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                 value={formData.telefono}
                 onChange={(e) => handleChange('telefono', e.target.value)}
                 placeholder="+54 11 4567-8900"
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
                   errors.telefono ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -401,7 +401,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.whatsapp}
               onChange={(e) => handleChange('whatsapp', e.target.value)}
               placeholder="+54 9 11 2345-6789"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -416,7 +416,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 placeholder="contacto@miempresa.com"
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
                   errors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -433,7 +433,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.emailFacturacion}
               onChange={(e) => handleChange('emailFacturacion', e.target.value)}
               placeholder="facturacion@miempresa.com"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
 
@@ -448,7 +448,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                 value={formData.contactoNombre}
                 onChange={(e) => handleChange('contactoNombre', e.target.value)}
                 placeholder="Juan Pérez"
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white ${
                   errors.contactoNombre ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -467,7 +467,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
               value={formData.contactoCargo}
               onChange={(e) => handleChange('contactoCargo', e.target.value)}
               placeholder="Gerente Administrativo"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
           </div>
         </div>
@@ -476,7 +476,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
       {/* Sección: Preferencias de Notificaciones */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Bell className="w-5 h-5 text-purple-600" />
+          <Bell className="w-5 h-5 text-secondary" />
           Preferencias de Notificaciones
         </h3>
 
@@ -491,7 +491,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                   type="checkbox"
                   checked={formData.notifEmail}
                   onChange={(e) => handleChange('notifEmail', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  className="w-4 h-4 text-secondary rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Email</span>
               </label>
@@ -500,7 +500,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                   type="checkbox"
                   checked={formData.notifWhatsapp}
                   onChange={(e) => handleChange('notifWhatsapp', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  className="w-4 h-4 text-secondary rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">WhatsApp</span>
               </label>
@@ -509,7 +509,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                   type="checkbox"
                   checked={formData.notifSms}
                   onChange={(e) => handleChange('notifSms', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  className="w-4 h-4 text-secondary rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">SMS</span>
               </label>
@@ -526,7 +526,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                   type="checkbox"
                   checked={formData.notifDocStatus}
                   onChange={(e) => handleChange('notifDocStatus', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  className="w-4 h-4 text-secondary rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Mi documento cambia de estado
@@ -537,7 +537,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                   type="checkbox"
                   checked={formData.notifPagos}
                   onChange={(e) => handleChange('notifPagos', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  className="w-4 h-4 text-secondary rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Recibo un nuevo pago
@@ -548,7 +548,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                   type="checkbox"
                   checked={formData.notifComentarios}
                   onChange={(e) => handleChange('notifComentarios', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  className="w-4 h-4 text-secondary rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Hay un comentario en mi documento
@@ -559,7 +559,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
                   type="checkbox"
                   checked={formData.notifOC}
                   onChange={(e) => handleChange('notifOC', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  className="w-4 h-4 text-secondary rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Hay nuevas órdenes de compra
@@ -585,7 +585,7 @@ export const CompanyDataForm: React.FC<CompanyDataFormProps> = ({
         <button
           type="submit"
           disabled={isLoading}
-          className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="px-6 py-2 bg-secondary hover:bg-secondary-hover text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
         >
           {isLoading ? (
             <>

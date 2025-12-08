@@ -289,6 +289,104 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
 });
 
 /**
+ * POST /api/documents/parse
+ * Parse a document without saving it (for preview/matching)
+ */
+router.post('/parse', authenticate, upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    console.log(`📤 [PARSE] Parsing document for preview: ${req.file.originalname}`);
+
+    const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+
+    try {
+      const parseResult = await ParseService.processDocument(filePath, req.file.originalname, {
+        read: [req.user.id],
+        write: [req.user.id]
+      });
+
+      console.log(`✅ [PARSE] Document parsed successfully`);
+
+      // Extract data from Parse response
+      const cabecera: any = parseResult.documento?.cabecera || {};
+      const items = parseResult.documento?.items || [];
+
+      // Delete the temporary file after parsing
+      const fs = require('fs');
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      // Return parsed data without saving to database
+      res.json({
+        success: true,
+        invoiceNumber: cabecera.numeroComprobante || null,
+        numero: cabecera.numeroComprobante || null,
+        invoiceDate: cabecera.fecha || null,
+        fecha: cabecera.fecha || null,
+        subtotal: cabecera.subtotal || 0,
+        iva: cabecera.iva || 0,
+        tax: cabecera.iva || 0,
+        total: cabecera.total || 0,
+        currency: cabecera.moneda || 'ARS',
+        tipoComprobante: cabecera.tipoComprobante || null,
+        cuitEmisor: cabecera.cuitEmisor || null,
+        cuitReceptor: cabecera.cuitReceptor || null,
+        razonSocialEmisor: cabecera.razonSocialEmisor || null,
+        razonSocialReceptor: cabecera.razonSocialReceptor || null,
+        items: items.map((item: any) => ({
+          descripcion: item.descripcion || '',
+          cantidad: item.cantidad || 1,
+          precioUnitario: item.precioUnitario || 0,
+          total: item.total || item.importe || 0,
+          codigo: item.codigo || null,
+          unidad: item.unidad || null,
+        })),
+        confidence: parseResult.metadata?.confianza || 0,
+        raw: parseResult
+      });
+
+    } catch (parseError) {
+      console.error(`❌ [PARSE] Error parsing document:`, parseError);
+
+      // Delete the temporary file on error
+      const fs = require('fs');
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      res.status(500).json({
+        error: 'Error al procesar el documento',
+        message: parseError instanceof Error ? parseError.message : 'Unknown error'
+      });
+    }
+  } catch (error) {
+    console.error('❌ [PARSE] Error:', error);
+
+    // Clean up file if exists
+    if (req.file) {
+      const fs = require('fs');
+      const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    res.status(500).json({
+      error: 'Error al procesar el documento',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * GET /api/documents
  * Get documents list with filters
  */
@@ -304,18 +402,41 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       type,
       providerTenantId,
       clientTenantId,
+      supplierId, // Filtro para portal de proveedor
       limit = '50',
       offset = '0'
     } = req.query;
 
     const where: any = {};
 
-    // Filter by provider or client tenant
-    if (tenantId) {
-      where.OR = [
-        { providerTenantId: tenantId },
-        { clientTenantId: tenantId }
-      ];
+    // Si viene supplierId, buscar el tenant correspondiente al proveedor por CUIT
+    if (supplierId) {
+      const supplier = await prisma.supplier.findUnique({
+        where: { id: supplierId as string }
+      });
+
+      if (supplier) {
+        // Buscar tenant con el mismo CUIT que el proveedor
+        const supplierTenant = await prisma.tenant.findFirst({
+          where: { taxId: supplier.cuit }
+        });
+
+        if (supplierTenant) {
+          // Filtrar documentos donde el proveedor es quien envía
+          where.providerTenantId = supplierTenant.id;
+        } else {
+          // Si no hay tenant para este proveedor, no mostrar documentos
+          where.id = 'NO_MATCH';
+        }
+      }
+    } else {
+      // Filter by provider or client tenant
+      if (tenantId) {
+        where.OR = [
+          { providerTenantId: tenantId },
+          { clientTenantId: tenantId }
+        ];
+      }
     }
 
     if (providerTenantId) {
@@ -674,99 +795,16 @@ router.patch('/:id/status', authenticate, async (req: Request, res: Response) =>
   }
 });
 
-/**
- * POST /api/documents/:id/comments
- * Add a comment to a document
- */
-router.post('/:id/comments', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { content } = req.body;
-
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    if (!content || content.trim() === '') {
-      return res.status(400).json({ error: 'Content is required' });
-    }
-
-    const document = await prisma.document.findUnique({
-      where: { id }
-    });
-
-    if (!document) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const comment = await prisma.documentComment.create({
-      data: {
-        documentId: id,
-        userId: req.user.id,
-        content: content.trim()
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    });
-
-    console.log(`✅ [DOCUMENTS] Comment added to document ${id}`);
-
-    res.status(201).json(comment);
-  } catch (error) {
-    console.error('❌ [DOCUMENTS] Error adding comment:', error);
-    res.status(500).json({
-      error: 'Error adding comment',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * DELETE /api/documents/:id/comments/:commentId
- * Delete a comment from a document
- */
-router.delete('/:id/comments/:commentId', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { id, commentId } = req.params;
-
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const comment = await prisma.documentComment.findUnique({
-      where: { id: commentId }
-    });
-
-    if (!comment) {
-      return res.status(404).json({ error: 'Comment not found' });
-    }
-
-    // Only allow the author to delete their own comments
-    if (comment.userId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to delete this comment' });
-    }
-
-    await prisma.documentComment.delete({
-      where: { id: commentId }
-    });
-
-    console.log(`✅ [DOCUMENTS] Comment ${commentId} deleted from document ${id}`);
-
-    res.json({ message: 'Comment deleted successfully' });
-  } catch (error) {
-    console.error('❌ [DOCUMENTS] Error deleting comment:', error);
-    res.status(500).json({
-      error: 'Error deleting comment',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
+// TODO: Implementar modelo DocumentComment en schema.prisma para habilitar comentarios
+// /**
+//  * POST /api/documents/:id/comments
+//  * Add a comment to a document
+//  */
+// router.post('/:id/comments', authenticate, async (req: Request, res: Response) => { ... });
+// /**
+//  * DELETE /api/documents/:id/comments/:commentId
+//  * Delete a comment from a document
+//  */
+// router.delete('/:id/comments/:commentId', authenticate, async (req: Request, res: Response) => { ... });
 
 export default router;

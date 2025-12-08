@@ -9,6 +9,7 @@ import { DocumentUploadModal } from '@/components/documents/DocumentUploadModal'
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirmDialog } from '@/hooks/useConfirm';
+import { useSupplier } from '@/hooks/useSupplier';
 import {
   Upload,
   FileText,
@@ -86,6 +87,7 @@ export default function DocumentsPage() {
   const { get, delete: deleteApi } = useApiClient();
   const { user, tenant, isLoading: authLoading } = useAuth();
   const { confirm } = useConfirmDialog();
+  const { isSupplier, supplierId, loading: supplierLoading } = useSupplier();
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [total, setTotal] = useState(0);
@@ -102,11 +104,11 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     // Solo cargar documentos si el usuario está autenticado y tiene tenant seleccionado
-    if (!authLoading && user && tenant) {
-      console.log('📄 [DocumentsPage] Cargando documentos para tenant:', tenant.id, tenant.name);
+    if (!authLoading && !supplierLoading && user && tenant) {
+      console.log('📄 [DocumentsPage] Cargando documentos para tenant:', tenant.id, tenant.name, isSupplier ? '(proveedor)' : '');
       fetchDocuments();
     }
-  }, [statusFilter, typeFilter, authLoading, user, tenant?.id, currentPage]);
+  }, [statusFilter, typeFilter, authLoading, supplierLoading, user, tenant?.id, currentPage, isSupplier, supplierId]);
 
   const fetchDocuments = async () => {
     try {
@@ -115,6 +117,8 @@ export default function DocumentsPage() {
       const params = new URLSearchParams();
       // Filtrar por el tenant seleccionado
       if (tenant?.id) params.append('tenantId', tenant.id);
+      // Si es proveedor, agregar filtro por supplierId
+      if (isSupplier && supplierId) params.append('supplierId', supplierId);
       if (statusFilter) params.append('status', statusFilter);
       if (typeFilter) params.append('type', typeFilter);
       params.append('limit', itemsPerPage.toString());
@@ -236,11 +240,23 @@ export default function DocumentsPage() {
     }
   };
 
+  // Loading mientras se verifica si es proveedor
+  if (supplierLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Documentos"
-        subtitle="Gestiona facturas, notas de crédito y otros documentos"
+        title={isSupplier ? "Mis Facturas" : "Documentos"}
+        subtitle={isSupplier
+          ? "Gestiona las facturas y comprobantes que enviaste"
+          : "Gestiona facturas, notas de crédito y otros documentos"
+        }
         action={
           <div className="flex items-center gap-3">
             {selectedDocs.size > 0 && (

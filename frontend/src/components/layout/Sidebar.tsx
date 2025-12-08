@@ -140,7 +140,7 @@ export function Sidebar({ children }: SidebarProps) {
   const [coreReturnUrl, setCoreReturnUrl] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isProvider } = useAuth();
   const { confirm } = useConfirmDialog();
   const { menuItems, loading: menuLoading } = useMenu();
 
@@ -161,7 +161,12 @@ export function Sidebar({ children }: SidebarProps) {
       return [];
     }
 
-    return menuItems.map(item => ({
+    // Si es proveedor, solo mostrar "Portal Proveedor"
+    const filteredItems = isProvider
+      ? menuItems.filter(item => item.title === 'Portal Proveedor')
+      : menuItems;
+
+    return filteredItems.map(item => ({
       name: item.title,
       icon: getIconComponent(item.icon),
       description: item.description || undefined,
@@ -173,7 +178,7 @@ export function Sidebar({ children }: SidebarProps) {
         icon: getIconComponent(child.icon)
       }))
     }));
-  }, [menuItems]);
+  }, [menuItems, isProvider]);
 
   // Sincronizar foco con la ruta actual y manejar secciones expandidas
   useEffect(() => {
