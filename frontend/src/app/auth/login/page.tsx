@@ -73,9 +73,36 @@ export default function LoginPage() {
         });
       }, 30);
 
+      // Verificar si el usuario es proveedor en alguna de sus membresías
+      // Obtenemos el usuario actualizado del API para tener sus membresías
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const token = localStorage.getItem('hub_token');
+      let isProviderUser = false;
+
+      if (token) {
+        try {
+          const response = await fetch(`${API_URL}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const userData = await response.json();
+            // Verificar si alguna membresía tiene rol PROVIDER
+            isProviderUser = userData.user?.tenantMemberships?.some(
+              (m: any) => m.roles?.includes('PROVIDER')
+            ) || false;
+          }
+        } catch (e) {
+          console.error('Error verificando rol de proveedor:', e);
+        }
+      }
+
       // Navegar después de que termine la animación
       setTimeout(() => {
-        router.push('/dashboard');
+        if (isProviderUser) {
+          router.push('/portal/dashboard');
+        } else {
+          router.push('/dashboard');
+        }
       }, 2000);
     } catch (error: any) {
       const errorMessage = error.message || 'Error al iniciar sesión';

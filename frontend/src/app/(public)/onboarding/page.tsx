@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Plus,
   Trash2,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -158,6 +159,9 @@ function OnboardingContent() {
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
   const [uploading, setUploading] = useState(false);
   const [cuentasBancarias, setCuentasBancarias] = useState<CuentaBancaria[]>([]);
+  const [showOtroDocModal, setShowOtroDocModal] = useState(false);
+  const [otroDocNombre, setOtroDocNombre] = useState('');
+  const [otroDocFile, setOtroDocFile] = useState<File | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -248,7 +252,7 @@ function OnboardingContent() {
               id: d.id,
               tipo: d.tipo,
               nombre: d.nombre,
-              url: d.url,
+              url: d.fileUrl || d.url,
             })));
           }
           // Cargar cuentas bancarias existentes
@@ -379,6 +383,16 @@ function OnboardingContent() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Si es "OTRO", abrir modal para poner nombre
+    if (tipo === 'OTRO') {
+      setOtroDocFile(file);
+      setOtroDocNombre('');
+      setShowOtroDocModal(true);
+      // Limpiar el input
+      e.target.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
       const formDataUpload = new FormData();
@@ -407,6 +421,47 @@ function OnboardingContent() {
       toast.error('Error de conexion');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUploadOtroDoc = async () => {
+    if (!otroDocFile || !otroDocNombre.trim()) {
+      toast.error('Ingrese un nombre para el documento');
+      return;
+    }
+
+    setUploading(true);
+    setShowOtroDocModal(false);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', otroDocFile);
+      formDataUpload.append('tipo', 'OTRO');
+      formDataUpload.append('nombrePersonalizado', otroDocNombre.trim());
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/onboarding/${supplierId}/documents`,
+        { method: 'POST', body: formDataUpload }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setUploadedDocs(prev => [...prev, {
+          id: data.id,
+          tipo: data.tipo,
+          nombre: data.nombre,
+          url: data.url,
+        }]);
+        toast.success('Documento subido');
+      } else {
+        toast.error('Error al subir documento');
+      }
+    } catch (err) {
+      console.error('Error uploading:', err);
+      toast.error('Error de conexion');
+    } finally {
+      setUploading(false);
+      setOtroDocFile(null);
+      setOtroDocNombre('');
     }
   };
 
@@ -491,15 +546,23 @@ function OnboardingContent() {
       <Toaster position="top-right" />
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <Building2 className="w-10 h-10 text-purple-600" />
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
+      <div className="bg-sidebar">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo Axioma invertido */}
+            <div className="h-12">
+              <img
+                src="/axioma_logo_invertido.png"
+                alt="Axioma Logo"
+                className="h-full w-auto object-contain"
+              />
+            </div>
+            {/* Titulo con letras amarillas */}
+            <div className="text-right">
+              <h1 className="text-xl font-bold text-palette-yellow">
                 Registro de Proveedor
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-palette-yellow/70">
                 Complete sus datos para finalizar el registro
               </p>
             </div>
@@ -523,7 +586,7 @@ function OnboardingContent() {
                       isCompleted
                         ? 'bg-green-500 text-white'
                         : isActive
-                        ? 'bg-purple-600 text-white'
+                        ? 'text-palette-yellow animate-pulse-bg'
                         : 'bg-gray-200 text-gray-500'
                     }`}
                   >
@@ -969,26 +1032,56 @@ function OnboardingContent() {
                   <h3 className="text-sm font-medium text-gray-900">
                     Documentos cargados
                   </h3>
-                  {uploadedDocs.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between px-4 py-2 bg-green-50 border border-green-200 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-green-600" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{doc.nombre}</p>
-                          <p className="text-xs text-gray-500">{doc.tipo}</p>
+                  {uploadedDocs.map((doc) => {
+                    const tipoDoc = TIPOS_DOCUMENTO.find(t => t.value === doc.tipo);
+                    // Para "OTRO" mostramos el nombre del archivo como titulo
+                    const displayLabel = doc.tipo === 'OTRO'
+                      ? doc.nombre
+                      : (tipoDoc?.label || doc.tipo);
+                    return (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between px-4 py-2 bg-green-50 border border-green-200 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-green-600" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {displayLabel}
+                            </p>
+                            {doc.tipo !== 'OTRO' && (
+                              <p className="text-xs text-gray-500">{doc.nombre}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = doc.url;
+                              if (url) {
+                                window.open(`${process.env.NEXT_PUBLIC_API_URL}${url}`, '_blank');
+                              } else {
+                                toast.error('URL del documento no disponible');
+                              }
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                            title="Ver documento"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDoc(doc.id)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteDoc(doc.id)}
-                        className="p-1 text-red-500 hover:bg-red-100 rounded"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -1024,6 +1117,45 @@ function OnboardingContent() {
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="w-6 h-6 animate-spin text-purple-600 mr-2" />
                   <span className="text-sm text-gray-500">Subiendo...</span>
+                </div>
+              )}
+
+              {/* Modal para "Otro documento" */}
+              {showOtroDocModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Nombre del documento
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Ingrese un nombre descriptivo para este documento:
+                    </p>
+                    <Input
+                      value={otroDocNombre}
+                      onChange={(e) => setOtroDocNombre(e.target.value)}
+                      placeholder="Ej: Certificado de habilitacion"
+                      className="mb-4"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowOtroDocModal(false);
+                          setOtroDocFile(null);
+                          setOtroDocNombre('');
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={handleUploadOtroDoc}
+                        disabled={!otroDocNombre.trim()}
+                      >
+                        Subir documento
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

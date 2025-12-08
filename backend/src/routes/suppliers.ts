@@ -545,7 +545,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { tipo, nombre } = req.body;
+      const { tipo, nombre, nombrePersonalizado } = req.body;
 
       // Verificar que el proveedor existe y está en estado de onboarding
       const existingSupplier = await prisma.supplier.findUnique({
@@ -569,11 +569,16 @@ router.post(
         return res.status(400).json({ error: 'El tipo de documento es requerido' });
       }
 
+      // Para tipo "OTRO", usar nombrePersonalizado si está disponible
+      const documentName = tipo === 'OTRO' && nombrePersonalizado
+        ? nombrePersonalizado
+        : (nombre || req.file.originalname);
+
       const document = await prisma.supplierDocument.create({
         data: {
           supplierId: id,
           tipo,
-          nombre: nombre || req.file.originalname,
+          nombre: documentName,
           fileUrl: `/uploads/suppliers/${req.file.filename}`,
           fileName: req.file.originalname,
           fileType: req.file.mimetype,
@@ -581,9 +586,14 @@ router.post(
         },
       });
 
-      console.log(`📎 [Onboarding] Documento subido: ${tipo} para ${existingSupplier.nombre}`);
+      console.log(`📎 [Onboarding] Documento subido: ${tipo} (${documentName}) para ${existingSupplier.nombre}`);
 
-      res.status(201).json({ documento: document });
+      res.status(201).json({
+        id: document.id,
+        tipo: document.tipo,
+        nombre: document.nombre,
+        url: document.fileUrl,
+      });
     } catch (error) {
       console.error('Error al subir documento en onboarding:', error);
       res.status(500).json({ error: 'Error al subir documento' });

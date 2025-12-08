@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
 import { authenticate, loadUserRoles } from '../middleware/auth';
 import { getPermissionsForRoles, Role as AuthRole, Permission } from '../middleware/authorization';
-import { hashPassword } from '../utils/password';
+import { hashPassword, comparePassword } from '../utils/password';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -169,6 +169,62 @@ router.get('/me/permissions', authenticate, loadUserRoles, async (req: Request, 
   } catch (error) {
     console.error('Error fetching user permissions:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/users/me/password
+ * Change current user's password
+ */
+router.put('/me/password', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { currentPassword, newPassword } = req.body;
+
+    // Validaciones
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Se requiere la contrasena actual y la nueva' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'La nueva contrasena debe tener al menos 6 caracteres' });
+    }
+
+    // Obtener usuario con su hash actual
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!user || !user.passwordHash) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Verificar contrasena actual
+    const isValidPassword = await comparePassword(currentPassword, user.passwordHash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'La contrasena actual es incorrecta' });
+    }
+
+    // Hashear nueva contrasena
+    const newPasswordHash = await hashPassword(newPassword);
+
+    // Actualizar contrasena
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    console.log(`🔐 Contrasena cambiada para usuario: ${user.email}`);
+
+    res.json({ message: 'Contrasena actualizada correctamente' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ error: 'Error al cambiar la contrasena' });
   }
 });
 

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Menu,
-  X,
   Home,
   Upload,
   CreditCard,
@@ -53,7 +52,6 @@ import {
 import { clsx } from 'clsx';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { useConfirmDialog } from '@/hooks/useConfirm';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { TenantSelector } from '@/components/TenantSelector';
 import { useMenu } from '@/hooks/useMenu';
@@ -140,8 +138,7 @@ export function Sidebar({ children }: SidebarProps) {
   const [coreReturnUrl, setCoreReturnUrl] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, isProvider } = useAuth();
-  const { confirm } = useConfirmDialog();
+  const { user, isProvider } = useAuth();
   const { menuItems, loading: menuLoading } = useMenu();
 
   // Detectar si viene desde Core
@@ -206,7 +203,15 @@ export function Sidebar({ children }: SidebarProps) {
     if (shouldExpandSection) {
       setExpandedSection(shouldExpandSection);
     }
-  }, [pathname, dynamicMenuSections]);
+
+    // Si es proveedor, expandir automáticamente "Portal Proveedor"
+    if (isProvider && !shouldExpandSection) {
+      const portalSection = dynamicMenuSections.find(s => s.name === 'Portal Proveedor');
+      if (portalSection) {
+        setExpandedSection('Portal Proveedor');
+      }
+    }
+  }, [pathname, dynamicMenuSections, isProvider]);
 
   const handleSectionClick = useCallback((sectionName: string, sectionHref?: string) => {
     console.log('🖱️ Sidebar click:', { sectionName, sectionHref, isCollapsed, expandedSection });
@@ -251,20 +256,6 @@ export function Sidebar({ children }: SidebarProps) {
 
     return false;
   }, []);
-
-  const handleLogout = async () => {
-    const confirmed = await confirm(
-      '¿Estás seguro de que quieres cerrar sesión?',
-      'Confirmar cierre de sesión',
-      'warning'
-    );
-    
-    if (confirmed) {
-      logout();
-      window.location.href = '/auth/login';
-    }
-  };
-
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col bg-sidebar overflow-hidden">
@@ -479,44 +470,6 @@ export function Sidebar({ children }: SidebarProps) {
         )}
       </nav>
 
-      {/* User section */}
-      <div className={clsx(
-        "border-t border-sidebar-hover transition-all duration-200",
-        isCollapsed ? "px-2 py-6" : "p-4"
-      )}>
-        <div className={clsx(
-          'mb-4 transition-all duration-200',
-          isCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'flex items-center space-x-3 opacity-100'
-        )}>
-          <div className="w-8 h-8 bg-palette-yellow rounded-full flex items-center justify-center">
-            <User className="w-4 h-4 text-palette-dark" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text-white truncate">
-              {user?.name}
-            </p>
-            <p className="text-xs text-text-light truncate">
-              {user?.email}
-            </p>
-          </div>
-        </div>
-        
-        <button
-          onClick={handleLogout}
-          className={clsx(
-            'text-text-white flex items-center transition-all duration-200 rounded-lg cursor-pointer',
-            isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'justify-start space-x-3 w-full py-3 px-4'
-          )}
-        >
-          <LogOut className="w-5 h-5 flex-shrink-0" />
-          <span className={clsx(
-            'transition-opacity duration-200 whitespace-nowrap',
-            isCollapsed && 'opacity-0 pointer-events-none w-0 overflow-hidden'
-          )}>
-            Cerrar Sesión
-          </span>
-        </button>
-      </div>
     </div>
   );
 
@@ -578,7 +531,7 @@ export function Sidebar({ children }: SidebarProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Tenant Selector for Superusers */}
+        {/* Barra superior con Tenant Selector e iconos de usuario */}
         <TenantSelector />
 
         {/* Mobile Header */}
@@ -608,7 +561,6 @@ export function Sidebar({ children }: SidebarProps) {
           {children}
         </main>
       </div>
-
     </div>
   );
 }

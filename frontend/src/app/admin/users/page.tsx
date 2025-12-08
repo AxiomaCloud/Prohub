@@ -542,13 +542,15 @@ export default function UsersPage() {
                                   </button>
                                 </>
                               )}
-                              <button
-                                onClick={() => handleDeleteUser(user)}
-                                className="p-1 text-red-600 hover:text-red-900 rounded"
-                                title="Eliminar usuario permanentemente"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {user.id !== currentUser?.id && (
+                                <button
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                                  title="Eliminar usuario permanentemente"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
