@@ -25,7 +25,7 @@ const AVAILABLE_ROLES = [
 
 /**
  * GET /api/users/with-roles
- * Get all users with their roles for a specific tenant
+ * Get users with their roles for a specific tenant (only users with membership in that tenant)
  */
 router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
   try {
@@ -35,7 +35,15 @@ router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'tenantId is required' });
     }
 
+    // Solo obtener usuarios que tienen membresía en el tenant seleccionado
     const users = await prisma.user.findMany({
+      where: {
+        tenantMemberships: {
+          some: {
+            tenantId: tenantId,
+          },
+        },
+      },
       select: {
         id: true,
         email: true,
@@ -613,6 +621,8 @@ router.put('/:id/supplier', authenticate, async (req: Request, res: Response) =>
     const { id } = req.params;
     const { tenantId, supplierId } = req.body;
 
+    console.log(`🔗 [Supplier Link] Recibido:`, { userId: id, tenantId, supplierId, bodyFull: req.body });
+
     if (!tenantId) {
       return res.status(400).json({ error: 'tenantId is required' });
     }
@@ -656,6 +666,13 @@ router.put('/:id/supplier', authenticate, async (req: Request, res: Response) =>
 
     const action = supplierId ? 'vinculado a' : 'desvinculado de';
     const supplierName = updatedMembership.supplier?.nombre || 'proveedor';
+
+    console.log(`✅ [Supplier Link] Membresía actualizada:`, {
+      membershipId: existingMembership.id,
+      supplierIdAntes: existingMembership.supplierId,
+      supplierIdDespues: updatedMembership.supplierId,
+      supplierNombre: updatedMembership.supplier?.nombre || 'NINGUNO'
+    });
 
     res.json({
       message: `Usuario ${action} ${supplierName}`,

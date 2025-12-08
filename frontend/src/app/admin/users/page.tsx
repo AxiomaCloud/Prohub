@@ -193,15 +193,18 @@ export default function UsersPage() {
 
     try {
       setLoading(true);
-      await put(`/api/users/${selectedUserForSupplier.id}/supplier`, {
+      const payload = {
         tenantId: currentTenant.id,
         supplierId: selectedSupplierId || null,
-      });
+      };
+      console.log('[handleSaveSupplier] Enviando:', payload);
+      const response = await put(`/api/users/${selectedUserForSupplier.id}/supplier`, payload);
+      console.log('[handleSaveSupplier] Respuesta:', response);
       toast.success(selectedSupplierId ? 'Usuario vinculado al proveedor' : 'Usuario desvinculado del proveedor');
       setShowSupplierModal(false);
       await loadUsers();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Error al actualizar proveedor';
+      const errorMessage = error.message || 'Error al actualizar proveedor';
       toast.error(errorMessage);
       console.error('Error saving supplier:', error);
     } finally {
@@ -784,7 +787,7 @@ export default function UsersPage() {
               <div className="flex items-center justify-between p-6 border-b border-border">
                 <div>
                   <h3 className="text-lg font-semibold text-text-primary">
-                    Vincular a Proveedor
+                    {selectedUserForSupplier.supplier ? 'Gestionar Vinculación' : 'Vincular a Proveedor'}
                   </h3>
                   <p className="text-sm text-text-secondary">
                     {selectedUserForSupplier.name} ({selectedUserForSupplier.email})
@@ -799,9 +802,34 @@ export default function UsersPage() {
               </div>
 
               <div className="p-6">
+                {/* Mostrar vinculación actual si existe */}
+                {selectedUserForSupplier.supplier && (
+                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-orange-800">
+                        <Building2 className="w-4 h-4" />
+                        <div>
+                          <span className="text-sm font-medium">Actualmente vinculado a:</span>
+                          <p className="text-sm">{selectedUserForSupplier.supplier.nombre}</p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedSupplierId('')}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <Unlink className="w-4 h-4 mr-1" />
+                        Desvincular
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-text-primary mb-2">
-                    Proveedor
+                    {selectedUserForSupplier.supplier ? 'Cambiar a otro proveedor:' : 'Seleccionar proveedor:'}
                   </label>
                   <select
                     value={selectedSupplierId}
@@ -849,7 +877,7 @@ export default function UsersPage() {
                   Cancelar
                 </Button>
                 <Button onClick={handleSaveSupplier} disabled={loading}>
-                  {loading ? 'Guardando...' : 'Guardar'}
+                  {loading ? 'Guardando...' : 'Guardar Cambios'}
                 </Button>
               </div>
             </div>

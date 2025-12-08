@@ -648,25 +648,40 @@ router.post('/onboarding/:id/complete', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    console.log(`🔄 [Onboarding Complete] Iniciando para proveedor: ${id}`);
+
     // Verificar que tiene los datos mínimos
     const supplier = await prisma.supplier.findUnique({
       where: { id },
-      include: { documentos: true },
+      include: { documentos: true, cuentasBancarias: true },
     });
 
     if (!supplier) {
+      console.log(`❌ [Onboarding Complete] Proveedor no encontrado: ${id}`);
       return res.status(404).json({ error: 'Proveedor no encontrado' });
     }
+
+    console.log(`📋 [Onboarding Complete] Proveedor: ${supplier.nombre}, Estado: ${supplier.status}`);
+    console.log(`   - CBU: ${supplier.cbu || 'NO'}`);
+    console.log(`   - Condición Fiscal: ${supplier.condicionFiscal || 'NO'}`);
+    console.log(`   - Email: ${supplier.email || 'NO'}`);
+    console.log(`   - Cuentas bancarias: ${supplier.cuentasBancarias?.length || 0}`);
+    console.log(`   - Documentos: ${supplier.documentos?.length || 0}`);
 
     // Verificar estado
     const estadosPermitidos = ['INVITED', 'PENDING_COMPLETION'];
     if (!estadosPermitidos.includes(supplier.status)) {
+      console.log(`❌ [Onboarding Complete] Estado no permitido: ${supplier.status}`);
       return res.status(403).json({ error: 'El proceso de onboarding ya fue completado' });
     }
 
     // Validaciones mínimas
     const errors: string[] = [];
-    if (!supplier.cbu) errors.push('Datos bancarios incompletos');
+
+    // Verificar CBU - puede estar en el campo legacy o en cuentasBancarias
+    const tieneCBU = supplier.cbu || (supplier.cuentasBancarias && supplier.cuentasBancarias.length > 0);
+    if (!tieneCBU) errors.push('Datos bancarios incompletos');
+
     if (!supplier.condicionFiscal) errors.push('Condición fiscal requerida');
     if (!supplier.email) errors.push('Email requerido');
 
@@ -686,6 +701,7 @@ router.post('/onboarding/:id/complete', async (req: Request, res: Response) => {
     }
 
     if (errors.length > 0) {
+      console.log(`❌ [Onboarding Complete] Errores de validación:`, errors);
       return res.status(400).json({
         error: 'Faltan datos para completar el onboarding',
         details: errors,
@@ -694,6 +710,8 @@ router.post('/onboarding/:id/complete', async (req: Request, res: Response) => {
 
     // Determinar el nuevo estado
     const newStatus = config?.aprobacionAutomatica ? 'ACTIVE' : 'PENDING_APPROVAL';
+    console.log(`📋 [Onboarding Complete] Configuración del tenant: aprobación automática = ${config?.aprobacionAutomatica}`);
+    console.log(`📋 [Onboarding Complete] Nuevo estado: ${newStatus}`);
 
     const updated = await prisma.supplier.update({
       where: { id },
@@ -705,7 +723,7 @@ router.post('/onboarding/:id/complete', async (req: Request, res: Response) => {
       },
     });
 
-    console.log(`✅ [Onboarding] Completado para: ${supplier.nombre} - Estado: ${newStatus}`);
+    console.log(`✅ [Onboarding Complete] Completado para: ${supplier.nombre} - Estado: ${newStatus}`);
 
     res.json({
       proveedor: updated,
