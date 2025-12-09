@@ -833,8 +833,9 @@ export default function OrdenesCompraPage() {
   const calcularProgresoRecepcion = (oc: OrdenCompra) => {
     const totalSolicitado = oc.items.reduce((sum, item) => sum + Number(item.cantidad || 0), 0);
     const totalRecibido = oc.items.reduce((sum, item) => sum + Number(item.cantidadRecibida || 0), 0);
+    const porcentajeCalculado = totalSolicitado > 0 ? Math.round((totalRecibido / totalSolicitado) * 100) : 0;
     return {
-      porcentaje: totalSolicitado > 0 ? Math.round((totalRecibido / totalSolicitado) * 100) : 0,
+      porcentaje: Math.min(porcentajeCalculado, 100), // Nunca mostrar más de 100%
       recibido: Math.round(totalRecibido * 100) / 100, // Redondear a 2 decimales
       total: Math.round(totalSolicitado * 100) / 100,
     };
