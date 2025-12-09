@@ -214,13 +214,26 @@ async function simulatePayments(options: {
     const totalRetenciones = retenciones.reduce((sum, r) => sum + r.monto, 0);
     const netoAPagar = totalAmount - totalRetenciones;
 
+    // Obtener nombre del proveedor desde providerTenant o parseData
+    const parseData = invoice.parseData as any;
+    const providerName = invoice.providerTenant?.name || parseData?.supplierName || 'Proveedor desconocido';
+    const providerTenantId = invoice.providerTenantId;
+
+    // Si no hay providerTenantId, no podemos crear el pago (requerido para receivedByTenantId)
+    if (!providerTenantId) {
+      console.log(`  ⚠️ ${invoice.number} - Sin tenant de proveedor, omitiendo...`);
+      console.log(`     Proveedor: ${providerName}`);
+      console.log('');
+      continue;
+    }
+
     paymentDataList.push({
       documentId: invoice.id,
       documentNumber: invoice.number,
-      providerTenantId: invoice.providerTenantId,
-      providerName: invoice.providerTenant.name,
+      providerTenantId: providerTenantId,
+      providerName: providerName,
       clientTenantId: invoice.clientTenantId,
-      clientName: invoice.clientTenant.name,
+      clientName: invoice.clientTenant?.name || 'Cliente desconocido',
       totalAmount,
       currency: invoice.currency,
       retenciones,
@@ -229,8 +242,8 @@ async function simulatePayments(options: {
 
     // Mostrar detalle
     console.log(`  📃 ${invoice.number}`);
-    console.log(`     Proveedor: ${invoice.providerTenant.name}`);
-    console.log(`     Cliente: ${invoice.clientTenant.name}`);
+    console.log(`     Proveedor: ${providerName}`);
+    console.log(`     Cliente: ${invoice.clientTenant?.name || 'Cliente desconocido'}`);
     console.log(`     Total Factura: ${invoice.currency} ${totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`);
     console.log(`     Retenciones:`);
     for (const ret of retenciones) {

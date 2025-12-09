@@ -145,8 +145,8 @@ model Document {
   fileSize    Int
 
   // Multi-tenant
-  providerTenantId String
-  providerTenant   Tenant @relation("ProviderDocuments", fields: [providerTenantId], references: [id])
+  providerTenantId String?
+  providerTenant   Tenant? @relation("ProviderDocuments", fields: [providerTenantId], references: [id])
 
   clientTenantId   String
   clientTenant     Tenant @relation("ClientDocuments", fields: [clientTenantId], references: [id])
@@ -1469,6 +1469,7 @@ enum RFQStatus {
   EVALUATION      // Cerrada, en evaluación
   CLOSED          // Cerrada sin adjudicar
   AWARDED         // Adjudicada
+  PO_GENERATED    // OC Generada
   CANCELLED       // Cancelada
   EXPIRED         // Expirada sin adjudicación
 }

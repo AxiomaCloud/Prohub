@@ -225,6 +225,7 @@ const estadosRFQ: Record<string, { label: string; color: string; icon: any }> = 
   IN_QUOTATION: { label: 'En Cotizacion', color: 'bg-purple-100 text-purple-700', icon: FileText },
   EVALUATION: { label: 'En Evaluacion', color: 'bg-orange-100 text-orange-700', icon: Users },
   AWARDED: { label: 'Adjudicada', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  PO_GENERATED: { label: 'OC Generada', color: 'bg-emerald-100 text-emerald-700', icon: ShoppingCart },
   CANCELLED: { label: 'Cancelada', color: 'bg-red-100 text-red-700', icon: XCircle },
   CLOSED: { label: 'Cerrada', color: 'bg-gray-100 text-gray-700', icon: XCircle },
   EXPIRED: { label: 'Expirada', color: 'bg-gray-100 text-gray-500', icon: Clock },
@@ -480,7 +481,7 @@ export default function RFQDetailPage() {
               </Button>
             )}
 
-            {!['AWARDED', 'CANCELLED', 'CLOSED'].includes(rfq.status) && (
+            {!['AWARDED', 'PO_GENERATED', 'CANCELLED', 'CLOSED'].includes(rfq.status) && (
               <Button
                 variant="outline"
                 onClick={() => {

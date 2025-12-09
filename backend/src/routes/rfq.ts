@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, RFQStatus, QuotationStatus, RFQInvitationStatus } from '@prisma/client';
 import { authenticate } from '../middleware/auth';
 import { NotificationService } from '../services/notificationService';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -652,13 +654,65 @@ router.post('/:id/publish', authenticate, async (req: Request, res: Response) =>
       select: { id: true, name: true }
     });
 
+    // Preparar adjuntos para el email
+    let emailAttachments: Array<{
+      filename: string;
+      path: string;
+    }> = [];
+
+    if (updated?.attachments) {
+      const attachmentsArray = updated.attachments as Array<{
+        fileName: string;
+        fileUrl: string;
+        fileType: string;
+        fileSize: number;
+      }>;
+
+      if (Array.isArray(attachmentsArray) && attachmentsArray.length > 0) {
+        console.log(`📎 [RFQ Publish] Procesando ${attachmentsArray.length} adjuntos para el email`);
+        emailAttachments = attachmentsArray.map(att => {
+          // Construir path completo del archivo
+          const filePath = att.fileUrl.startsWith('/')
+            ? path.join(process.cwd(), att.fileUrl)
+            : path.join(process.cwd(), 'uploads', att.fileUrl);
+          return {
+            filename: att.fileName,
+            path: filePath
+          };
+        }).filter(att => {
+          // Verificar que el archivo existe
+          const exists = fs.existsSync(att.path);
+          if (!exists) {
+            console.warn(`  ⚠️ Adjunto no encontrado: ${att.path}`);
+          }
+          return exists;
+        });
+        console.log(`  📎 ${emailAttachments.length} adjuntos válidos para enviar`);
+      }
+    }
+
     // Enviar notificaciones por email a cada proveedor
     if (updated) {
-      console.log(`📧 [RFQ Publish] Enviando invitaciones a ${updated.invitedSuppliers.length} proveedores`);
+      console.log(`\n${'='.repeat(60)}`);
+      console.log(`📧 [RFQ Publish] RFQ ${updated.number} - Enviando invitaciones`);
+      console.log(`${'='.repeat(60)}`);
+      console.log(`📋 Total proveedores invitados: ${updated.invitedSuppliers.length}`);
+
+      if (updated.invitedSuppliers.length === 0) {
+        console.log(`⚠️  No hay proveedores invitados para esta RFQ`);
+      }
+
+      let enviados = 0;
+      let errores = 0;
+      let sinEmail = 0;
+
       for (const invitation of updated.invitedSuppliers) {
         if (invitation.supplier.email) {
           try {
-            console.log(`  → Enviando a: ${invitation.supplier.nombre} (${invitation.supplier.email})`);
+            console.log(`\n  [${enviados + errores + 1}/${updated.invitedSuppliers.length}] Enviando a: ${invitation.supplier.nombre}`);
+            console.log(`      Email: ${invitation.supplier.email}`);
+            console.log(`      Supplier ID: ${invitation.supplier.id}`);
+
             await NotificationService.notifyRFQInvitation(
               invitation.supplier.email,
               invitation.supplier.nombre,
@@ -667,17 +721,27 @@ router.post('/:id/publish', authenticate, async (req: Request, res: Response) =>
               updated.deadline,
               tenant?.name || '',
               updated.id,
-              updated.tenantId
+              updated.tenantId,
+              emailAttachments.length > 0 ? emailAttachments : undefined
             );
-            console.log(`  ✅ Email enviado a ${invitation.supplier.email}`);
-          } catch (notifError) {
-            console.error(`  ❌ Error enviando a ${invitation.supplier.email}:`, notifError);
-            // No fallar la operacion por errores de notificacion
+            enviados++;
+            console.log(`      ✅ Email enviado exitosamente${emailAttachments.length > 0 ? ` con ${emailAttachments.length} adjuntos` : ''}`);
+          } catch (notifError: any) {
+            errores++;
+            console.error(`      ❌ Error: ${notifError.message || notifError}`);
           }
         } else {
-          console.log(`  ⚠️ Proveedor ${invitation.supplier.nombre} sin email configurado`);
+          sinEmail++;
+          console.log(`\n  [${enviados + errores + sinEmail}/${updated.invitedSuppliers.length}] ⚠️ Proveedor sin email: ${invitation.supplier.nombre} (ID: ${invitation.supplier.id})`);
         }
       }
+
+      console.log(`\n${'='.repeat(60)}`);
+      console.log(`📊 Resumen de envío de invitaciones:`);
+      console.log(`   ✅ Enviados: ${enviados}`);
+      console.log(`   ❌ Errores: ${errores}`);
+      console.log(`   ⚠️  Sin email: ${sinEmail}`);
+      console.log(`${'='.repeat(60)}\n`);
     }
 
     res.json({ rfq: updated, message: 'RFQ publicada exitosamente' });
@@ -1082,10 +1146,10 @@ router.post('/:id/generate-po', authenticate, async (req: Request, res: Response
     }
     const ocNumber = `${prefix}${String(nextNumber).padStart(5, '0')}`;
 
-    // Calcular totales
+    // Calcular totales (sin impuestos - la OC es neta)
     const subtotal = Number(awardedQuotation.totalAmount) || 0;
-    const impuestos = subtotal * 0.21; // IVA 21%
-    const total = subtotal + impuestos;
+    const impuestos = 0;
+    const total = subtotal;
 
     // Crear la OC usando PurchaseOrderCircuit
     const purchaseOrder = await prisma.purchaseOrderCircuit.create({
@@ -1125,6 +1189,15 @@ router.post('/:id/generate-po', authenticate, async (req: Request, res: Response
     await prisma.purchaseRequest.update({
       where: { id: rfq.purchaseRequestId },
       data: { estado: 'OC_GENERADA' }
+    });
+
+    // Actualizar estado de la RFQ a PO_GENERATED y el monto estimado
+    await prisma.quotationRequest.update({
+      where: { id: rfq.id },
+      data: {
+        status: 'PO_GENERATED',
+        budget: total, // Actualizar al monto real de la OC
+      }
     });
 
     // Notificar al proveedor sobre la OC generada

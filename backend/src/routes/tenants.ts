@@ -310,20 +310,299 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/tenants/:id
- * Delete tenant (superuser only)
+ * Delete tenant (superuser only) - elimina en cascada todos los registros relacionados
  */
 router.delete('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    await prisma.tenant.delete({
-      where: { id },
+    // Verificar que el tenant existe
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant no encontrado' });
+    }
+
+    console.log(`🗑️ [TENANT DELETE] Eliminando tenant: ${tenant.name} (${id})`);
+
+    // Eliminar en cascada usando transacción
+    await prisma.$transaction(async (tx) => {
+      // 1. Eliminar PaymentItem (depende de Document y Payment)
+      await tx.paymentItem.deleteMany({
+        where: {
+          OR: [
+            { payment: { issuedByTenantId: id } },
+            { payment: { receivedByTenantId: id } },
+          ],
+        },
+      });
+
+      // 2. Eliminar Payments
+      await tx.payment.deleteMany({
+        where: {
+          OR: [
+            { issuedByTenantId: id },
+            { receivedByTenantId: id },
+          ],
+        },
+      });
+
+      // 3. Eliminar Comment, DocumentEvent, Attachment de documentos
+      const docs = await tx.document.findMany({
+        where: {
+          OR: [
+            { providerTenantId: id },
+            { clientTenantId: id },
+          ],
+        },
+        select: { id: true },
+      });
+      const docIds = docs.map(d => d.id);
+
+      if (docIds.length > 0) {
+        await tx.comment.deleteMany({
+          where: { documentId: { in: docIds } },
+        });
+        await tx.documentEvent.deleteMany({
+          where: { documentId: { in: docIds } },
+        });
+        await tx.attachment.deleteMany({
+          where: { documentId: { in: docIds } },
+        });
+      }
+
+      // 4. Eliminar Documents
+      await tx.document.deleteMany({
+        where: {
+          OR: [
+            { providerTenantId: id },
+            { clientTenantId: id },
+          ],
+        },
+      });
+
+      // 5. Eliminar PurchaseOrder (modelo viejo) relacionados
+      await tx.purchaseOrder.deleteMany({
+        where: { clientTenantId: id },
+      });
+
+      // 6. Eliminar RFQ relacionados
+      // Primero obtenemos los IDs de las RFQs del tenant
+      const rfqs = await tx.quotationRequest.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      });
+      const rfqIds = rfqs.map(r => r.id);
+
+      if (rfqIds.length > 0) {
+        // Obtener IDs de cotizaciones de proveedores
+        const quotations = await tx.supplierQuotation.findMany({
+          where: { quotationRequestId: { in: rfqIds } },
+          select: { id: true },
+        });
+        const quotationIds = quotations.map(q => q.id);
+
+        if (quotationIds.length > 0) {
+          await tx.supplierQuotationItem.deleteMany({
+            where: { supplierQuotationId: { in: quotationIds } },
+          });
+        }
+
+        await tx.supplierQuotation.deleteMany({
+          where: { quotationRequestId: { in: rfqIds } },
+        });
+        await tx.quotationRequestSupplier.deleteMany({
+          where: { quotationRequestId: { in: rfqIds } },
+        });
+        await tx.quotationRequestItem.deleteMany({
+          where: { quotationRequestId: { in: rfqIds } },
+        });
+      }
+
+      await tx.quotationRequest.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 7. Eliminar PurchaseRequest relacionados
+      const prs = await tx.purchaseRequest.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      });
+      const prIds = prs.map(p => p.id);
+
+      if (prIds.length > 0) {
+        await tx.purchaseRequestAttachment.deleteMany({
+          where: { purchaseRequestId: { in: prIds } },
+        });
+        await tx.purchaseRequestItem.deleteMany({
+          where: { purchaseRequestId: { in: prIds } },
+        });
+      }
+      await tx.purchaseRequest.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 8. Eliminar PurchaseOrderCircuit relacionados
+      const pocs = await tx.purchaseOrderCircuit.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      });
+      const pocIds = pocs.map(p => p.id);
+
+      if (pocIds.length > 0) {
+        await tx.purchaseOrderItem.deleteMany({
+          where: { purchaseOrderId: { in: pocIds } },
+        });
+      }
+      await tx.purchaseOrderCircuit.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 9. Eliminar Reception relacionados
+      const receptions = await tx.reception.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      });
+      const receptionIds = receptions.map(r => r.id);
+
+      if (receptionIds.length > 0) {
+        await tx.receptionItem.deleteMany({
+          where: { receptionId: { in: receptionIds } },
+        });
+      }
+      await tx.reception.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 10. Eliminar Suppliers relacionados
+      const suppliers = await tx.supplier.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      });
+      const supplierIds = suppliers.map(s => s.id);
+
+      if (supplierIds.length > 0) {
+        await tx.supplierBankAccount.deleteMany({
+          where: { supplierId: { in: supplierIds } },
+        });
+        await tx.supplierDocument.deleteMany({
+          where: { supplierId: { in: supplierIds } },
+        });
+      }
+      await tx.supplier.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 11. Eliminar Approval relacionados
+      const workflows = await tx.approvalWorkflow.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      });
+      const workflowIds = workflows.map(w => w.id);
+
+      if (workflowIds.length > 0) {
+        await tx.approvalInstance.deleteMany({
+          where: { workflowId: { in: workflowIds } },
+        });
+      }
+      await tx.approvalWorkflow.deleteMany({
+        where: { tenantId: id },
+      });
+
+      await tx.approvalDelegation.deleteMany({
+        where: { tenantId: id },
+      });
+
+      const rules = await tx.approvalRule.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      });
+      const ruleIds = rules.map(r => r.id);
+
+      if (ruleIds.length > 0) {
+        const levels = await tx.approvalLevel.findMany({
+          where: { approvalRuleId: { in: ruleIds } },
+          select: { id: true },
+        });
+        const levelIds = levels.map(l => l.id);
+
+        if (levelIds.length > 0) {
+          await tx.approvalLevelApprover.deleteMany({
+            where: { approvalLevelId: { in: levelIds } },
+          });
+        }
+        await tx.approvalLevel.deleteMany({
+          where: { approvalRuleId: { in: ruleIds } },
+        });
+      }
+      await tx.approvalRule.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 12. Eliminar UserNotificationPreference
+      await tx.userNotificationPreference.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 13. Eliminar EmailTemplate del tenant
+      await tx.emailTemplate.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 14. Eliminar TenantSupplierConfig
+      await tx.tenantSupplierConfig.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 15. Eliminar Conversations y Messages
+      const conversations = await tx.conversation.findMany({
+        where: {
+          OR: [
+            { providerTenantId: id },
+            { clientTenantId: id },
+          ],
+        },
+        select: { id: true },
+      });
+      const convIds = conversations.map(c => c.id);
+
+      if (convIds.length > 0) {
+        await tx.message.deleteMany({
+          where: { conversationId: { in: convIds } },
+        });
+      }
+      await tx.conversation.deleteMany({
+        where: {
+          OR: [
+            { providerTenantId: id },
+            { clientTenantId: id },
+          ],
+        },
+      });
+
+      // 16. Eliminar Notifications - solo las del tenant, no filtramos por usuario
+      // Las notificaciones no tienen tenantId directo, así que las dejamos
+
+      // 17. Eliminar MenuItem
+      await tx.menuItem.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 18. Eliminar TenantMembership (usuarios asociados)
+      await tx.tenantMembership.deleteMany({
+        where: { tenantId: id },
+      });
+
+      // 19. Finalmente eliminar el Tenant
+      await tx.tenant.delete({
+        where: { id },
+      });
     });
 
-    res.json({ message: 'Tenant deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting tenant:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.log(`✅ [TENANT DELETE] Tenant eliminado: ${tenant.name}`);
+    res.json({ message: 'Tenant eliminado correctamente', tenant: { id, name: tenant.name } });
+  } catch (error: any) {
+    console.error('❌ [TENANT DELETE] Error:', error.message);
+    res.status(500).json({ error: 'Error al eliminar tenant', details: error.message });
   }
 });
 

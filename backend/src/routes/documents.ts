@@ -766,8 +766,44 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 
     const total = await prisma.document.count({ where });
 
+    // Buscar OCs del circuito para documentos que las tengan en parseData
+    const purchaseOrderCircuitIds = documents
+      .filter((doc: any) => doc.parseData?.purchaseOrderCircuitId)
+      .map((doc: any) => (doc.parseData as any).purchaseOrderCircuitId);
+
+    let purchaseOrderCircuits: Record<string, { id: string; numero: string }> = {};
+    if (purchaseOrderCircuitIds.length > 0) {
+      const ocs = await prisma.purchaseOrderCircuit.findMany({
+        where: { id: { in: purchaseOrderCircuitIds } },
+        select: { id: true, numero: true },
+      });
+      purchaseOrderCircuits = ocs.reduce((acc, oc) => {
+        acc[oc.id] = { id: oc.id, numero: oc.numero };
+        return acc;
+      }, {} as Record<string, { id: string; numero: string }>);
+    }
+
+    // Mapear documentos para incluir purchaseOrder del circuito si existe
+    const documentsWithOC = documents.map((doc: any) => {
+      const parseData = doc.parseData as any;
+      let purchaseOrder = doc.purchaseOrder;
+
+      // Si no tiene purchaseOrder pero tiene purchaseOrderCircuitId en parseData
+      if (!purchaseOrder && parseData?.purchaseOrderCircuitId) {
+        const ocCircuit = purchaseOrderCircuits[parseData.purchaseOrderCircuitId];
+        if (ocCircuit) {
+          purchaseOrder = { id: ocCircuit.id, numero: ocCircuit.numero };
+        }
+      }
+
+      return {
+        ...doc,
+        purchaseOrder,
+      };
+    });
+
     res.json({
-      documents,
+      documents: documentsWithOC,
       total,
       limit: parseInt(limit as string),
       offset: parseInt(offset as string)

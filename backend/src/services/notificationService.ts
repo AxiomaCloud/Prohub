@@ -219,7 +219,13 @@ export class NotificationService {
   private static async sendNotification(
     eventType: NotificationEventType,
     email: string,
-    context: NotificationContext
+    context: NotificationContext,
+    attachments?: Array<{
+      filename: string;
+      content?: string | Buffer;
+      path?: string;
+      contentType?: string;
+    }>
   ): Promise<void> {
     const user = await prisma.user.findUnique({
       where: { email },
@@ -245,7 +251,8 @@ export class NotificationService {
       eventType,
       email,
       context,
-      context.tenantId || undefined
+      context.tenantId || undefined,
+      attachments
     );
   }
 
@@ -700,18 +707,74 @@ export class NotificationService {
     deadline: Date,
     clientName: string,
     rfqId: string,
-    tenantId: string
+    tenantId: string,
+    attachments?: Array<{
+      filename: string;
+      content?: string | Buffer;
+      path?: string;
+      contentType?: string;
+    }>
   ): Promise<void> {
+    const actionUrl = `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`;
+    const fechaLimite = deadline.toLocaleDateString('es-AR');
+
+    // Intentar primero con template
     const context: NotificationContext = {
       tenantId,
       numero: rfqNumber,
       titulo: rfqTitle,
       proveedor: supplierName,
-      fechaAprobacion: deadline.toLocaleDateString('es-AR'),
-      actionUrl: `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`,
+      fechaAprobacion: fechaLimite,
+      actionUrl,
     };
 
-    await this.sendNotification('RFQ_INVITATION', supplierEmail, context);
+    // Verificar si existe template
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'RFQ_INVITATION',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    });
+
+    if (template) {
+      await this.sendNotification('RFQ_INVITATION', supplierEmail, context, attachments);
+    } else {
+      // Si no hay template, enviar email directo
+      console.log(`📧 [RFQ_INVITATION] No hay template, enviando email directo a ${supplierEmail}`);
+      await EmailService.sendEmail({
+        to: supplierEmail,
+        subject: `Invitación a cotizar: ${rfqNumber} - ${rfqTitle}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">Solicitud de Cotización</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Hola <strong>${supplierName}</strong>,</p>
+              <p style="font-size: 16px; color: #374151;">Has sido invitado a cotizar para el siguiente requerimiento:</p>
+              <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p><strong>Número:</strong> ${rfqNumber}</p>
+                <p><strong>Título:</strong> ${rfqTitle}</p>
+                <p><strong>Fecha límite:</strong> ${fechaLimite}</p>
+              </div>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${actionUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Ver y Cotizar
+                </a>
+              </div>
+              <p style="color: #6b7280; margin-top: 30px; font-size: 14px; text-align: center;">
+                Ingresa al portal de proveedores para ver los detalles y enviar tu cotización.
+              </p>
+            </div>
+          </div>
+        `,
+        attachments,
+      });
+    }
   }
 
   /**
@@ -727,16 +790,65 @@ export class NotificationService {
     rfqId: string,
     tenantId: string
   ): Promise<void> {
-    const context: NotificationContext = {
-      tenantId,
-      numero: rfqNumber,
-      titulo: rfqTitle,
-      proveedor: supplierName,
-      montoTotal: this.formatCurrency(quotationTotal),
-      actionUrl: `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`,
-    };
+    const montoFormateado = this.formatCurrency(quotationTotal);
+    const actionUrl = `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`;
 
-    await this.sendNotification('RFQ_AWARDED', supplierEmail, context);
+    // Verificar si existe template
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'RFQ_AWARDED',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    });
+
+    if (template) {
+      const context: NotificationContext = {
+        tenantId,
+        numero: rfqNumber,
+        titulo: rfqTitle,
+        proveedor: supplierName,
+        montoTotal: montoFormateado,
+        actionUrl,
+      };
+      await this.sendNotification('RFQ_AWARDED', supplierEmail, context);
+    } else {
+      // Si no hay template, enviar email directo
+      console.log(`📧 [RFQ_AWARDED] No hay template, enviando email directo a ${supplierEmail}`);
+      await EmailService.sendEmail({
+        to: supplierEmail,
+        subject: `¡Felicitaciones! Tu cotización fue adjudicada - ${rfqNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">🎉 ¡Cotización Adjudicada!</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Hola <strong>${supplierName}</strong>,</p>
+              <p style="font-size: 16px; color: #374151;">Nos complace informarte que tu cotización ha sido <strong style="color: #10b981;">adjudicada</strong> para el siguiente requerimiento:</p>
+              <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p><strong>Número:</strong> ${rfqNumber}</p>
+                <p><strong>Título:</strong> ${rfqTitle}</p>
+                <p><strong>Monto adjudicado:</strong> <span style="color: #10b981; font-weight: bold;">${montoFormateado}</span></p>
+                <p><strong>Cliente:</strong> ${clientName}</p>
+              </div>
+              <p style="font-size: 16px; color: #374151;">Próximamente recibirás la Orden de Compra correspondiente.</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${actionUrl}" style="display: inline-block; background: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Ver Detalle
+                </a>
+              </div>
+            </div>
+            <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+              Este es un mensaje automático del sistema de compras.
+            </div>
+          </div>
+        `,
+      });
+    }
   }
 
   /**
@@ -751,15 +863,62 @@ export class NotificationService {
     rfqId: string,
     tenantId: string
   ): Promise<void> {
-    const context: NotificationContext = {
-      tenantId,
-      numero: rfqNumber,
-      titulo: rfqTitle,
-      proveedor: supplierName,
-      actionUrl: `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`,
-    };
+    const actionUrl = `${FRONTEND_URL}/portal/cotizaciones/${rfqId}`;
 
-    await this.sendNotification('RFQ_NOT_AWARDED', supplierEmail, context);
+    // Verificar si existe template
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'RFQ_NOT_AWARDED',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    });
+
+    if (template) {
+      const context: NotificationContext = {
+        tenantId,
+        numero: rfqNumber,
+        titulo: rfqTitle,
+        proveedor: supplierName,
+        actionUrl,
+      };
+      await this.sendNotification('RFQ_NOT_AWARDED', supplierEmail, context);
+    } else {
+      // Si no hay template, enviar email directo
+      console.log(`📧 [RFQ_NOT_AWARDED] No hay template, enviando email directo a ${supplierEmail}`);
+      await EmailService.sendEmail({
+        to: supplierEmail,
+        subject: `Resultado de cotización - ${rfqNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">Resultado de Cotización</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Hola <strong>${supplierName}</strong>,</p>
+              <p style="font-size: 16px; color: #374151;">Te informamos que el proceso de cotización ha finalizado:</p>
+              <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p><strong>Número:</strong> ${rfqNumber}</p>
+                <p><strong>Título:</strong> ${rfqTitle}</p>
+                <p><strong>Cliente:</strong> ${clientName}</p>
+              </div>
+              <p style="font-size: 16px; color: #374151;">Lamentablemente, en esta oportunidad tu cotización no fue seleccionada. Te agradecemos tu participación y esperamos contar contigo en futuras oportunidades.</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${actionUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Ver Detalle
+                </a>
+              </div>
+            </div>
+            <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+              Este es un mensaje automático del sistema de compras.
+            </div>
+          </div>
+        `,
+      });
+    }
   }
 
   /**
@@ -823,17 +982,67 @@ export class NotificationService {
     clientName: string,
     tenantId: string
   ): Promise<void> {
-    const context: NotificationContext = {
-      tenantId,
-      numero: ocNumber,
-      titulo: `Orden de Compra ${ocNumber}`,
-      proveedor: supplierName,
-      montoTotal: this.formatCurrency(ocTotal, currency),
-      fechaAprobacion: deliveryDate ? deliveryDate.toLocaleDateString('es-AR') : 'A convenir',
-      actionUrl: `${FRONTEND_URL}/portal/ordenes`,
-    };
+    const montoFormateado = this.formatCurrency(ocTotal, currency);
+    const fechaEntrega = deliveryDate ? deliveryDate.toLocaleDateString('es-AR') : 'A convenir';
+    const actionUrl = `${FRONTEND_URL}/portal/ordenes`;
 
-    await this.sendNotification('OC_SUPPLIER_NOTIFIED', supplierEmail, context);
+    // Verificar si existe template
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'OC_SUPPLIER_NOTIFIED',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    });
+
+    if (template) {
+      const context: NotificationContext = {
+        tenantId,
+        numero: ocNumber,
+        titulo: `Orden de Compra ${ocNumber}`,
+        proveedor: supplierName,
+        montoTotal: montoFormateado,
+        fechaAprobacion: fechaEntrega,
+        actionUrl,
+      };
+      await this.sendNotification('OC_SUPPLIER_NOTIFIED', supplierEmail, context);
+    } else {
+      // Si no hay template, enviar email directo
+      console.log(`📧 [OC_SUPPLIER_NOTIFIED] No hay template, enviando email directo a ${supplierEmail}`);
+      await EmailService.sendEmail({
+        to: supplierEmail,
+        subject: `Nueva Orden de Compra - ${ocNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">📋 Orden de Compra Generada</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Hola <strong>${supplierName}</strong>,</p>
+              <p style="font-size: 16px; color: #374151;">Se ha generado una nueva Orden de Compra a tu favor:</p>
+              <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p><strong>Número de OC:</strong> ${ocNumber}</p>
+                <p><strong>Monto Total:</strong> <span style="color: #3b82f6; font-weight: bold;">${montoFormateado}</span></p>
+                <p><strong>Fecha de Entrega:</strong> ${fechaEntrega}</p>
+                <p><strong>Cliente:</strong> ${clientName}</p>
+              </div>
+              <p style="font-size: 16px; color: #374151;">Puedes ver el detalle completo de la orden en el portal de proveedores.</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${actionUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Ver Mis Órdenes
+                </a>
+              </div>
+            </div>
+            <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+              Este es un mensaje automático del sistema de compras.
+            </div>
+          </div>
+        `,
+      });
+    }
   }
 
   // Helpers
