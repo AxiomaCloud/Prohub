@@ -481,15 +481,14 @@ export default function DocumentsPage() {
                         const emisor = doc.parseData?.documento?.cabecera;
                         const razonSocial = emisor?.razonSocialEmisor || doc.providerTenant?.name || '-';
                         const cuit = emisor?.cuitEmisor || doc.providerTenant?.taxId || '';
-                        const cuitFormatted = cuit ? `${cuit.slice(0,2)}-${cuit.slice(2,10)}-${cuit.slice(10)}` : '';
                         return (
-                          <div className="max-w-[200px]" title={`${razonSocial} - ${cuitFormatted}`}>
+                          <div className="max-w-[200px]" title={`${razonSocial} - ${cuit}`}>
                             <div className="text-sm text-text-primary truncate">
                               {razonSocial}
                             </div>
-                            {cuitFormatted && (
+                            {cuit && (
                               <div className="text-xs text-text-secondary">
-                                {cuitFormatted}
+                                {cuit}
                               </div>
                             )}
                           </div>
