@@ -4,21 +4,23 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
+import { DocumentStatusBadge } from '@/components/documents/DocumentStatusBadge';
+import { DocumentUploadModal } from '@/components/documents/DocumentUploadModal';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirmDialog } from '@/hooks/useConfirm';
+import { useSupplier } from '@/hooks/useSupplier';
 import {
   Upload,
   FileText,
   Search,
-  Filter,
-  Download,
   Eye,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Trash2
+  Trash2,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Bot,
+  Loader2
 } from 'lucide-react';
 
 interface Document {
@@ -31,7 +33,17 @@ interface Document {
   totalAmount: number;
   currency: string;
   fileName: string;
+  fileUrl: string;
+  date: string | null;
   uploadedAt: string;
+  purchaseOrderId: string | null;
+  parseData?: {
+    metadata?: {
+      metodoExtraccion?: string;
+      confianza?: number;
+    };
+  };
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'ERROR';
   providerTenant: {
     id: string;
     name: string;
@@ -47,6 +59,9 @@ interface Document {
     name: string;
     email: string;
   };
+  purchaseOrder?: {
+    numero: string;
+  } | null;
   _count: {
     comments: number;
     attachments: number;
@@ -54,6 +69,13 @@ interface Document {
 }
 
 const documentTypeLabels: Record<Document['type'], string> = {
+  INVOICE: 'FC',
+  CREDIT_NOTE: 'NC',
+  DEBIT_NOTE: 'ND',
+  RECEIPT: 'REC'
+};
+
+const documentTypeFull: Record<Document['type'], string> = {
   INVOICE: 'Factura',
   CREDIT_NOTE: 'Nota de Crédito',
   DEBIT_NOTE: 'Nota de Débito',
@@ -69,44 +91,34 @@ const documentStatusLabels: Record<Document['status'], string> = {
   REJECTED: 'Rechazado'
 };
 
-const statusColors: Record<Document['status'], string> = {
-  PROCESSING: 'bg-blue-100 text-blue-800',
-  PRESENTED: 'bg-purple-100 text-purple-800',
-  IN_REVIEW: 'bg-yellow-100 text-yellow-800',
-  APPROVED: 'bg-green-100 text-green-800',
-  PAID: 'bg-emerald-100 text-emerald-800',
-  REJECTED: 'bg-red-100 text-red-800'
-};
-
-const statusIcons: Record<Document['status'], React.ComponentType<{ className?: string }>> = {
-  PROCESSING: Clock,
-  PRESENTED: FileText,
-  IN_REVIEW: AlertCircle,
-  APPROVED: CheckCircle,
-  PAID: CheckCircle,
-  REJECTED: XCircle
-};
-
 export default function DocumentsPage() {
   const router = useRouter();
-  const { get, delete: deleteApi } = useApiClient();
+  const { get, delete: deleteApi, post } = useApiClient();
   const { user, tenant, isLoading: authLoading } = useAuth();
   const { confirm } = useConfirmDialog();
+  const { isSupplier, supplierId, loading: supplierLoading } = useSupplier();
 
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [extractingAI, setExtractingAI] = useState<Set<string>>(new Set()); // IDs de docs siendo procesados con IA
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     // Solo cargar documentos si el usuario está autenticado y tiene tenant seleccionado
-    if (!authLoading && user && tenant) {
-      console.log('📄 [DocumentsPage] Cargando documentos para tenant:', tenant.id, tenant.name);
+    if (!authLoading && !supplierLoading && user && tenant) {
+      console.log('📄 [DocumentsPage] Cargando documentos para tenant:', tenant.id, tenant.name, isSupplier ? '(proveedor)' : '');
       fetchDocuments();
     }
-  }, [statusFilter, typeFilter, authLoading, user, tenant?.id]);
+  }, [statusFilter, typeFilter, authLoading, supplierLoading, user, tenant?.id, currentPage, isSupplier, supplierId]);
 
   const fetchDocuments = async () => {
     try {
@@ -115,14 +127,19 @@ export default function DocumentsPage() {
       const params = new URLSearchParams();
       // Filtrar por el tenant seleccionado
       if (tenant?.id) params.append('tenantId', tenant.id);
+      // Si es proveedor, agregar filtro por supplierId
+      if (isSupplier && supplierId) params.append('supplierId', supplierId);
       if (statusFilter) params.append('status', statusFilter);
       if (typeFilter) params.append('type', typeFilter);
+      params.append('limit', itemsPerPage.toString());
+      params.append('offset', ((currentPage - 1) * itemsPerPage).toString());
 
       const response = await get<{ documents: Document[]; total: number }>(
         `/api/documents?${params.toString()}`
       );
 
       setDocuments(response.documents);
+      setTotal(response.total);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
@@ -189,18 +206,25 @@ export default function DocumentsPage() {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
-    const dateStr = date.toLocaleDateString('es-AR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
     });
-    const timeStr = date.toLocaleTimeString('es-AR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    return { dateStr, timeStr };
+  };
+
+  // Paginación
+  const totalPages = Math.ceil(total / itemsPerPage);
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
   const handleDelete = async (doc: Document) => {
@@ -226,11 +250,54 @@ export default function DocumentsPage() {
     }
   };
 
+  // Función para extraer datos con IA bajo demanda
+  const handleExtractAI = async (doc: Document) => {
+    // Marcar como en proceso
+    setExtractingAI(prev => new Set(prev).add(doc.id));
+
+    try {
+      await post(`/api/documents/${doc.id}/parse-ai`, {});
+      // Recargar documentos para ver los datos actualizados
+      await fetchDocuments();
+    } catch (error) {
+      console.error('Error extracting with AI:', error);
+      await confirm(
+        'Hubo un error al extraer los datos con IA. Por favor, intenta nuevamente.',
+        'Error',
+        'danger'
+      );
+    } finally {
+      // Quitar de la lista de procesando
+      setExtractingAI(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(doc.id);
+        return newSet;
+      });
+    }
+  };
+
+  // Verificar si un documento fue procesado con extracción básica (sin IA)
+  const isBasicExtraction = (doc: Document) => {
+    return doc.parseData?.metadata?.metodoExtraccion === 'BASIC_REGEX';
+  };
+
+  // Loading mientras se verifica si es proveedor
+  if (supplierLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Documentos"
-        subtitle="Gestiona facturas, notas de crédito y otros documentos"
+        title={isSupplier ? "Mis Facturas" : "Documentos"}
+        subtitle={isSupplier
+          ? "Gestiona las facturas y comprobantes que enviaste"
+          : "Gestiona facturas, notas de crédito y otros documentos"
+        }
         action={
           <div className="flex items-center gap-3">
             {selectedDocs.size > 0 && (
@@ -243,9 +310,9 @@ export default function DocumentsPage() {
                 Eliminar ({selectedDocs.size})
               </Button>
             )}
-            <Button onClick={() => router.push('/documentos/subir')}>
+            <Button onClick={() => setIsUploadModalOpen(true)}>
               <Upload className="w-4 h-4 mr-2" />
-              Subir Documento
+              Cargar documento
             </Button>
           </div>
         }
@@ -253,48 +320,65 @@ export default function DocumentsPage() {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-sm border border-border p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary w-4 h-4" />
               <input
                 type="text"
-                placeholder="Buscar por número, proveedor o cliente..."
+                placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-48 pl-9 pr-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
-          </div>
 
-          {/* Status Filter */}
-          <div>
+            {/* Status Filter */}
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Todos los estados</option>
               {Object.entries(documentStatusLabels).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
-          </div>
 
-          {/* Type Filter */}
-          <div>
+            {/* Type Filter */}
             <select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+              className="px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Todos los tipos</option>
-              {Object.entries(documentTypeLabels).map(([value, label]) => (
+              {Object.entries(documentTypeFull).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
           </div>
+
+          {/* Pagination Info */}
+          {!loading && total > 0 && (
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span>{currentPage}/{totalPages}</span>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -329,7 +413,7 @@ export default function DocumentsPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left">
+                  <th className="px-3 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={selectedDocs.size === filteredDocuments.length && filteredDocuments.length > 0}
@@ -337,106 +421,137 @@ export default function DocumentsPage() {
                       className="w-4 h-4 rounded border-border focus:ring-2 focus:ring-primary cursor-pointer"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Documento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Tipo
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Proveedor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Cliente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Monto
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Tipo
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Número
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Fecha
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Emisor
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Monto Total
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    OC
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-border">
-                {filteredDocuments.map((doc) => {
-                  const StatusIcon = statusIcons[doc.status];
-                  return (
-                    <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedDocs.has(doc.id)}
-                          onChange={() => handleSelectDoc(doc.id)}
-                          className="w-4 h-4 rounded border-border focus:ring-2 focus:ring-primary cursor-pointer"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <FileText className="w-5 h-5 text-palette-purple mr-3" />
-                          <div className="text-sm font-medium text-text-primary">
-                            {doc.fileName}
+                {filteredDocuments.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedDocs.has(doc.id)}
+                        onChange={() => handleSelectDoc(doc.id)}
+                        className="w-4 h-4 rounded border-border focus:ring-2 focus:ring-primary cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <DocumentStatusBadge status={doc.status} size="sm" />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm font-medium text-text-primary">
+                        {documentTypeLabels[doc.type]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm font-mono text-text-primary">
+                        {doc.number}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-text-secondary">
+                        {formatDate(doc.date || doc.uploadedAt)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {(() => {
+                        const parseData = doc.parseData as any;
+                        const emisor = parseData?.documento?.cabecera;
+                        const razonSocial = emisor?.razonSocialEmisor || doc.providerTenant?.name || '-';
+                        const cuit = emisor?.cuitEmisor || doc.providerTenant?.taxId || '';
+                        return (
+                          <div className="max-w-[200px]" title={`${razonSocial} - ${cuit}`}>
+                            <div className="text-sm text-text-primary truncate">
+                              {razonSocial}
+                            </div>
+                            {cuit && (
+                              <div className="text-xs text-text-secondary">
+                                {cuit}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-text-primary">
-                          {documentTypeLabels[doc.type]}
+                        );
+                      })()}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <span className="text-sm font-semibold text-text-primary">
+                        {formatCurrency(doc.totalAmount, doc.currency)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {doc.purchaseOrder ? (
+                        <span className="text-sm text-palette-purple font-medium">
+                          {(doc.purchaseOrder as any).number || (doc.purchaseOrder as any).numero}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-text-primary">{doc.providerTenant.name}</div>
-                        <div className="text-xs text-text-secondary">{doc.providerTenant.taxId}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-text-primary">{doc.clientTenant.name}</div>
-                        <div className="text-xs text-text-secondary">{doc.clientTenant.taxId}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-text-primary">
-                          {formatCurrency(doc.totalAmount, doc.currency)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[doc.status]}`}>
-                          <StatusIcon className="w-3 h-3 mr-1" />
-                          {documentStatusLabels[doc.status]}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-text-primary">
-                          {formatDate(doc.uploadedAt).dateStr}
-                        </div>
-                        <div className="text-xs text-text-secondary">
-                          {formatDate(doc.uploadedAt).timeStr}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
+                      ) : (
+                        <span className="text-sm text-text-secondary">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        {/* Botón Extraer con IA - solo visible si es extracción básica y no es proveedor */}
+                        {!isSupplier && isBasicExtraction(doc) && (
                           <button
-                            onClick={() => router.push(`/documentos/${doc.id}`)}
-                            className="text-palette-purple hover:text-palette-purple/80 p-2 hover:bg-palette-purple/10 rounded-lg transition-colors"
-                            title="Ver documento"
+                            onClick={() => handleExtractAI(doc)}
+                            disabled={extractingAI.has(doc.id)}
+                            className="text-purple-600 hover:text-purple-800 p-1.5 hover:bg-purple-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Extraer datos completos con IA"
                           >
-                            <Eye className="w-5 h-5" />
+                            {extractingAI.has(doc.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Bot className="w-4 h-4" />
+                            )}
                           </button>
-                          <button
-                            onClick={() => handleDelete(doc)}
-                            className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Eliminar documento"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        )}
+                        <button
+                          onClick={() => router.push(`/documentos/${doc.id}`)}
+                          className="text-text-secondary hover:text-palette-purple p-1.5 hover:bg-gray-100 rounded transition-colors"
+                          title="Ver documento"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => window.open(`http://localhost:4000${doc.fileUrl}`, '_blank')}
+                          className="text-text-secondary hover:text-palette-purple p-1.5 hover:bg-gray-100 rounded transition-colors"
+                          title="Descargar"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(doc)}
+                          className="text-text-secondary hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -444,13 +559,24 @@ export default function DocumentsPage() {
       </div>
 
       {/* Summary */}
-      {!loading && filteredDocuments.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-border p-4">
-          <div className="flex items-center justify-between text-sm text-text-secondary">
-            <span>Mostrando {filteredDocuments.length} documento{filteredDocuments.length !== 1 ? 's' : ''}</span>
-          </div>
+      {!loading && total > 0 && (
+        <div className="flex items-center justify-between text-sm text-text-secondary">
+          <span>
+            Mostrando {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, total)} de {total} documento{total !== 1 ? 's' : ''}
+          </span>
+          <span>Última actualización: {new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       )}
+
+      {/* Upload Modal */}
+      <DocumentUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={() => {
+          setIsUploadModalOpen(false);
+          fetchDocuments();
+        }}
+      />
     </div>
   );
 }

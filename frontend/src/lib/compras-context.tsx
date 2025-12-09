@@ -23,8 +23,8 @@ interface ComprasContextType {
   // Requerimientos
   requerimientos: Requerimiento[];
   loadingRequerimientos: boolean;
-  agregarRequerimiento: (req: Requerimiento) => void;
-  actualizarRequerimiento: (id: string, data: Partial<Requerimiento>) => void;
+  agregarRequerimiento: (req: Requerimiento) => Promise<void>;
+  actualizarRequerimiento: (id: string, data: Partial<Requerimiento>) => Promise<void>;
   refreshRequerimientos: () => Promise<void>;
 
   // Ordenes de Compra
@@ -170,18 +170,103 @@ export function ComprasProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentTenant?.id, getToken]);
 
-  const agregarRequerimiento = useCallback((req: Requerimiento) => {
-    setRequerimientos((prev) => [req, ...prev]);
-    fetchRequerimientos();
-  }, [fetchRequerimientos]);
+  const agregarRequerimiento = useCallback(async (req: Requerimiento) => {
+    if (!currentTenant?.id) return;
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/purchase-requests`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenantId: currentTenant.id,
+          titulo: req.titulo,
+          descripcion: req.descripcion,
+          justificacion: req.justificacion,
+          centroCostos: req.centroCostos,
+          categoria: req.categoria,
+          prioridad: req.prioridad,
+          fechaNecesaria: req.fechaNecesaria,
+          estado: req.estado,
+          items: req.items.map((item) => ({
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            unidadMedida: item.unidad,
+            precioEstimado: item.precioUnitario,
+          })),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Requerimiento creado: ${data.requerimiento.numero}`);
+        // Recargar desde el backend para tener los datos actualizados
+        await fetchRequerimientos();
+      } else {
+        const errorData = await response.json();
+        console.error('Error creando requerimiento:', errorData);
+        throw new Error(errorData.error || 'Error al crear el requerimiento');
+      }
+    } catch (error) {
+      console.error('Error creando requerimiento:', error);
+      throw error;
+    }
+  }, [currentTenant?.id, getToken, fetchRequerimientos]);
 
   const actualizarRequerimiento = useCallback(
-    (id: string, data: Partial<Requerimiento>) => {
-      setRequerimientos((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...data } : r))
-      );
+    async (id: string, data: Partial<Requerimiento>) => {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/purchase-requests/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            titulo: data.titulo,
+            descripcion: data.descripcion,
+            justificacion: data.justificacion,
+            centroCostos: data.centroCostos,
+            categoria: data.categoria,
+            prioridad: data.prioridad,
+            fechaNecesaria: data.fechaNecesaria,
+            estado: data.estado,
+            items: data.items?.map((item) => ({
+              id: item.id,
+              descripcion: item.descripcion,
+              cantidad: item.cantidad,
+              unidadMedida: item.unidad,
+              precioEstimado: item.precioUnitario,
+            })),
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`✅ Requerimiento ${id} actualizado`);
+          // Actualizar estado local
+          setRequerimientos((prev) =>
+            prev.map((r) => (r.id === id ? { ...r, ...data } : r))
+          );
+          // Recargar desde el backend para tener los datos actualizados
+          await fetchRequerimientos();
+        } else {
+          const errorData = await response.json();
+          console.error('Error actualizando requerimiento:', errorData);
+          throw new Error(errorData.error || 'Error al actualizar el requerimiento');
+        }
+      } catch (error) {
+        console.error('Error actualizando requerimiento:', error);
+        throw error;
+      }
     },
-    []
+    [getToken, fetchRequerimientos]
   );
 
   // =============================================

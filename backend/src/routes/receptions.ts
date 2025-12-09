@@ -158,14 +158,16 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     for (const item of oc.items) {
       const itemRecibido = itemsRecibidos.find((ir: any) => ir.itemOCId === item.id);
-      const cantidadRecibidaAhora = itemRecibido?.cantidadRecibida || 0;
-      const cantidadTotalRecibida = item.cantidadRecibida + cantidadRecibidaAhora;
+      const cantidadRecibidaAhora = Number(itemRecibido?.cantidadRecibida || 0);
+      const cantidadRecibidaPrevia = Number(item.cantidadRecibida);
+      const cantidadTotalRecibida = cantidadRecibidaPrevia + cantidadRecibidaAhora;
+      const cantidadRequerida = Number(item.cantidad);
 
       if (cantidadRecibidaAhora > 0) {
         algunoRecibido = true;
       }
 
-      if (cantidadTotalRecibida < item.cantidad) {
+      if (cantidadTotalRecibida < cantidadRequerida) {
         todosRecibidos = false;
       }
     }
@@ -317,6 +319,7 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
       });
 
       if (oc) {
+        // Convertir Decimals a números para comparación correcta
         const todosRecibidos = oc.items.every((i) => Number(i.cantidadRecibida) >= Number(i.cantidad));
         const algunoRecibido = oc.items.some((i) => Number(i.cantidadRecibida) > 0);
 

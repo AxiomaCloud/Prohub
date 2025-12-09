@@ -6,6 +6,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { syncProveedoresToLocal } from './services/parseIntegration'
+import { EmailQueueProcessor } from './services/emailQueueProcessor'
 import authRoutes from './routes/auth'
 import menuRoutes from './routes/menu'
 import usersRoutes from './routes/users'
@@ -21,6 +22,8 @@ import approvalRulesRoutes from './routes/approvalRules'
 import approvalWorkflowsRoutes from './routes/approvalWorkflows'
 import parametrosRoutes from './routes/parametros'
 import attachmentsRoutes from './routes/attachments'
+import paymentsRoutes from './routes/payments'
+import rfqRoutes from './routes/rfq'
 
 // Cargar variables de entorno
 dotenv.config()
@@ -78,7 +81,10 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 // Servir archivos estáticos de uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+// En producción __dirname apunta a dist/, así que usamos process.cwd() para la raíz del proyecto
+const uploadsPath = path.join(process.cwd(), 'uploads');
+console.log('📁 [SERVER] Serving uploads from:', uploadsPath);
+app.use('/uploads', express.static(uploadsPath))
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
@@ -105,6 +111,8 @@ app.use('/api/approval-rules', approvalRulesRoutes)
 app.use('/api/approval-workflows', approvalWorkflowsRoutes)
 app.use('/api/parametros', parametrosRoutes)
 app.use('/api/attachments', attachmentsRoutes)
+app.use('/api/payments', paymentsRoutes)
+app.use('/api/rfq', rfqRoutes)
 
 // Ruta de prueba
 app.get('/api/test', (req: Request, res: Response) => {
@@ -122,6 +130,10 @@ app.listen(PORT, async () => {
 
   // Sincronizar proveedores al iniciar
   await syncProveedoresOnStartup()
+
+  // Iniciar procesador de cola de emails (cada 60 segundos)
+  const emailQueueInterval = parseInt(process.env.EMAIL_QUEUE_INTERVAL || '60000')
+  EmailQueueProcessor.start(emailQueueInterval)
 })
 
 export default app

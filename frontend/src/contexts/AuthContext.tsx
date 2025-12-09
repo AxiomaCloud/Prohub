@@ -37,6 +37,8 @@ interface AuthContextType {
   token: string | null;
   tenant: Tenant | null;
   isSuperuser: boolean;
+  isProvider: boolean;
+  userRoles: string[];
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   switchTenant: (tenantId: string) => Promise<void>;
@@ -55,10 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!user && !!token;
   const isSuperuser = user?.superuser === true;
 
+  // Obtener roles del usuario en el tenant actual
+  const userRoles = user?.tenantMemberships?.find(
+    (m) => m.tenantId === tenant?.id
+  )?.roles || [];
+
+  // Verificar si es proveedor
+  const isProvider = userRoles.includes('PROVIDER');
+
   useEffect(() => {
     // Check if there's a saved token on mount
     if (typeof window !== 'undefined') {
       const savedToken = localStorage.getItem('hub_token');
+      const savedTenant = localStorage.getItem('hub_tenant');
+
+      // Restaurar tenant guardado
+      if (savedTenant) {
+        try {
+          const parsedTenant = JSON.parse(savedTenant);
+          setTenant(parsedTenant);
+          // También guardar tenantId para compatibilidad
+          localStorage.setItem('tenantId', parsedTenant.id);
+        } catch (e) {
+          console.error('Error parsing saved tenant:', e);
+        }
+      }
 
       if (savedToken) {
         verifyToken(savedToken);
@@ -85,11 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(tokenToVerify);
         if (typeof window !== 'undefined') {
           localStorage.setItem('hub_token', tokenToVerify);
+          localStorage.setItem('token', tokenToVerify); // Para compatibilidad
         }
       } else {
         // Invalid or expired token
         if (typeof window !== 'undefined') {
           localStorage.removeItem('hub_token');
+          localStorage.removeItem('token');
         }
         setUser(null);
         setToken(null);
@@ -98,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error verifying token:', error);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('hub_token');
+        localStorage.removeItem('token');
       }
       setUser(null);
       setToken(null);
@@ -128,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(data.token);
       if (typeof window !== 'undefined') {
         localStorage.setItem('hub_token', data.token);
+        localStorage.setItem('token', data.token); // Para compatibilidad con páginas que usan 'token'
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -144,6 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('hub_token');
       localStorage.removeItem('hub_tenant');
+      localStorage.removeItem('token'); // Para compatibilidad
+      localStorage.removeItem('tenantId'); // Para compatibilidad
     }
   };
 
@@ -164,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('✅ [AuthContext] Tenant state updated to:', data.tenant.id, data.tenant.name);
         if (typeof window !== 'undefined') {
           localStorage.setItem('hub_tenant', JSON.stringify(data.tenant));
+          localStorage.setItem('tenantId', data.tenant.id); // Para compatibilidad
         }
       } else {
         console.error('❌ [AuthContext] Error response from /api/tenants:', response.status);
@@ -181,6 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         tenant,
         isSuperuser,
+        isProvider,
+        userRoles,
         login,
         logout,
         switchTenant,

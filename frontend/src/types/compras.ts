@@ -118,9 +118,15 @@ export interface Requerimiento {
 
   // OC (si fue aprobado)
   ordenCompra?: OrdenCompra;
+  ordenesCompra?: OrdenCompra[];
 
   // Recepcion (si aplica)
   recepcion?: Recepcion;
+
+  // RFQ (solicitudes de cotización)
+  quotationRequests?: any[];
+  tieneOC?: boolean;
+  tieneRFQ?: boolean;
 
   // Metadata del chatbot (si fue creado por IA)
   creadoPorIA?: boolean;

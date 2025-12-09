@@ -39,6 +39,9 @@ model User {
   purchaseRequestsAprobados PurchaseRequest[] @relation("PurchaseRequestAprobador")
   attachmentsAprobados PurchaseRequestAttachment[]
 
+  // RFQ / Cotizaciones
+  createdRFQs        QuotationRequest[] @relation("CreatedRFQs")
+
   @@index([email])
 }
 
@@ -97,9 +100,14 @@ model TenantMembership {
   invitedAt DateTime?
   joinedAt  DateTime?
 
+  // Vinculación a proveedor (para usuarios con rol PROVIDER)
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
   @@unique([userId, tenantId])
   @@index([userId])
   @@index([tenantId])
+  @@index([supplierId])
 }
 
 enum Role {
@@ -163,6 +171,10 @@ model Document {
   parseRawText     String?      @db.Text
   parsedAt         DateTime?
 
+  // Estado de envío del proveedor (para workflow de borradores)
+  submissionStatus DocumentSubmissionStatus @default(SUBMITTED)
+  submittedAt      DateTime?    // Fecha cuando el proveedor marcó como definitivo
+
   // Relaciones
   purchaseOrderId  String?
   purchaseOrder    PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
@@ -176,6 +188,8 @@ model Document {
   @@index([providerTenantId, clientTenantId, status])
   @@index([clientTenantId, status, uploadedAt])
   @@index([parseStatus])
+  @@index([submissionStatus])
+  @@index([clientTenantId, submissionStatus]) // Para filtrar docs enviados al tenant
 }
 
 enum DocumentType {
@@ -199,6 +213,12 @@ enum ParseStatus {
   PROCESSING
   COMPLETED
   ERROR
+}
+
+// Estado de envío del documento (para facturas subidas por proveedores)
+enum DocumentSubmissionStatus {
+  DRAFT       // Borrador - solo visible para el proveedor
+  SUBMITTED   // Enviado - visible para el tenant/cliente
 }
 
 model DocumentEvent {
@@ -393,25 +413,222 @@ enum PurchaseOrderCircuitStatus {
 model Supplier {
   id          String    @id @default(cuid())
   tenantId    String
+  userId      String?   // Usuario vinculado (para acceso al portal)
 
+  // Datos básicos
+  nombre          String        // Razón Social
+  nombreFantasia  String?       // Nombre de fantasía
+  cuit            String
+
+  // Estado del proveedor
+  status          SupplierStatus @default(INVITED)
+
+  // Condición fiscal
+  condicionFiscal CondicionFiscal?
+  tipoFactura     TipoFactura?
+
+  // Domicilio fiscal
+  direccion       String?
+  numero          String?
+  piso            String?
+  localidad       String?
+  provincia       String?
+  codigoPostal    String?
+  pais            String?       @default("Argentina")
+
+  // Contacto
+  telefono        String?
+  whatsapp        String?
+  email           String?
+  emailFacturacion String?
+  contactoNombre  String?
+  contactoCargo   String?
+
+  // Datos bancarios
+  banco           String?
+  tipoCuenta      TipoCuentaBancaria?
+  numeroCuenta    String?
+  cbu             String?
+  alias           String?
+  titularCuenta   String?
+  cuitTitular     String?
+  monedaCuenta    String?       @default("ARS")
+
+  // Preferencias de notificaciones
+  notifEmail      Boolean       @default(true)
+  notifWhatsapp   Boolean       @default(false)
+  notifSms        Boolean       @default(false)
+  notifDocStatus  Boolean       @default(true)
+  notifPagos      Boolean       @default(true)
+  notifComentarios Boolean      @default(true)
+  notifOC         Boolean       @default(false)
+
+  // Configuración de procesamiento de documentos
+  useAIParse      Boolean       @default(false)  // Si usa IA (Axio) para extraer datos de facturas
+
+  // Metadata de onboarding
+  invitadoPor     String?
+  invitadoAt      DateTime?
+  completoOnboarding Boolean    @default(false)
+  onboardingCompletadoAt DateTime?
+  aprobadoPor     String?
+  aprobadoAt      DateTime?
+  motivoRechazo   String?
+
+  isActive        Boolean       @default(true)
+
+  // Relaciones
+  documentos      SupplierDocument[]
+  cuentasBancarias SupplierBankAccount[]
+  ordenesCompra   PurchaseOrderCircuit[]
+
+  // RFQ - Cotizaciones
+  rfqInvitations  QuotationRequestSupplier[]
+  quotations      SupplierQuotation[]
+  awardedRFQs     QuotationRequest[] @relation("AwardedRFQs")
+
+  // Usuarios del proveedor (múltiples usuarios pueden pertenecer al mismo proveedor)
+  userMemberships TenantMembership[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([tenantId, cuit])
+  @@index([tenantId, isActive])
+  @@index([tenantId, status])
+  @@map("suppliers")
+}
+
+enum SupplierStatus {
+  INVITED             // Email enviado, esperando registro
+  PENDING_COMPLETION  // Registrado, formularios incompletos
+  PENDING_APPROVAL    // Formularios completos, esperando validación
+  ACTIVE              // Aprobado por el cliente
+  SUSPENDED           // Temporalmente deshabilitado
+  REJECTED            // No aprobado por el cliente
+}
+
+enum CondicionFiscal {
+  RESPONSABLE_INSCRIPTO
+  MONOTRIBUTISTA
+  EXENTO
+  NO_RESPONSABLE
+  CONSUMIDOR_FINAL
+}
+
+enum TipoFactura {
+  A
+  B
+  C
+  E   // Exportación
+}
+
+enum TipoCuentaBancaria {
+  CUENTA_CORRIENTE
+  CAJA_AHORRO
+}
+
+// Documentos del proveedor (constancias, certificados)
+model SupplierDocument {
+  id          String    @id @default(cuid())
+  supplierId  String
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  tipo        SupplierDocumentType
   nombre      String
-  cuit        String
-  direccion   String?
-  telefono    String?
-  email       String?
-  contacto    String?
+  fileUrl     String
+  fileName    String
+  fileType    String
+  fileSize    Int
 
-  isActive    Boolean   @default(true)
+  // Validez
+  fechaEmision    DateTime?
+  fechaVencimiento DateTime?
 
-  // Órdenes de compra
-  ordenesCompra PurchaseOrderCircuit[]
+  // Estado
+  status      SupplierDocumentStatus @default(PENDING)
+  validadoPor String?
+  validadoAt  DateTime?
+  observacion String?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@unique([tenantId, cuit])
-  @@index([tenantId, isActive])
-  @@map("suppliers")
+  @@index([supplierId])
+  @@map("supplier_documents")
+}
+
+enum SupplierDocumentType {
+  CONSTANCIA_CBU
+  CONSTANCIA_CUIT
+  CONSTANCIA_AFIP
+  CONSTANCIA_IIBB
+  CERTIFICADO_RETENCION
+  CERTIFICADO_FISCAL
+  OTRO
+}
+
+enum SupplierDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// Cuentas bancarias del proveedor
+model SupplierBankAccount {
+  id          String    @id @default(cuid())
+  supplierId  String
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  banco           String        // Código del banco (BANCO_NACION, BANCO_GALICIA, etc.)
+  tipoCuenta      TipoCuentaBancaria
+  numeroCuenta    String?
+  cbu             String
+  alias           String?
+  titularCuenta   String
+  moneda          String        @default("ARS")
+  esPrincipal     Boolean       @default(false)
+
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([supplierId])
+  @@map("supplier_bank_accounts")
+}
+
+// Configuración de onboarding por tenant
+model TenantSupplierConfig {
+  id          String    @id @default(cuid())
+  tenantId    String    @unique
+
+  // Campos requeridos - Datos bancarios
+  reqConstanciaCBU      Boolean @default(true)
+  reqTitularCoincide    Boolean @default(true)
+
+  // Campos requeridos - Datos fiscales
+  reqConstanciaAFIP     Boolean @default(true)
+  reqConstanciaIIBB     Boolean @default(false)
+  reqCertificadoRetencion Boolean @default(false)
+
+  // Campos requeridos - Contacto
+  reqEmailFacturacion   Boolean @default(false)
+  reqWhatsapp           Boolean @default(false)
+  reqTelefonoAlt        Boolean @default(false)
+
+  // Modo de aprobación
+  aprobacionAutomatica  Boolean @default(false)  // Si true, se activa inmediatamente
+
+  // Mensajes personalizados
+  mensajeBienvenida     String? @db.Text
+  mensajeAprobacion     String? @db.Text
+  mensajeRechazo        String? @db.Text
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("tenant_supplier_configs")
 }
 
 // ============================================
@@ -680,7 +897,8 @@ model PurchaseRequest {
   // Datos del requerimiento
   categoria     String                // Tecnología, Oficina, Servicios, etc.
   centroCostos  String?               // Centro de costos
-  justificacion String?               @db.Text
+  descripcion   String?               @db.Text  // Descripción breve del requerimiento
+  justificacion String?               @db.Text  // Observaciones adicionales
 
   // Montos
   montoEstimado Decimal?            // Presupuesto estimado
@@ -708,6 +926,9 @@ model PurchaseRequest {
 
   // Órdenes de compra generadas (puede haber múltiples OCs por requerimiento)
   ordenesCompra PurchaseOrderCircuit[]
+
+  // Solicitudes de cotización generadas
+  quotationRequests QuotationRequest[]
 
   // Metadata del chatbot (si fue creado por IA)
   creadoPorIA Boolean               @default(false)
@@ -846,6 +1067,34 @@ enum NotificationEventType {
   // Delegaciones
   DELEGATION_RECEIVED
   DELEGATION_EXPIRED
+
+  // Documentos
+  DOC_UPLOADED
+  DOC_STATUS_CHANGED
+  DOC_APPROVED
+  DOC_REJECTED
+  DOC_COMMENT
+
+  // Proveedores
+  SUPPLIER_INVITED
+  SUPPLIER_APPROVED
+  SUPPLIER_REJECTED
+  SUPPLIER_PENDING_APPROVAL
+
+  // Pagos
+  PAYMENT_ISSUED
+  PAYMENT_COMPLETED
+  PAYMENT_SCHEDULED
+
+  // RFQ (Cotizaciones)
+  RFQ_INVITATION
+  RFQ_AWARDED
+  RFQ_NOT_AWARDED
+  RFQ_QUOTATION_RECEIVED
+  RFQ_DEADLINE_REMINDER
+
+  // Ordenes de Compra
+  OC_SUPPLIER_NOTIFIED
 }
 
 enum DocumentNotificationType {
@@ -895,7 +1144,9 @@ model EmailQueue {
   eventType   NotificationEventType
   relatedId   String?
   relatedType String?
+  tenantId    String?
 
+  priority    Int      @default(0)  // Higher = more urgent
   status      EmailQueueStatus @default(PENDING)
   attempts    Int      @default(0)
   maxAttempts Int      @default(3)
@@ -908,6 +1159,7 @@ model EmailQueue {
   updatedAt   DateTime @updatedAt
 
   @@index([status, scheduledFor])
+  @@index([status, priority])
   @@map("email_queue")
 }
 
@@ -1141,5 +1393,251 @@ model ApprovalDelegation {
   @@index([tenantId, delegatorId, isActive])
   @@index([delegateId, isActive])
   @@map("approval_delegations")
+}
+
+// ============================================
+// SOLICITUDES DE COTIZACIÓN (RFQ)
+// ============================================
+
+model QuotationRequest {
+  id              String   @id @default(cuid())
+  number          String   // RFQ-2025-XXXXX
+  title           String
+  description     String?  @db.Text
+
+  // Origen (opcional - puede venir de un requerimiento)
+  purchaseRequestId String?
+  purchaseRequest   PurchaseRequest? @relation(fields: [purchaseRequestId], references: [id])
+
+  // Multi-tenant
+  tenantId        String
+  createdById     String
+
+  // Estado
+  status          RFQStatus @default(DRAFT)
+
+  // Fechas
+  deadline        DateTime          // Fecha límite para recibir cotizaciones
+  deliveryDeadline DateTime?        // Fecha de entrega requerida
+
+  // Condiciones
+  paymentTerms    String?           // Condiciones de pago esperadas
+  deliveryPlace   String?           // Lugar de entrega
+  currency        String   @default("ARS")
+  budget          Decimal? @db.Decimal(18,2) // Presupuesto estimado (opcional)
+
+  // Notas adicionales
+  notes           String?  @db.Text
+  termsAndConditions String? @db.Text
+
+  // Archivos adjuntos (especificaciones, planos, etc.)
+  attachments     Json?    // [{fileName, fileUrl, fileType, fileSize}]
+
+  // Fechas de workflow
+  publishedAt     DateTime?
+  closedAt        DateTime?
+  awardedAt       DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+
+  // Adjudicación
+  awardedToId     String?
+  awardedTo       Supplier? @relation("AwardedRFQs", fields: [awardedToId], references: [id])
+
+  // Usuario que creó
+  createdBy       User?    @relation("CreatedRFQs", fields: [createdById], references: [id])
+
+  // Relaciones
+  items           QuotationRequestItem[]
+  invitedSuppliers QuotationRequestSupplier[]
+  quotations      SupplierQuotation[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([status, deadline])
+  @@index([purchaseRequestId])
+  @@map("quotation_requests")
+}
+
+enum RFQStatus {
+  DRAFT           // Borrador - editable
+  PUBLISHED       // Publicada - proveedores pueden cotizar
+  IN_QUOTATION    // Al menos una cotización recibida
+  EVALUATION      // Cerrada, en evaluación
+  CLOSED          // Cerrada sin adjudicar
+  AWARDED         // Adjudicada
+  CANCELLED       // Cancelada
+  EXPIRED         // Expirada sin adjudicación
+}
+
+model QuotationRequestItem {
+  id                  String   @id @default(cuid())
+  quotationRequestId  String
+  quotationRequest    QuotationRequest @relation(fields: [quotationRequestId], references: [id], onDelete: Cascade)
+
+  // Referencia al item del requerimiento original (si aplica)
+  purchaseRequestItemId String?
+
+  // Datos del item
+  description     String
+  quantity        Decimal  @db.Decimal(18,4)
+  unit            String   @default("Unidad")
+  specifications  String?  @db.Text  // Especificaciones técnicas
+
+  // Orden de visualización
+  orderIndex      Int      @default(0)
+
+  // Cotizaciones de este item
+  quotationItems  SupplierQuotationItem[]
+
+  createdAt       DateTime @default(now())
+
+  @@index([quotationRequestId])
+  @@map("quotation_request_items")
+}
+
+model QuotationRequestSupplier {
+  id                  String   @id @default(cuid())
+  quotationRequestId  String
+  quotationRequest    QuotationRequest @relation(fields: [quotationRequestId], references: [id], onDelete: Cascade)
+
+  supplierId          String
+  supplier            Supplier @relation(fields: [supplierId], references: [id])
+
+  // Estado de la invitación
+  status              RFQInvitationStatus @default(PENDING)
+
+  // Fechas de tracking
+  invitedAt           DateTime @default(now())
+  viewedAt            DateTime?  // Primera vez que vio la RFQ
+  respondedAt         DateTime?  // Cuando envió cotización o declinó
+  declineReason       String?
+
+  // Email de notificación
+  notificationSent    Boolean  @default(false)
+  notificationSentAt  DateTime?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([quotationRequestId, supplierId])
+  @@index([quotationRequestId])
+  @@index([supplierId])
+  @@map("quotation_request_suppliers")
+}
+
+enum RFQInvitationStatus {
+  PENDING     // Agregado pero aún no enviado
+  INVITED     // Invitado, aún no vio
+  VIEWED      // Vio la solicitud
+  QUOTED      // Envió cotización
+  DECLINED    // Declinó participar
+  AWARDED     // Ganó la licitación
+  NOT_AWARDED // No ganó
+}
+
+model SupplierQuotation {
+  id                  String   @id @default(cuid())
+  number              String   // COT-2025-XXXXX
+  quotationRequestId  String
+  quotationRequest    QuotationRequest @relation(fields: [quotationRequestId], references: [id], onDelete: Cascade)
+
+  supplierId          String
+  supplier            Supplier @relation(fields: [supplierId], references: [id])
+
+  // Estado
+  status              QuotationStatus @default(DRAFT)
+
+  // Vigencia de la cotización
+  validUntil          DateTime?
+
+  // Condiciones ofrecidas
+  deliveryDays        Int?              // Días de entrega
+  paymentTerms        String?           // Condiciones de pago ofrecidas
+  warranty            String?           // Garantía ofrecida
+
+  // Montos
+  subtotal            Decimal  @db.Decimal(18,2)
+  taxAmount           Decimal  @db.Decimal(18,2) @default(0)
+  totalAmount         Decimal  @db.Decimal(18,2)
+  currency            String   @default("ARS")
+
+  // Notas y observaciones
+  notes               String?  @db.Text
+  internalNotes       String?  @db.Text  // Notas internas del comprador
+
+  // Adjuntos (URLs JSON array)
+  attachments         Json?    // [{fileName, fileUrl, fileType}]
+
+  // Evaluación del comprador
+  score               Int?     // Puntaje de evaluación (1-100)
+  evaluationNotes     String?  @db.Text
+
+  // Adjudicación
+  isWinner            Boolean  @default(false)
+  awardedAt           DateTime?
+  awardedById         String?
+  awardReason         String?  @db.Text
+
+  // OC generada (si ganó)
+  generatedPOId       String?
+
+  // Items cotizados
+  items               SupplierQuotationItem[]
+
+  // Fechas
+  submittedAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([quotationRequestId, supplierId])
+  @@index([quotationRequestId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("supplier_quotations")
+}
+
+enum QuotationStatus {
+  DRAFT       // Borrador del proveedor
+  SUBMITTED   // Enviada por el proveedor
+  UNDER_REVIEW // En revisión por el comprador
+  ACCEPTED    // Aceptada pero no ganadora
+  AWARDED     // Adjudicada/Ganadora
+  REJECTED    // Rechazada
+  EXPIRED     // Expirada (pasó validUntil)
+}
+
+model SupplierQuotationItem {
+  id                    String   @id @default(cuid())
+  supplierQuotationId   String
+  supplierQuotation     SupplierQuotation @relation(fields: [supplierQuotationId], references: [id], onDelete: Cascade)
+
+  // Referencia al item solicitado
+  quotationRequestItemId String
+  quotationRequestItem   QuotationRequestItem @relation(fields: [quotationRequestItemId], references: [id])
+
+  // Datos cotizados
+  unitPrice             Decimal  @db.Decimal(18,4)
+  quantity              Decimal  @db.Decimal(18,4)  // Puede diferir de lo solicitado
+  totalPrice            Decimal  @db.Decimal(18,4)
+
+  // Detalles adicionales
+  brand                 String?   // Marca ofrecida
+  model                 String?   // Modelo ofrecido
+  partNumber            String?   // Número de parte
+  notes                 String?   // Notas sobre el item
+
+  // Alternativa (si ofrece algo diferente)
+  isAlternative         Boolean  @default(false)
+  alternativeDescription String?
+
+  createdAt             DateTime @default(now())
+
+  @@index([supplierQuotationId])
+  @@index([quotationRequestItemId])
+  @@map("supplier_quotation_items")
 }
 

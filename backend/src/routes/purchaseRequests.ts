@@ -72,6 +72,20 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
             name: true,
             email: true,
           }
+        },
+        ordenesCompra: {
+          select: {
+            id: true,
+            numero: true,
+            estado: true,
+          }
+        },
+        quotationRequests: {
+          select: {
+            id: true,
+            number: true,
+            status: true,
+          }
         }
       },
       orderBy: {
@@ -84,7 +98,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       id: req.id,
       numero: req.numero,
       titulo: req.titulo,
-      descripcion: req.justificacion || '',
+      descripcion: req.descripcion || '',
       justificacion: req.justificacion || '',
       estado: mapEstadoToFrontend(req.estado),
       prioridad: req.prioridad.toLowerCase(),
@@ -128,7 +142,12 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       requiereAprobacionEspecificaciones: req.requiresSpecApproval || false,
       especificacionesAprobadas: req.specsApproved || false,
       creadoPorIA: req.creadoPorIA,
-      promptOriginal: req.promptOriginal
+      promptOriginal: req.promptOriginal,
+      // Info de OC y RFQ asociadas
+      ordenesCompra: req.ordenesCompra || [],
+      quotationRequests: req.quotationRequests || [],
+      tieneOC: req.ordenesCompra && req.ordenesCompra.length > 0,
+      tieneRFQ: req.quotationRequests && req.quotationRequests.length > 0,
     }));
 
     res.json({
@@ -181,7 +200,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
       id: requerimiento.id,
       numero: requerimiento.numero,
       titulo: requerimiento.titulo,
-      descripcion: requerimiento.justificacion || '',
+      descripcion: requerimiento.descripcion || '',
       justificacion: requerimiento.justificacion || '',
       estado: mapEstadoToFrontend(requerimiento.estado),
       prioridad: requerimiento.prioridad.toLowerCase(),
@@ -245,17 +264,36 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       tenantId,
       titulo,
       descripcion,
+      justificacion,
       items,
       categoria,
+      centroCostos,
       prioridad,
       montoEstimado,
-      fechaNecesidad
+      fechaNecesidad,
+      fechaNecesaria,
+      estado,
     } = req.body;
 
     if (!tenantId || !titulo || !items || items.length === 0) {
       return res.status(400).json({
         error: 'Faltan campos requeridos: tenantId, titulo, items'
       });
+    }
+
+    // Validar que la fecha necesaria no sea anterior a hoy
+    const fechaFinal = fechaNecesaria || fechaNecesidad;
+    if (fechaFinal) {
+      const fechaNecesidadDate = new Date(fechaFinal);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      fechaNecesidadDate.setHours(0, 0, 0, 0);
+
+      if (fechaNecesidadDate < hoy) {
+        return res.status(400).json({
+          error: 'La fecha necesaria no puede ser anterior a hoy'
+        });
+      }
     }
 
     // Generar número de requerimiento
@@ -279,25 +317,40 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     const numero = `${prefix}${nextNumber.toString().padStart(5, '0')}`;
 
+    // Calcular monto estimado desde los items si no viene
+    let montoFinal = montoEstimado;
+    if (!montoFinal && items) {
+      montoFinal = items.reduce((sum: number, item: any) => {
+        const cantidad = item.cantidad || 1;
+        const precio = item.precioEstimado || item.precioUnitario || 0;
+        return sum + (cantidad * precio);
+      }, 0);
+    }
+
+    // Determinar estado inicial
+    const estadoInicial = estado === 'PENDIENTE_APROBACION' ? 'PENDIENTE_APROBACION' : 'BORRADOR';
+
     const requerimiento = await prisma.purchaseRequest.create({
       data: {
         numero,
         titulo,
-        justificacion: descripcion,
-        estado: 'BORRADOR',
+        descripcion: descripcion || '',
+        justificacion: justificacion || '',
+        centroCostos: centroCostos || null,
+        estado: estadoInicial,
         prioridad: mapPrioridadToBackend(prioridad),
         categoria: categoria || 'Otros',
-        montoEstimado: montoEstimado ? parseFloat(montoEstimado.toString()) : null,
+        montoEstimado: montoFinal ? parseFloat(montoFinal.toString()) : null,
         currency: 'ARS',
         tenantId,
         solicitanteId: userId!,
-        fechaNecesidad: fechaNecesidad ? new Date(fechaNecesidad) : null,
+        fechaNecesidad: (fechaNecesaria || fechaNecesidad) ? new Date(fechaNecesaria || fechaNecesidad) : null,
         items: {
           create: items.map((item: any) => ({
             descripcion: item.descripcion,
             cantidad: item.cantidad || 1,
-            unidadMedida: item.unidadMedida || 'unidad',
-            precioEstimado: item.precioEstimado ? parseFloat(item.precioEstimado.toString()) : null,
+            unidadMedida: item.unidadMedida || item.unidad || 'unidad',
+            precioEstimado: (item.precioEstimado || item.precioUnitario) ? parseFloat((item.precioEstimado || item.precioUnitario).toString()) : null,
             especificaciones: item.especificaciones
               ? JSON.stringify(item.especificaciones)
               : null
@@ -363,7 +416,7 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
 
     // Solo actualizar campos que vienen en el body
     if (titulo !== undefined) updateData.titulo = titulo;
-    if (descripcion !== undefined) updateData.justificacion = descripcion;
+    if (descripcion !== undefined) updateData.descripcion = descripcion;
     if (justificacion !== undefined) updateData.justificacion = justificacion;
     if (categoria !== undefined) updateData.categoria = categoria;
     if (centroCostos !== undefined) updateData.centroCostos = centroCostos;

@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
-import { authenticate } from '../middleware/auth';
-import { hashPassword } from '../utils/password';
+import { authenticate, loadUserRoles } from '../middleware/auth';
+import { getPermissionsForRoles, Role as AuthRole, Permission } from '../middleware/authorization';
+import { hashPassword, comparePassword } from '../utils/password';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -24,7 +25,7 @@ const AVAILABLE_ROLES = [
 
 /**
  * GET /api/users/with-roles
- * Get all users with their roles for a specific tenant
+ * Get users with their roles for a specific tenant (only users with membership in that tenant)
  */
 router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
   try {
@@ -34,7 +35,15 @@ router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'tenantId is required' });
     }
 
+    // Solo obtener usuarios que tienen membresía en el tenant seleccionado
     const users = await prisma.user.findMany({
+      where: {
+        tenantMemberships: {
+          some: {
+            tenantId: tenantId,
+          },
+        },
+      },
       select: {
         id: true,
         email: true,
@@ -52,11 +61,35 @@ router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
             id: true,
             roles: true,
             isActive: true,
+            supplierId: true,
+            supplier: {
+              select: {
+                id: true,
+                nombre: true,
+                cuit: true,
+              },
+            },
           },
         },
       },
       orderBy: {
         name: 'asc',
+      },
+    });
+
+    // Obtener lista de proveedores del tenant para el selector
+    const suppliers = await prisma.supplier.findMany({
+      where: {
+        tenantId: tenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        cuit: true,
+      },
+      orderBy: {
+        nombre: 'asc',
       },
     });
 
@@ -66,9 +99,11 @@ router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
       roles: user.tenantMemberships[0]?.roles || [],
       membershipActive: user.tenantMemberships[0]?.isActive ?? false,
       hasMembership: user.tenantMemberships.length > 0,
+      supplierId: user.tenantMemberships[0]?.supplierId || null,
+      supplier: user.tenantMemberships[0]?.supplier || null,
     }));
 
-    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES });
+    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES, suppliers });
   } catch (error) {
     console.error('Error fetching users with roles:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -85,6 +120,119 @@ router.get('/roles/available', authenticate, async (req: Request, res: Response)
   } catch (error) {
     console.error('Error fetching available roles:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/users/me/permissions
+ * Get current user's roles and permissions for a tenant
+ */
+router.get('/me/permissions', authenticate, loadUserRoles, async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string || req.query.tenantId as string;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    // Get membership
+    const membership = await prisma.tenantMembership.findFirst({
+      where: {
+        userId: req.user!.id,
+        tenantId: tenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        roles: true,
+        isActive: true,
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.json({
+        roles: [],
+        permissions: [],
+        isActive: false,
+        isMember: false,
+      });
+    }
+
+    const roles = membership.roles as AuthRole[];
+    const permissions = getPermissionsForRoles(roles);
+
+    res.json({
+      roles,
+      permissions,
+      isActive: membership.isActive,
+      isMember: true,
+      tenant: membership.tenant,
+    });
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/users/me/password
+ * Change current user's password
+ */
+router.put('/me/password', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { currentPassword, newPassword } = req.body;
+
+    // Validaciones
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Se requiere la contrasena actual y la nueva' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'La nueva contrasena debe tener al menos 6 caracteres' });
+    }
+
+    // Obtener usuario con su hash actual
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!user || !user.passwordHash) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Verificar contrasena actual
+    const isValidPassword = await comparePassword(currentPassword, user.passwordHash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'La contrasena actual es incorrecta' });
+    }
+
+    // Hashear nueva contrasena
+    const newPasswordHash = await hashPassword(newPassword);
+
+    // Actualizar contrasena
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    console.log(`🔐 Contrasena cambiada para usuario: ${user.email}`);
+
+    res.json({ message: 'Contrasena actualizada correctamente' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ error: 'Error al cambiar la contrasena' });
   }
 });
 
@@ -209,15 +357,24 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 router.put('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, phone, avatar } = req.body;
+    const { name, phone, avatar, password } = req.body;
+
+    // Preparar datos de actualización
+    const updateData: any = {
+      name,
+      phone,
+      avatar,
+    };
+
+    // Si se envía password, hashearla
+    if (password && password.trim() !== '') {
+      updateData.passwordHash = await hashPassword(password);
+      console.log(`🔐 Contraseña actualizada para usuario: ${id}`);
+    }
 
     const user = await prisma.user.update({
       where: { id },
-      data: {
-        name,
-        phone,
-        avatar,
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
@@ -253,6 +410,39 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// EMAIL VERIFICATION
+// ============================================
+
+/**
+ * PUT /api/users/:id/verify-email
+ * Manually verify user email (admin only)
+ */
+router.put('/:id/verify-email', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        emailVerified: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+      },
+    });
+
+    console.log(`✅ Email verificado manualmente para usuario: ${user.email}`);
+    res.json({ message: 'Email verificado correctamente', user });
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(500).json({ error: 'Error al verificar email' });
   }
 });
 
@@ -423,54 +613,74 @@ router.put('/:id/roles', authenticate, async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/users/with-roles
- * Get all users with their roles for a specific tenant
+ * PUT /api/users/:id/supplier
+ * Link or unlink a user to/from a supplier
  */
-router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
+router.put('/:id/supplier', authenticate, async (req: Request, res: Response) => {
   try {
-    const tenantId = req.query.tenantId as string;
+    const { id } = req.params;
+    const { tenantId, supplierId } = req.body;
+
+    console.log(`🔗 [Supplier Link] Recibido:`, { userId: id, tenantId, supplierId, bodyFull: req.body });
 
     if (!tenantId) {
       return res.status(400).json({ error: 'tenantId is required' });
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        avatar: true,
-        emailVerified: true,
-        superuser: true,
-        createdAt: true,
-        tenantMemberships: {
-          where: {
-            tenantId: tenantId,
-          },
-          select: {
-            id: true,
-            roles: true,
-            isActive: true,
-          },
+    // Check if membership exists
+    const existingMembership = await prisma.tenantMembership.findUnique({
+      where: {
+        userId_tenantId: {
+          userId: id,
+          tenantId: tenantId,
         },
-      },
-      orderBy: {
-        name: 'asc',
       },
     });
 
-    // Transform to include roles directly
-    const usersWithRoles = users.map(user => ({
-      ...user,
-      roles: user.tenantMemberships[0]?.roles || [],
-      membershipActive: user.tenantMemberships[0]?.isActive ?? false,
-      hasMembership: user.tenantMemberships.length > 0,
-    }));
+    if (!existingMembership) {
+      return res.status(404).json({ error: 'El usuario no tiene membresía en este tenant' });
+    }
 
-    res.json({ users: usersWithRoles, availableRoles: AVAILABLE_ROLES });
+    // Si supplierId es null o vacío, desvincular
+    // Si supplierId tiene valor, vincular al proveedor
+    const updatedMembership = await prisma.tenantMembership.update({
+      where: {
+        userId_tenantId: {
+          userId: id,
+          tenantId: tenantId,
+        },
+      },
+      data: {
+        supplierId: supplierId || null,
+      },
+      include: {
+        supplier: {
+          select: {
+            id: true,
+            nombre: true,
+            cuit: true,
+          },
+        },
+      },
+    });
+
+    const action = supplierId ? 'vinculado a' : 'desvinculado de';
+    const supplierName = updatedMembership.supplier?.nombre || 'proveedor';
+
+    console.log(`✅ [Supplier Link] Membresía actualizada:`, {
+      membershipId: existingMembership.id,
+      supplierIdAntes: existingMembership.supplierId,
+      supplierIdDespues: updatedMembership.supplierId,
+      supplierNombre: updatedMembership.supplier?.nombre || 'NINGUNO'
+    });
+
+    res.json({
+      message: `Usuario ${action} ${supplierName}`,
+      supplierId: updatedMembership.supplierId,
+      supplier: updatedMembership.supplier,
+    });
   } catch (error) {
-    console.error('Error fetching users with roles:', error);
+    console.error('Error updating user supplier:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

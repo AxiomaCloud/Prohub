@@ -21,14 +21,27 @@ import {
   FileCheck,
   PackageCheck,
   ChevronRight,
+  FileSearch,
+  Award,
 } from 'lucide-react';
+
+// Interface para RFQ en el circuito
+interface RFQInfo {
+  id: string;
+  number: string;
+  title: string;
+  status: string;
+  quotationsCount?: number;
+  awardedSupplier?: string;
+}
 
 interface CircuitoCompraTimelineProps {
   requerimiento?: Requerimiento | null;
+  rfq?: RFQInfo | null;
   ordenCompra?: OrdenCompra | null;
   recepcion?: Recepcion | null;
   // Punto de entrada - desde qué documento se abrió el timeline
-  origen: 'requerimiento' | 'ordenCompra' | 'recepcion';
+  origen: 'requerimiento' | 'rfq' | 'ordenCompra' | 'recepcion';
 }
 
 // Configuración de estados con colores e iconos
@@ -41,6 +54,14 @@ const ESTADO_CONFIG: Record<string, { color: string; bgColor: string; icon: Reac
   OC_GENERADA: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: ShoppingCart, label: 'OC Generada' },
   RECIBIDO: { color: 'text-emerald-600', bgColor: 'bg-emerald-100', icon: PackageCheck, label: 'Recibido' },
   CANCELADO: { color: 'text-gray-500', bgColor: 'bg-gray-100', icon: XCircle, label: 'Cancelado' },
+  // Estados de RFQ
+  DRAFT: { color: 'text-gray-600', bgColor: 'bg-gray-100', icon: FileSearch, label: 'Borrador' },
+  PUBLISHED: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Send, label: 'Publicada' },
+  IN_QUOTATION: { color: 'text-indigo-600', bgColor: 'bg-indigo-100', icon: FileSearch, label: 'En Cotización' },
+  EVALUATION: { color: 'text-purple-600', bgColor: 'bg-purple-100', icon: ClipboardCheck, label: 'En Evaluación' },
+  AWARDED: { color: 'text-green-600', bgColor: 'bg-green-100', icon: Award, label: 'Adjudicada' },
+  CLOSED: { color: 'text-gray-600', bgColor: 'bg-gray-100', icon: CheckCircle, label: 'Cerrada' },
+  CANCELLED: { color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle, label: 'Cancelada' },
   // Estados de OC
   PENDIENTE: { color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: Clock, label: 'Pendiente' },
   EN_PROCESO: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Truck, label: 'En Proceso' },
@@ -80,10 +101,10 @@ function NodoCircuito({
   onClick,
   cantidadRecepciones,
 }: {
-  tipo: 'requerimiento' | 'ordenCompra' | 'recepcion';
+  tipo: 'requerimiento' | 'rfq' | 'ordenCompra' | 'recepcion';
   activo: boolean;
   completado: boolean;
-  data: Requerimiento | OrdenCompra | Recepcion | null;
+  data: Requerimiento | RFQInfo | OrdenCompra | Recepcion | null;
   isHighlighted: boolean;
   onClick?: () => void;
   cantidadRecepciones?: number;
@@ -92,13 +113,15 @@ function NodoCircuito({
     // Nodo pendiente/futuro
     return (
       <div className="flex flex-col items-center">
-        <div className="w-16 h-16 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-          {tipo === 'requerimiento' && <FileText className="w-6 h-6 text-gray-300" />}
-          {tipo === 'ordenCompra' && <ShoppingCart className="w-6 h-6 text-gray-300" />}
-          {tipo === 'recepcion' && <Package className="w-6 h-6 text-gray-300" />}
+        <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+          {tipo === 'requerimiento' && <FileText className="w-5 h-5 text-gray-300" />}
+          {tipo === 'rfq' && <FileSearch className="w-5 h-5 text-gray-300" />}
+          {tipo === 'ordenCompra' && <ShoppingCart className="w-5 h-5 text-gray-300" />}
+          {tipo === 'recepcion' && <Package className="w-5 h-5 text-gray-300" />}
         </div>
-        <span className="mt-2 text-xs text-gray-400 font-medium">
+        <span className="mt-2 text-xs text-gray-400 font-medium text-center">
           {tipo === 'requerimiento' && 'Requerimiento'}
+          {tipo === 'rfq' && 'Cotización'}
           {tipo === 'ordenCompra' && 'Orden de Compra'}
           {tipo === 'recepcion' && 'Recepción'}
         </span>
@@ -111,6 +134,10 @@ function NodoCircuito({
     if (tipo === 'requerimiento') {
       const req = data as Requerimiento;
       return ESTADO_CONFIG[req?.estado] || ESTADO_CONFIG.BORRADOR;
+    }
+    if (tipo === 'rfq') {
+      const rfq = data as RFQInfo;
+      return ESTADO_CONFIG[rfq?.status] || ESTADO_CONFIG.DRAFT;
     }
     if (tipo === 'ordenCompra') {
       const oc = data as OrdenCompra;
@@ -133,7 +160,7 @@ function NodoCircuito({
       onClick={onClick}
     >
       <div
-        className={`w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all ${
+        className={`w-14 h-14 rounded-full border-2 flex items-center justify-center transition-all ${
           isHighlighted
             ? `${config.bgColor} border-current ${config.color} ring-4 ring-offset-2 ring-current/20`
             : completado
@@ -141,16 +168,18 @@ function NodoCircuito({
             : 'bg-white border-gray-300'
         }`}
       >
-        <Icon className={`w-6 h-6 ${isHighlighted || completado ? config.color : 'text-gray-400'}`} />
+        <Icon className={`w-5 h-5 ${isHighlighted || completado ? config.color : 'text-gray-400'}`} />
       </div>
-      <span className={`mt-2 text-xs font-medium ${isHighlighted ? config.color : 'text-gray-700'}`}>
+      <span className={`mt-2 text-xs font-medium text-center ${isHighlighted ? config.color : 'text-gray-700'}`}>
         {tipo === 'requerimiento' && 'Requerimiento'}
+        {tipo === 'rfq' && 'Cotización'}
         {tipo === 'ordenCompra' && 'Orden de Compra'}
         {tipo === 'recepcion' && (cantidadRecepciones && cantidadRecepciones > 1 ? `${cantidadRecepciones} Recepciones` : 'Recepción')}
       </span>
       {data && (
         <span className={`text-xs ${config.color}`}>
           {tipo === 'requerimiento' && (data as Requerimiento).numero}
+          {tipo === 'rfq' && (data as RFQInfo).number}
           {tipo === 'ordenCompra' && (data as OrdenCompra).numero}
           {tipo === 'recepcion' && (cantidadRecepciones && cantidadRecepciones > 1
             ? 'Ver detalle'
@@ -178,11 +207,50 @@ function DetalleDocumento({
   data,
   isVisible,
 }: {
-  tipo: 'requerimiento' | 'ordenCompra' | 'recepcion';
-  data: Requerimiento | OrdenCompra | Recepcion | null;
+  tipo: 'requerimiento' | 'rfq' | 'ordenCompra' | 'recepcion';
+  data: Requerimiento | RFQInfo | OrdenCompra | Recepcion | null;
   isVisible: boolean;
 }) {
   if (!data || !isVisible) return null;
+
+  if (tipo === 'rfq') {
+    const rfq = data as RFQInfo;
+    const estadoConfig = ESTADO_CONFIG[rfq.status] || ESTADO_CONFIG.DRAFT;
+    const EstadoIcon = estadoConfig.icon;
+
+    return (
+      <div className="bg-white rounded-lg border border-indigo-200 p-4 shadow-sm">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <FileSearch className="w-5 h-5 text-indigo-600" />
+              <span className="font-semibold text-gray-900">{rfq.number}</span>
+            </div>
+            <h4 className="text-sm font-medium text-gray-700 mt-1">{rfq.title}</h4>
+          </div>
+          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${estadoConfig.bgColor} ${estadoConfig.color}`}>
+            <EstadoIcon className="w-3 h-3" />
+            {estadoConfig.label}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          {rfq.quotationsCount !== undefined && (
+            <div className="flex items-center gap-2">
+              <FileCheck className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-600">{rfq.quotationsCount} cotizaciones recibidas</span>
+            </div>
+          )}
+          {rfq.awardedSupplier && (
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-green-500" />
+              <span className="text-gray-600">Adjudicada a: <span className="font-medium">{rfq.awardedSupplier}</span></span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (tipo === 'requerimiento') {
     const req = data as Requerimiento;
@@ -377,12 +445,14 @@ function DetalleDocumento({
 
 export default function CircuitoCompraTimeline({
   requerimiento,
+  rfq,
   ordenCompra,
   recepcion,
   origen,
 }: CircuitoCompraTimelineProps) {
   // Determinar el estado del flujo
   const tieneRequerimiento = !!requerimiento;
+  const tieneRFQ = !!rfq;
   const tieneOC = !!ordenCompra;
   const tieneRecepcion = !!recepcion || !!(ordenCompra?.recepciones && ordenCompra.recepciones.length > 0);
 
@@ -399,6 +469,16 @@ export default function CircuitoCompraTimeline({
     return [];
   }, [recepcion, ordenCompra, requerimiento]);
 
+  // Calcular progreso (4 pasos ahora)
+  const calcularProgreso = () => {
+    let pasos = 0;
+    if (tieneRequerimiento) pasos++;
+    if (tieneRFQ) pasos++;
+    if (tieneOC) pasos++;
+    if (tieneRecepcion) pasos++;
+    return Math.round((pasos / 4) * 100);
+  };
+
   return (
     <div className="space-y-6">
       {/* Título */}
@@ -409,14 +489,24 @@ export default function CircuitoCompraTimeline({
         </p>
       </div>
 
-      {/* Timeline visual */}
-      <div className="flex items-center justify-center py-6">
+      {/* Timeline visual - 4 nodos */}
+      <div className="flex items-center justify-center py-6 overflow-x-auto">
         <NodoCircuito
           tipo="requerimiento"
           activo={tieneRequerimiento}
           completado={tieneRequerimiento}
           data={requerimiento || null}
           isHighlighted={origen === 'requerimiento'}
+        />
+
+        <Conector activo={tieneRFQ || tieneOC} />
+
+        <NodoCircuito
+          tipo="rfq"
+          activo={tieneRFQ}
+          completado={tieneRFQ}
+          data={rfq || null}
+          isHighlighted={origen === 'rfq'}
         />
 
         <Conector activo={tieneOC} />
@@ -446,12 +536,13 @@ export default function CircuitoCompraTimeline({
         <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full">
           <span className="text-xs text-gray-500">Progreso:</span>
           <div className="flex gap-1">
-            <div className={`w-3 h-3 rounded-full ${tieneRequerimiento ? 'bg-blue-500' : 'bg-gray-300'}`} />
-            <div className={`w-3 h-3 rounded-full ${tieneOC ? 'bg-purple-500' : 'bg-gray-300'}`} />
-            <div className={`w-3 h-3 rounded-full ${tieneRecepcion ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+            <div className={`w-3 h-3 rounded-full ${tieneRequerimiento ? 'bg-blue-500' : 'bg-gray-300'}`} title="Requerimiento" />
+            <div className={`w-3 h-3 rounded-full ${tieneRFQ ? 'bg-indigo-500' : 'bg-gray-300'}`} title="Cotización" />
+            <div className={`w-3 h-3 rounded-full ${tieneOC ? 'bg-purple-500' : 'bg-gray-300'}`} title="Orden de Compra" />
+            <div className={`w-3 h-3 rounded-full ${tieneRecepcion ? 'bg-emerald-500' : 'bg-gray-300'}`} title="Recepción" />
           </div>
           <span className="text-xs font-medium text-gray-700">
-            {tieneRecepcion ? '100%' : tieneOC ? '66%' : tieneRequerimiento ? '33%' : '0%'}
+            {calcularProgreso()}%
           </span>
         </div>
       </div>
@@ -463,6 +554,15 @@ export default function CircuitoCompraTimeline({
           <DetalleDocumento
             tipo="requerimiento"
             data={requerimiento!}
+            isVisible={true}
+          />
+        )}
+
+        {/* RFQ / Solicitud de Cotización */}
+        {tieneRFQ && (
+          <DetalleDocumento
+            tipo="rfq"
+            data={rfq!}
             isVisible={true}
           />
         )}
@@ -497,7 +597,7 @@ export default function CircuitoCompraTimeline({
         )}
       </div>
 
-      {/* Mensaje si el flujo está incompleto */}
+      {/* Mensajes informativos según el estado del flujo */}
       {!tieneRecepcion && tieneOC && (
         <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
@@ -507,11 +607,29 @@ export default function CircuitoCompraTimeline({
         </div>
       )}
 
-      {!tieneOC && tieneRequerimiento && requerimiento?.estado === 'APROBADO' && (
+      {!tieneOC && tieneRFQ && rfq?.status === 'AWARDED' && (
+        <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+          <ShoppingCart className="w-5 h-5 text-purple-500 flex-shrink-0" />
+          <p className="text-sm text-purple-700">
+            La cotización fue adjudicada. Pendiente generar Orden de Compra.
+          </p>
+        </div>
+      )}
+
+      {!tieneOC && !tieneRFQ && tieneRequerimiento && requerimiento?.estado === 'APROBADO' && (
         <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <ShoppingCart className="w-5 h-5 text-blue-500 flex-shrink-0" />
+          <FileSearch className="w-5 h-5 text-blue-500 flex-shrink-0" />
           <p className="text-sm text-blue-700">
-            Este requerimiento está aprobado pero aún no tiene orden de compra generada
+            Este requerimiento está aprobado. Puede crear una solicitud de cotización o generar OC directa.
+          </p>
+        </div>
+      )}
+
+      {tieneRFQ && !['AWARDED', 'CLOSED', 'CANCELLED'].includes(rfq?.status || '') && (
+        <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+          <Clock className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+          <p className="text-sm text-indigo-700">
+            La solicitud de cotización está en proceso. Esperando cotizaciones de proveedores.
           </p>
         </div>
       )}

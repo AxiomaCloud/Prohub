@@ -11,14 +11,14 @@ import fs from 'fs';
 
 const router = Router();
 
-// Directorio permanente para uploads
-const permanentUploadDir = path.join(__dirname, '../../uploads');
+// Directorio permanente para uploads (usar process.cwd() para consistencia en producción)
+const permanentUploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(permanentUploadDir)) {
   fs.mkdirSync(permanentUploadDir, { recursive: true });
 }
 
 // Configurar multer para subida de archivos
-const uploadDir = path.join(__dirname, '../../uploads/chat');
+const uploadDir = path.join(process.cwd(), 'uploads/chat');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -329,7 +329,7 @@ router.post(
             documentId: document.id,
             fromStatus: null,
             toStatus: 'PRESENTED',
-            reason: 'Documento subido via AXIO (chat)',
+            reason: 'Documento subido via Axio (chat)',
             userId: userId
           }
         });

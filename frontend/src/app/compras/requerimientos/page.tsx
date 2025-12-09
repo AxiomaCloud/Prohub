@@ -125,8 +125,9 @@ export default function RequerimientosPage() {
       ? ocsDelRequerimiento.sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime())[0]
       : null;
 
+    const porcentajeCalculado = totalItems > 0 ? Math.round((itemsEnOC / totalItems) * 100) : 0;
     return {
-      porcentaje: totalItems > 0 ? Math.round((itemsEnOC / totalItems) * 100) : 0,
+      porcentaje: Math.min(porcentajeCalculado, 100), // Nunca mostrar más de 100%
       enOC: Math.round(itemsEnOC * 100) / 100,
       total: Math.round(totalItems * 100) / 100,
       tieneOC: ocsDelRequerimiento.length > 0,

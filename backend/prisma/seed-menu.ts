@@ -50,6 +50,22 @@ async function seedMenu() {
       orderIndex: 5,
       description: 'Configuración y administración del sistema',
     },
+    {
+      id: '6',
+      title: 'Portal Proveedor',
+      icon: 'Package',
+      url: null,
+      orderIndex: 6,
+      description: 'Portal para proveedores',
+    },
+    {
+      id: '7',
+      title: 'Proveedores',
+      icon: 'Building2',
+      url: '/proveedores',
+      orderIndex: 7,
+      description: 'Gestión de proveedores',
+    },
   ];
 
   // Sub-items de Compras
@@ -102,11 +118,78 @@ async function seedMenu() {
     {
       id: '2-6',
       parentId: '2',
+      title: 'Cotizaciones',
+      icon: 'FileSearch',
+      url: '/compras/cotizaciones',
+      orderIndex: 6,
+      description: 'Solicitud de cotizaciones y licitaciones',
+    },
+    {
+      id: '2-7',
+      parentId: '2',
       title: 'Recepción',
       icon: 'PackageCheck',
       url: '/compras/recepcion',
-      orderIndex: 6,
+      orderIndex: 7,
       description: 'Recepción de compras y mercadería',
+    },
+  ];
+
+  // Sub-items del Portal Proveedor
+  const portalSubItems = [
+    {
+      id: '6-1',
+      parentId: '6',
+      title: 'Dashboard',
+      icon: 'LayoutDashboard',
+      url: '/portal/dashboard',
+      orderIndex: 1,
+      description: 'Vista general del portal de proveedor',
+    },
+    {
+      id: '6-2',
+      parentId: '6',
+      title: 'Cotizaciones',
+      icon: 'FileSearch',
+      url: '/portal/cotizaciones',
+      orderIndex: 2,
+      description: 'Solicitudes de cotización recibidas',
+    },
+    {
+      id: '6-3',
+      parentId: '6',
+      title: 'Mis Órdenes',
+      icon: 'ShoppingCart',
+      url: '/portal/ordenes',
+      orderIndex: 3,
+      description: 'Órdenes de compra recibidas',
+    },
+    {
+      id: '6-4',
+      parentId: '6',
+      title: 'Mis Facturas',
+      icon: 'Receipt',
+      url: '/portal/facturas',
+      orderIndex: 4,
+      description: 'Facturas y documentos enviados',
+    },
+    {
+      id: '6-5',
+      parentId: '6',
+      title: 'Mis Pagos',
+      icon: 'CreditCard',
+      url: '/portal/pagos',
+      orderIndex: 5,
+      description: 'Pagos recibidos y pendientes',
+    },
+    {
+      id: '6-6',
+      parentId: '6',
+      title: 'Mi Empresa',
+      icon: 'Building2',
+      url: '/portal/empresa',
+      orderIndex: 6,
+      description: 'Datos de mi empresa',
     },
   ];
 
@@ -186,6 +269,13 @@ async function seedMenu() {
       data: item,
     });
     console.log(`✅ Created admin sub-item: ${item.title}`);
+  }
+
+  for (const item of portalSubItems) {
+    await prisma.menuItem.create({
+      data: item,
+    });
+    console.log(`✅ Created portal sub-item: ${item.title}`);
   }
 
   console.log('✅ Menu seeding completed!');

@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import {
@@ -12,7 +14,15 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isProvider } = useAuth();
+  const router = useRouter();
+
+  // Redirigir proveedores al portal de proveedores
+  useEffect(() => {
+    if (isProvider) {
+      router.replace('/portal/dashboard');
+    }
+  }, [isProvider, router]);
 
   const stats = [
     {

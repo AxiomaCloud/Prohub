@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useConfirmDialog } from '@/hooks/useConfirm';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   ArrowLeft,
   FileText,
@@ -20,7 +21,9 @@ import {
   Download,
   Trash2,
   RefreshCw,
-  Eye
+  Eye,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { DocumentoParseView } from '@/components/documents/DocumentoParseView';
 
@@ -135,12 +138,17 @@ const statusIcons: Record<Document['status'], React.ComponentType<{ className?: 
 export default function DocumentDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { get, delete: deleteApi } = useApiClient();
+  const { get, post, patch, delete: deleteApi } = useApiClient();
   const { confirm } = useConfirmDialog();
+  const { user } = useAuth();
 
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const [statusReason, setStatusReason] = useState('');
 
   useEffect(() => {
     if (params.id) {
@@ -172,6 +180,55 @@ export default function DocumentDetailPage() {
     setRefreshing(false);
   };
 
+  const handleAddComment = async () => {
+    if (!document || !newComment.trim()) return;
+
+    setSubmittingComment(true);
+    try {
+      const comment = await post(`/api/documents/${document.id}/comments`, {
+        content: newComment.trim()
+      });
+
+      // Add the new comment to the document
+      setDocument({
+        ...document,
+        comments: [comment, ...document.comments]
+      });
+      setNewComment('');
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      await confirm(
+        'Hubo un error al agregar el comentario. Por favor, intenta nuevamente.',
+        'Error',
+        'danger'
+      );
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!document) return;
+
+    const confirmed = await confirm(
+      '¿Estás seguro de eliminar este comentario?',
+      'Confirmar eliminación',
+      'danger'
+    );
+
+    if (confirmed) {
+      try {
+        await deleteApi(`/api/documents/${document.id}/comments/${commentId}`);
+        setDocument({
+          ...document,
+          comments: document.comments.filter(c => c.id !== commentId)
+        });
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+      }
+    }
+  };
+
   const handleDelete = async () => {
     if (!document) return;
 
@@ -193,6 +250,31 @@ export default function DocumentDetailPage() {
           'danger'
         );
       }
+    }
+  };
+
+  const handleChangeStatus = async (newStatus: Document['status']) => {
+    if (!document || newStatus === document.status) return;
+
+    setChangingStatus(true);
+    try {
+      await patch(`/api/documents/${document.id}/status`, {
+        status: newStatus,
+        reason: statusReason.trim() || undefined
+      });
+
+      // Recargar el documento para ver los cambios
+      await fetchDocument();
+      setStatusReason('');
+    } catch (error) {
+      console.error('Error changing status:', error);
+      await confirm(
+        'Hubo un error al cambiar el estado. Por favor, intenta nuevamente.',
+        'Error',
+        'danger'
+      );
+    } finally {
+      setChangingStatus(false);
     }
   };
 
@@ -287,6 +369,42 @@ export default function DocumentDetailPage() {
           {/* Status and Basic Info */}
           <div className="bg-white rounded-lg shadow-sm border border-border p-6">
             <h2 className="text-lg font-semibold text-text-primary mb-4">Información General</h2>
+
+            {/* Cambiar Estado */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <label className="block text-sm font-medium text-text-secondary mb-2">Cambiar Estado</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={document.status}
+                  onChange={(e) => handleChangeStatus(e.target.value as Document['status'])}
+                  disabled={changingStatus}
+                  className="flex-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {Object.entries(documentStatusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder="Motivo (opcional)"
+                  disabled={changingStatus}
+                  className="flex-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                />
+                {changingStatus && (
+                  <div className="flex items-center text-sm text-text-secondary">
+                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    Cambiando...
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-text-secondary mt-2">
+                Estado actual: <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[document.status]}`}>
+                  {documentStatusLabels[document.status]}
+                </span>
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -394,30 +512,6 @@ export default function DocumentDetailPage() {
             </div>
           </div>
 
-          {/* Organizations */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-6">
-            <h2 className="text-lg font-semibold text-text-primary mb-4">Organizaciones</h2>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-5 h-5 text-palette-purple" />
-                  <label className="text-sm font-medium text-text-secondary">Proveedor</label>
-                </div>
-                <p className="text-text-primary font-medium">{document.providerTenant.name}</p>
-                <p className="text-text-secondary text-sm">{document.providerTenant.taxId}</p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-5 h-5 text-palette-blue" />
-                  <label className="text-sm font-medium text-text-secondary">Cliente</label>
-                </div>
-                <p className="text-text-primary font-medium">{document.clientTenant.name}</p>
-                <p className="text-text-secondary text-sm">{document.clientTenant.taxId}</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Sidebar */}
@@ -500,6 +594,76 @@ export default function DocumentDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Comments */}
+          <div className="bg-white rounded-lg shadow-sm border border-border p-6">
+            <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Comentarios ({document.comments?.length || 0})
+            </h2>
+
+            {/* Add Comment Form */}
+            <div className="mb-4">
+              <div className="flex gap-2">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Escribe un comentario..."
+                  className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  rows={2}
+                  disabled={submittingComment}
+                />
+                <Button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim() || submittingComment}
+                  className="self-end"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Comments List */}
+            <div className="space-y-4">
+              {(!document.comments || document.comments.length === 0) ? (
+                <p className="text-text-secondary text-sm text-center py-4">
+                  No hay comentarios aún
+                </p>
+              ) : (
+                document.comments.map((comment) => (
+                  <div key={comment.id} className="border-b border-border pb-3 last:border-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-palette-purple/10 rounded-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-palette-purple" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">
+                            {comment.user.name}
+                          </p>
+                          <p className="text-xs text-text-secondary">
+                            {formatDateTime(comment.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      {user?.id === comment.user.id && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="text-text-secondary hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
+                          title="Eliminar comentario"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-text-primary mt-2 ml-10">
+                      {comment.content}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
