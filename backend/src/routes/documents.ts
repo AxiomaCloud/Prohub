@@ -706,7 +706,23 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 
     const documents = await prisma.document.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        number: true,
+        type: true,
+        status: true,
+        amount: true,
+        taxAmount: true,
+        totalAmount: true,
+        currency: true,
+        fileUrl: true,
+        fileName: true,
+        date: true,
+        dueDate: true,
+        uploadedAt: true,
+        parseStatus: true,
+        parseData: true, // Incluir parseData para mostrar datos del emisor
+        submissionStatus: true,
         providerTenant: {
           select: {
             id: true,

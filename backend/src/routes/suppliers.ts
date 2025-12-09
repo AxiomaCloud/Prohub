@@ -1075,17 +1075,93 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/suppliers/:id - Eliminar proveedor (soft delete)
+// DELETE /api/suppliers/:id - Eliminar proveedor
 router.delete('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    await prisma.supplier.update({
+    // Verificar que el proveedor existe
+    const supplier = await prisma.supplier.findUnique({
       where: { id },
-      data: { isActive: false },
+      include: {
+        documentos: true,
+      },
     });
 
-    res.json({ message: 'Proveedor eliminado' });
+    if (!supplier) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    // Verificar si tiene órdenes de compra asociadas
+    const ordenesCompra = await prisma.purchaseOrderCircuit.count({
+      where: { proveedorId: id },
+    });
+
+    if (ordenesCompra > 0) {
+      return res.status(400).json({
+        error: `No se puede eliminar el proveedor porque tiene ${ordenesCompra} orden(es) de compra asociada(s)`
+      });
+    }
+
+    // Eliminar documentos físicos del proveedor
+    for (const doc of supplier.documentos) {
+      const filePath = path.join(process.cwd(), doc.fileUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    // Usar transacción para eliminar todo en orden correcto
+    await prisma.$transaction(async (tx) => {
+      // Eliminar items de cotizaciones del proveedor
+      await tx.supplierQuotationItem.deleteMany({
+        where: {
+          supplierQuotation: {
+            supplierId: id,
+          },
+        },
+      });
+
+      // Eliminar cotizaciones del proveedor
+      await tx.supplierQuotation.deleteMany({
+        where: { supplierId: id },
+      });
+
+      // Eliminar invitaciones a cotizaciones
+      await tx.quotationRequestSupplier.deleteMany({
+        where: { supplierId: id },
+      });
+
+      // Quitar adjudicaciones de RFQs (no eliminar el RFQ, solo quitar la referencia)
+      await tx.quotationRequest.updateMany({
+        where: { awardedToId: id },
+        data: { awardedToId: null },
+      });
+
+      // Eliminar cuentas bancarias
+      await tx.supplierBankAccount.deleteMany({
+        where: { supplierId: id },
+      });
+
+      // Eliminar documentos de la BD
+      await tx.supplierDocument.deleteMany({
+        where: { supplierId: id },
+      });
+
+      // Eliminar memberships asociadas al proveedor
+      await tx.tenantMembership.deleteMany({
+        where: { supplierId: id },
+      });
+
+      // Eliminar el proveedor
+      await tx.supplier.delete({
+        where: { id },
+      });
+    });
+
+    console.log(`🗑️ Proveedor eliminado: ${supplier.nombre} (${supplier.cuit})`);
+
+    res.json({ message: 'Proveedor eliminado correctamente' });
   } catch (error) {
     console.error('Error al eliminar proveedor:', error);
     res.status(500).json({ error: 'Error al eliminar proveedor' });

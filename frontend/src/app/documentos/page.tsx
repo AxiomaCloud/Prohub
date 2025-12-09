@@ -477,14 +477,24 @@ export default function DocumentsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="max-w-[200px]" title={`${doc.providerTenant.name} - ${doc.providerTenant.taxId}`}>
-                        <div className="text-sm text-text-primary truncate">
-                          {doc.providerTenant.name}
-                        </div>
-                        <div className="text-xs text-text-secondary">
-                          {doc.providerTenant.taxId}
-                        </div>
-                      </div>
+                      {(() => {
+                        const emisor = doc.parseData?.documento?.cabecera;
+                        const razonSocial = emisor?.razonSocialEmisor || doc.providerTenant?.name || '-';
+                        const cuit = emisor?.cuitEmisor || doc.providerTenant?.taxId || '';
+                        const cuitFormatted = cuit ? `${cuit.slice(0,2)}-${cuit.slice(2,10)}-${cuit.slice(10)}` : '';
+                        return (
+                          <div className="max-w-[200px]" title={`${razonSocial} - ${cuitFormatted}`}>
+                            <div className="text-sm text-text-primary truncate">
+                              {razonSocial}
+                            </div>
+                            {cuitFormatted && (
+                              <div className="text-xs text-text-secondary">
+                                {cuitFormatted}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <span className="text-sm font-semibold text-text-primary">
@@ -494,7 +504,7 @@ export default function DocumentsPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {doc.purchaseOrder ? (
                         <span className="text-sm text-palette-purple font-medium">
-                          {doc.purchaseOrder.numero}
+                          {doc.purchaseOrder.number}
                         </span>
                       ) : (
                         <span className="text-sm text-text-secondary">-</span>

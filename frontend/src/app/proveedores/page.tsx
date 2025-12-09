@@ -106,6 +106,8 @@ export default function ProveedoresPage() {
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
   const [suspendingSupplier, setSuspendingSupplier] = useState<Supplier | null>(null);
   const [suspendMotivo, setSuspendMotivo] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -216,6 +218,38 @@ export default function ProveedoresPage() {
     } catch (error) {
       console.error('Error reactivating supplier:', error);
       toast.error('Error al reactivar proveedor');
+    }
+  };
+
+  const openDeleteDialog = (supplier: Supplier) => {
+    setDeletingSupplier(supplier);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingSupplier) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/suppliers/${deletingSupplier.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al eliminar proveedor');
+      }
+
+      toast.success('Proveedor eliminado correctamente');
+      fetchSuppliers();
+      fetchStats();
+      setShowDeleteDialog(false);
+      setDeletingSupplier(null);
+    } catch (error: any) {
+      console.error('Error deleting supplier:', error);
+      toast.error(error.message || 'Error al eliminar proveedor');
     }
   };
 
@@ -641,6 +675,14 @@ export default function ProveedoresPage() {
                             <Send className="w-4 h-4 text-blue-600" />
                           </button>
                         )}
+
+                        <button
+                          onClick={() => openDeleteDialog(supplier)}
+                          className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg"
+                          title="Eliminar proveedor"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1021,6 +1063,54 @@ export default function ProveedoresPage() {
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
               >
                 Suspender
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Eliminación */}
+      {showDeleteDialog && deletingSupplier && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full shadow-xl">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Eliminar Proveedor
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {deletingSupplier.nombre}
+                </p>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                ¿Estás seguro de que deseas eliminar este proveedor? Esta acción no se puede deshacer.
+              </p>
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  Se eliminarán todos los documentos y datos asociados al proveedor.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-xl">
+              <button
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setDeletingSupplier(null);
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              >
+                Eliminar
               </button>
             </div>
           </div>
