@@ -659,13 +659,13 @@ export default function MisPagosPage() {
                   )}
 
                   {/* Retenciones */}
-                  {selectedPago.retentionUrls && selectedPago.retentionUrls.length > 0 && (
+                  {selectedPago.retentionUrls && Array.isArray(selectedPago.retentionUrls) && selectedPago.retentionUrls.length > 0 && (
                     <div>
                       <p className="text-sm font-medium text-text-primary mb-3">
                         Retenciones ({selectedPago.retentionUrls.length})
                       </p>
                       <div className="space-y-2">
-                        {selectedPago.retentionUrls.map((ret, idx) => (
+                        {selectedPago.retentionUrls.map((ret: any, idx: number) => (
                           <div
                             key={idx}
                             className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
