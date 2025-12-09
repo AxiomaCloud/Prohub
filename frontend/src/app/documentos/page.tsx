@@ -504,7 +504,7 @@ export default function DocumentsPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {doc.purchaseOrder ? (
                         <span className="text-sm text-palette-purple font-medium">
-                          {doc.purchaseOrder.number}
+                          {(doc.purchaseOrder as any).number || (doc.purchaseOrder as any).numero}
                         </span>
                       ) : (
                         <span className="text-sm text-text-secondary">-</span>
