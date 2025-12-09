@@ -6,6 +6,8 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
+import { useConfirmDialog } from '@/hooks/useConfirm';
+import toast from 'react-hot-toast';
 import {
   FileSearch,
   Plus,
@@ -49,6 +51,8 @@ interface PurchaseRequest {
   id: string;
   numero: string;
   titulo: string;
+  descripcion?: string;
+  justificacion?: string;
   estado?: string;
   prioridad?: string;
   categoria?: string;
@@ -81,6 +85,7 @@ interface Attachment {
 export default function NuevaRFQPage() {
   const router = useRouter();
   const { tenant, token } = useAuth();
+  const { confirm } = useConfirmDialog();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -167,6 +172,8 @@ export default function NuevaRFQPage() {
               id: r.id,
               numero: r.numero,
               titulo: r.titulo,
+              descripcion: r.descripcion,
+              justificacion: r.justificacion,
               estado: r.estado,
               prioridad: r.prioridad,
               categoria: r.categoria,
@@ -241,6 +248,22 @@ export default function NuevaRFQPage() {
   const importFromPR = (pr: PurchaseRequest) => {
     setTitle(pr.titulo);
     setPurchaseRequestId(pr.id);
+    // Copiar descripción del requerimiento (justificacion es interna, no se copia)
+    if (pr.descripcion) {
+      setDescription(pr.descripcion);
+    }
+    // Copiar fecha de necesidad como fecha de entrega requerida
+    if (pr.fechaNecesidad) {
+      const fecha = new Date(pr.fechaNecesidad);
+      setDeliveryDeadline(fecha.toISOString().split('T')[0]);
+    }
+    // Copiar monto estimado y moneda si existen
+    if (pr.montoEstimado) {
+      setEstimatedBudget(pr.montoEstimado.toString());
+    }
+    if (pr.moneda) {
+      setCurrency(pr.moneda);
+    }
     setItems(pr.items.map(item => ({
       id: item.id,
       description: item.descripcion,
@@ -305,7 +328,7 @@ export default function NuevaRFQPage() {
     for (const file of Array.from(files)) {
       // Validar tamaño (10MB max)
       if (file.size > 10 * 1024 * 1024) {
-        alert(`El archivo ${file.name} excede el tamaño máximo de 10MB`);
+        toast.error(`El archivo ${file.name} excede el tamaño máximo de 10MB`);
         continue;
       }
 
@@ -347,12 +370,12 @@ export default function NuevaRFQPage() {
         } else {
           // Remover el archivo con error
           setAttachments(prev => prev.filter(a => !(a.fileName === file.name && a.uploading)));
-          alert(`Error al subir ${file.name}`);
+          toast.error(`Error al subir ${file.name}`);
         }
       } catch (error) {
         console.error('Error uploading file:', error);
         setAttachments(prev => prev.filter(a => !(a.fileName === file.name && a.uploading)));
-        alert(`Error al subir ${file.name}`);
+        toast.error(`Error al subir ${file.name}`);
       }
     }
   };
@@ -374,7 +397,7 @@ export default function NuevaRFQPage() {
   // Save as draft
   const handleSaveDraft = async () => {
     if (!title || !deadline) {
-      alert('Titulo y fecha limite son requeridos');
+      toast.error('Título y fecha límite son requeridos');
       return;
     }
 
@@ -415,11 +438,11 @@ export default function NuevaRFQPage() {
         router.push(`/compras/cotizaciones/${data.rfq.id}`);
       } else {
         const error = await response.json();
-        alert(error.error || 'Error al guardar');
+        toast.error(error.error || 'Error al guardar');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al guardar la solicitud');
+      toast.error('Error al guardar la solicitud');
     } finally {
       setSaving(false);
     }

@@ -1850,6 +1850,38 @@ router.get('/me/ordenes', authenticate, async (req: Request, res: Response) => {
 
     console.log(`📦 [/me/ordenes] Encontradas ${ordenes.length} órdenes`);
 
+    // Obtener IDs de todas las órdenes para buscar facturas
+    const ordenIds = ordenes.map(oc => oc.id);
+
+    // Buscar documentos que tengan parseData no nulo
+    // Usamos $queryRaw para filtrar por JSON o simplemente obtenemos todos y filtramos en código
+    const allDocuments = await prisma.document.findMany({
+      select: {
+        id: true,
+        number: true,
+        status: true,
+        totalAmount: true,
+        parseData: true,
+      },
+    });
+
+    // Filtrar documentos que corresponden a las órdenes
+    const documentsByOC: Record<string, Array<{ id: string; numero: string; estado: string; monto: number }>> = {};
+    for (const doc of allDocuments) {
+      const parseData = doc.parseData as any;
+      if (parseData?.purchaseOrderCircuitId && ordenIds.includes(parseData.purchaseOrderCircuitId)) {
+        if (!documentsByOC[parseData.purchaseOrderCircuitId]) {
+          documentsByOC[parseData.purchaseOrderCircuitId] = [];
+        }
+        documentsByOC[parseData.purchaseOrderCircuitId].push({
+          id: doc.id,
+          numero: doc.number,
+          estado: doc.status,
+          monto: Number(doc.totalAmount) || 0,
+        });
+      }
+    }
+
     // Mapear al formato esperado por el frontend
     const ordenesFormateadas = ordenes.map(oc => ({
       id: oc.id,
@@ -1873,7 +1905,7 @@ router.get('/me/ordenes', authenticate, async (req: Request, res: Response) => {
         precioUnitario: Number(item.precioUnitario),
         total: Number(item.total),
       })),
-      facturas: [], // TODO: Obtener facturas asociadas
+      facturas: documentsByOC[oc.id] || [],
       condicionPago: oc.condicionPago,
       lugarEntrega: oc.lugarEntrega,
       fechaEntregaEstimada: oc.fechaEntregaEstimada?.toISOString() || null,
@@ -1933,26 +1965,15 @@ router.post('/me/facturas', authenticate, upload.single('file'), async (req: Req
       return res.status(404).json({ error: 'Orden de compra no encontrada' });
     }
 
-    // Buscar el tenant del proveedor por CUIT
-    let providerTenant = await prisma.tenant.findFirst({
+    // El clientTenant es el tenant de la OC (el cliente que recibe la factura)
+    const clientTenantId = ordenCompra.tenantId;
+
+    // El proveedor NO necesita un tenant propio
+    // providerTenantId queda null - la factura se identifica por el supplier asociado
+    // Si existe un tenant con el CUIT del proveedor lo usamos, pero NO lo creamos
+    const providerTenant = await prisma.tenant.findFirst({
       where: { taxId: supplier.cuit },
     });
-
-    // Si no existe, crear un tenant temporal para el proveedor
-    if (!providerTenant) {
-      providerTenant = await prisma.tenant.create({
-        data: {
-          name: supplier.nombre,
-          taxId: supplier.cuit,
-          legalName: supplier.nombre,
-          country: supplier.pais || 'Argentina',
-        },
-      });
-      console.log(`   Tenant creado para proveedor: ${providerTenant.id}`);
-    }
-
-    // El clientTenant es el tenant de la OC
-    const clientTenantId = ordenCompra.tenantId;
 
     // Determinar el tipo de documento
     let docType: 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'RECEIPT' = 'INVOICE';
@@ -1973,7 +1994,7 @@ router.post('/me/facturas', authenticate, upload.single('file'), async (req: Req
         fileName: req.file.originalname,
         fileType: req.file.mimetype,
         fileSize: req.file.size,
-        providerTenantId: providerTenant.id,
+        providerTenantId: providerTenant?.id || undefined,
         clientTenantId: clientTenantId,
         uploadedBy: userId!,
         date: fecha ? new Date(fecha) : new Date(),
@@ -1983,6 +2004,9 @@ router.post('/me/facturas', authenticate, upload.single('file'), async (req: Req
           purchaseOrderCircuitId: ordenCompraId,
           purchaseOrderNumber: ordenCompra.numero,
           uploadedFromPortal: true,
+          supplierId: supplier.id,
+          supplierName: supplier.nombre,
+          supplierCuit: supplier.cuit,
         },
       },
       include: {

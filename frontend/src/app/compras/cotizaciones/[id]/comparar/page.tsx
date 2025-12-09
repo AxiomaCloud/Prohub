@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
+import { useConfirmDialog } from '@/hooks/useConfirm';
+import toast from 'react-hot-toast';
 import {
   BarChart3,
   ArrowLeft,
@@ -69,6 +71,7 @@ export default function CompararCotizacionesPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const { confirm } = useConfirmDialog();
 
   const [data, setData] = useState<ComparisonData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,7 +90,7 @@ export default function CompararCotizacionesPage() {
         const result = await response.json();
         setData(result);
       } else {
-        alert('Error al cargar la comparacion');
+        toast.error('Error al cargar la comparacion');
         router.back();
       }
     } catch (error) {
@@ -107,9 +110,11 @@ export default function CompararCotizacionesPage() {
     const supplier = data.comparison.suppliers.find(s => s.supplierId === selectedSupplier);
     if (!supplier) return;
 
-    if (!confirm(`¿Adjudicar a ${supplier.supplierName} por ${formatMonto(supplier.totalAmount, data.comparison.rfq.currency)}?`)) {
-      return;
-    }
+    const confirmed = await confirm(
+      `¿Adjudicar a ${supplier.supplierName} por ${formatMonto(supplier.totalAmount, data.comparison.rfq.currency)}?`,
+      'Confirmar adjudicacion'
+    );
+    if (!confirmed) return;
 
     setAwarding(true);
     try {
@@ -130,22 +135,26 @@ export default function CompararCotizacionesPage() {
       );
 
       if (response.ok) {
-        alert('Adjudicacion exitosa');
+        toast.success('Adjudicacion exitosa');
         router.push(`/compras/cotizaciones/${id}`);
       } else {
         const error = await response.json();
-        alert(error.error || 'Error al adjudicar');
+        toast.error(error.error || 'Error al adjudicar');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al adjudicar');
+      toast.error('Error al adjudicar');
     } finally {
       setAwarding(false);
     }
   };
 
   const handleGeneratePO = async () => {
-    if (!confirm('¿Generar Orden de Compra desde esta adjudicacion?')) return;
+    const confirmed = await confirm(
+      '¿Generar Orden de Compra desde esta adjudicacion?',
+      'Generar Orden de Compra'
+    );
+    if (!confirmed) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -162,16 +171,15 @@ export default function CompararCotizacionesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(`${result.message}\n\nOC: ${result.purchaseOrder.numero}`);
-        // Volver a la lista de cotizaciones
+        toast.success(`${result.message} - OC: ${result.purchaseOrder.numero}`);
         router.push('/compras/cotizaciones');
       } else {
         const error = await response.json();
-        alert(error.error || 'Error al generar OC');
+        toast.error(error.error || 'Error al generar OC');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al generar OC');
+      toast.error('Error al generar OC');
     }
   };
 

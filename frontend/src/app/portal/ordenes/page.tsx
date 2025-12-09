@@ -22,6 +22,7 @@ import {
   Check,
   FileUp,
   Search,
+  Bot,
 } from 'lucide-react';
 
 interface OrdenCompra {
@@ -594,6 +595,23 @@ export default function MisOrdenesPage() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6">
+              {/* Mensaje informativo sobre extracción con Axio */}
+              {!facturaParseada && !parsing && (
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                  <div className="p-2 rounded-lg bg-purple-100">
+                    <Bot className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">
+                      Extracción inteligente con Axio
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      Los datos de la factura se extraerán automáticamente para tu revisión
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Área de carga */}
               {!facturaParseada && (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
@@ -614,7 +632,7 @@ export default function MisOrdenesPage() {
                         <Loader2 className="w-12 h-12 text-palette-purple animate-spin mb-4" />
                         <p className="text-text-primary font-medium">Analizando factura...</p>
                         <p className="text-sm text-text-secondary mt-1">
-                          Extrayendo datos con IA
+                          Extrayendo datos con Axio
                         </p>
                       </>
                     ) : (

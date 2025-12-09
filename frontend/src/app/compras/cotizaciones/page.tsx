@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
+import { useConfirmDialog } from '@/hooks/useConfirm';
+import toast from 'react-hot-toast';
 import {
   FileSearch,
   Plus,
@@ -25,6 +27,7 @@ import {
   Edit,
   Trash2,
   BarChart3,
+  ShoppingCart,
 } from 'lucide-react';
 
 interface RFQ {
@@ -81,6 +84,7 @@ const estadosRFQ = [
   { id: 'IN_QUOTATION', label: 'En Cotizacion', color: 'bg-purple-100 text-purple-700', icon: FileText },
   { id: 'EVALUATION', label: 'En Evaluacion', color: 'bg-orange-100 text-orange-700', icon: Users },
   { id: 'AWARDED', label: 'Adjudicada', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  { id: 'PO_GENERATED', label: 'OC Generada', color: 'bg-emerald-100 text-emerald-700', icon: ShoppingCart },
   { id: 'CANCELLED', label: 'Cancelada', color: 'bg-red-100 text-red-700', icon: XCircle },
   { id: 'CLOSED', label: 'Cerrada', color: 'bg-gray-100 text-gray-700', icon: XCircle },
   { id: 'EXPIRED', label: 'Expirada', color: 'bg-gray-100 text-gray-500', icon: Clock },
@@ -105,6 +109,7 @@ function formatFecha(fecha: string | Date): string {
 
 export default function CotizacionesPage() {
   const router = useRouter();
+  const { confirm } = useConfirmDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('');
   const [rfqs, setRfqs] = useState<RFQ[]>([]);
@@ -192,7 +197,12 @@ export default function CotizacionesPage() {
   }, [searchQuery, filtroEstado, page]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta solicitud?')) return;
+    const confirmed = await confirm(
+      '¿Estás seguro de eliminar esta solicitud?',
+      'Eliminar solicitud',
+      'danger'
+    );
+    if (!confirmed) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -207,15 +217,16 @@ export default function CotizacionesPage() {
       );
 
       if (response.ok) {
+        toast.success('Solicitud eliminada correctamente');
         fetchRFQs();
         fetchStats();
       } else {
         const data = await response.json();
-        alert(data.error || 'Error al eliminar');
+        toast.error(data.error || 'Error al eliminar');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al eliminar la solicitud');
+      toast.error('Error al eliminar la solicitud');
     }
   };
 

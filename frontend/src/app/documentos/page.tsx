@@ -480,8 +480,9 @@ export default function DocumentsPage() {
                       {(() => {
                         const parseData = doc.parseData as any;
                         const emisor = parseData?.documento?.cabecera;
-                        const razonSocial = emisor?.razonSocialEmisor || doc.providerTenant?.name || '-';
-                        const cuit = emisor?.cuitEmisor || doc.providerTenant?.taxId || '';
+                        // Prioridad: 1) datos extraídos del PDF, 2) datos del supplier en parseData, 3) providerTenant
+                        const razonSocial = emisor?.razonSocialEmisor || parseData?.supplierName || doc.providerTenant?.name || '-';
+                        const cuit = emisor?.cuitEmisor || parseData?.supplierCuit || doc.providerTenant?.taxId || '';
                         return (
                           <div className="max-w-[200px]" title={`${razonSocial} - ${cuit}`}>
                             <div className="text-sm text-text-primary truncate">

@@ -65,8 +65,12 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
     if (minAmount) amountFilter.gte = parseFloat(minAmount);
     if (maxAmount) amountFilter.lte = parseFloat(maxAmount);
 
+    // Si viene de supplierId, filtrar por receivedByTenantId (proveedor recibe pagos)
+    // Si viene de tenantId directo, filtrar por issuedByTenantId (cliente emite pagos)
     const where: any = {
-      receivedByTenantId: tenantId,
+      ...(supplierId
+        ? { receivedByTenantId: tenantId }  // Proveedor ve pagos que recibe
+        : { issuedByTenantId: tenantId }),   // Cliente ve pagos que emite
       ...(status && { status }),
       ...(Object.keys(issueDateFilter).length > 0 && { issueDate: issueDateFilter }),
       ...(Object.keys(amountFilter).length > 0 && { amount: amountFilter }),
@@ -109,13 +113,26 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
     ]);
 
     // Calcular cantidad de facturas y retenciones por pago
-    const paymentsWithCounts = payments.map((payment) => ({
-      ...payment,
-      invoiceCount: payment.items.length,
-      retentionCount: payment.retentionUrls
-        ? (payment.retentionUrls as string[]).length
-        : 0,
-    }));
+    const paymentsWithCounts = payments.map((payment) => {
+      let retentionCount = 0;
+      if (payment.retentionUrls) {
+        try {
+          const retentions = typeof payment.retentionUrls === 'string'
+            ? JSON.parse(payment.retentionUrls)
+            : payment.retentionUrls;
+          if (Array.isArray(retentions)) {
+            retentionCount = retentions.length;
+          }
+        } catch (e) {
+          // Si no es JSON válido, ignorar
+        }
+      }
+      return {
+        ...payment,
+        invoiceCount: payment.items.length,
+        retentionCount,
+      };
+    });
 
     res.json({
       payments: paymentsWithCounts,
@@ -406,15 +423,38 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Pago no encontrado' });
     }
 
-    // Parsear retenciones
-    const retentions = payment.retentionUrls as any[] || [];
+    // Parsear retenciones (pueden venir como string JSON o como array)
+    let retentions: any[] = [];
+    if (payment.retentionUrls) {
+      try {
+        if (typeof payment.retentionUrls === 'string') {
+          retentions = JSON.parse(payment.retentionUrls);
+        } else if (Array.isArray(payment.retentionUrls)) {
+          retentions = payment.retentionUrls;
+        }
+      } catch (e) {
+        // Si no es JSON válido, puede ser un array de URLs de archivos
+        retentions = [];
+      }
+    }
+
+    // Normalizar estructura de retenciones para el frontend
+    const normalizedRetentions = retentions.map((ret: any, index: number) => ({
+      type: ret.type || ret.tipo || 'OTHER',
+      nombre: ret.nombre || ret.name || ret.type || ret.tipo || 'Retención',
+      number: ret.number || ret.numero || `RET-${index + 1}`,
+      amount: ret.amount ?? ret.monto ?? 0,
+      porcentaje: ret.porcentaje ?? ret.percentage ?? null,
+      fileUrl: ret.fileUrl || ret.url || null,
+      createdAt: ret.createdAt || payment.createdAt?.toISOString() || new Date().toISOString(),
+    }));
 
     res.json({
       payment: {
         ...payment,
-        retentions,
+        retentions: normalizedRetentions,
         invoiceCount: payment.items.length,
-        retentionCount: retentions.length,
+        retentionCount: normalizedRetentions.length,
       },
     });
   } catch (error) {

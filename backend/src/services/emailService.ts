@@ -88,7 +88,13 @@ export class EmailService {
     eventType: NotificationEventType,
     to: string | string[],
     variables: TemplateVariables,
-    tenantId?: string
+    tenantId?: string,
+    attachments?: Array<{
+      filename: string;
+      content?: string | Buffer;
+      path?: string;
+      contentType?: string;
+    }>
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
       // Obtener plantilla (primero buscar por tenant, luego global)
@@ -109,6 +115,7 @@ export class EmailService {
         subject,
         html,
         text,
+        attachments,
       });
     } catch (error: any) {
       console.error('❌ [EMAIL] Failed to send templated email:', error.message);

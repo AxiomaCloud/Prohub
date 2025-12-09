@@ -55,6 +55,16 @@ interface Pago {
   }[];
   receiptUrl?: string;
   retentionUrls?: any[];
+  retentions?: {
+    type?: string;
+    tipo?: string;
+    nombre?: string;
+    name?: string;
+    amount?: number;
+    monto?: number;
+    porcentaje?: number;
+    fileUrl?: string;
+  }[];
 }
 
 interface PaymentStats {
@@ -659,43 +669,55 @@ export default function MisPagosPage() {
                   )}
 
                   {/* Retenciones */}
-                  {selectedPago.retentionUrls && Array.isArray(selectedPago.retentionUrls) && selectedPago.retentionUrls.length > 0 && (
+                  {selectedPago.retentions && Array.isArray(selectedPago.retentions) && selectedPago.retentions.length > 0 && (
                     <div>
                       <p className="text-sm font-medium text-text-primary mb-3">
-                        Retenciones ({selectedPago.retentionUrls.length})
+                        Retenciones ({selectedPago.retentions.length})
                       </p>
-                      <div className="space-y-2">
-                        {selectedPago.retentionUrls.map((ret: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                          >
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-4 h-4 text-gray-400" />
-                              <div>
-                                <p className="text-sm font-medium">{ret.type || 'Retención'}</p>
-                                {ret.number && (
-                                  <p className="text-xs text-text-secondary">N° {ret.number}</p>
+                      <div className="border border-border rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Tipo</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Descripción</th>
+                              <th className="px-3 py-2 text-center text-xs font-medium text-text-secondary">%</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-text-secondary">Monto</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {selectedPago.retentions.map((ret: any, idx: number) => (
+                              <tr key={idx}>
+                                <td className="px-3 py-2">
+                                  <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                                    {ret.type || ret.tipo || 'RET'}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-text-primary">
+                                  {ret.nombre || ret.name || ret.type || ret.tipo || 'Retención'}
+                                </td>
+                                <td className="px-3 py-2 text-center text-text-secondary">
+                                  {ret.porcentaje != null ? `${(ret.porcentaje * 100).toFixed(1)}%` : '-'}
+                                </td>
+                                <td className="px-3 py-2 text-right font-medium text-red-600">
+                                  -{formatMonto(ret.amount ?? ret.monto ?? 0, selectedPago.currency)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-gray-50">
+                            <tr>
+                              <td colSpan={3} className="px-3 py-2 text-right text-xs font-medium text-text-secondary">
+                                Total Retenciones:
+                              </td>
+                              <td className="px-3 py-2 text-right font-bold text-red-600">
+                                -{formatMonto(
+                                  selectedPago.retentions.reduce((sum: number, r: any) => sum + (r.amount ?? r.monto ?? 0), 0),
+                                  selectedPago.currency
                                 )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-medium">
-                                {ret.amount ? formatMonto(ret.amount, selectedPago.currency) : '-'}
-                              </span>
-                              {ret.fileUrl && (
-                                <a
-                                  href={ret.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
                     </div>
                   )}

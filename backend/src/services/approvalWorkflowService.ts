@@ -196,6 +196,35 @@ export class ApprovalWorkflowService {
           );
         }
       }
+    } else if (documentType === 'PURCHASE_ORDER') {
+      const oc = await prisma.purchaseOrderCircuit.findUnique({
+        where: { id: documentId },
+        include: {
+          proveedor: { select: { nombre: true } },
+        },
+      });
+
+      // Obtener el usuario que creó la OC
+      const creador = oc?.creadoPorId ? await prisma.user.findUnique({
+        where: { id: oc.creadoPorId },
+        select: { name: true },
+      }) : null;
+
+      if (oc) {
+        for (const approver of potentialApprovers) {
+          await NotificationService.notifyOCApprovalNeeded(
+            oc.numero,
+            Number(oc.total),
+            oc.moneda,
+            oc.proveedor?.nombre || 'Proveedor',
+            creador?.name || 'Usuario',
+            approver.email,
+            level.name,
+            tenantId,
+            oc.id
+          );
+        }
+      }
     }
 
     return instance;

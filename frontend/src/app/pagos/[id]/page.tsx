@@ -52,8 +52,10 @@ interface PaymentItem {
 
 interface Retention {
   type: string
+  nombre?: string
   number: string
   amount: number
+  porcentaje?: number
   fileUrl?: string
   createdAt: string
 }
@@ -436,8 +438,8 @@ export default function PaymentDetailPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Tipo</TableHead>
-                        <TableHead>Número</TableHead>
-                        <TableHead>Fecha</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-center">Porcentaje</TableHead>
                         <TableHead className="text-right">Monto</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
@@ -460,16 +462,27 @@ export default function PaymentDetailPage() {
                                 {retentionTypeLabels[ret.type] || ret.type}
                               </Badge>
                             </TableCell>
-                            <TableCell className="font-medium">
-                              {ret.number || '-'}
-                            </TableCell>
                             <TableCell>
-                              {ret.createdAt
-                                ? format(new Date(ret.createdAt), 'dd/MM/yyyy')
-                                : '-'}
+                              <span className="font-medium">
+                                {ret.nombre || retentionTypeLabels[ret.type] || ret.type}
+                              </span>
+                              {ret.number && ret.number !== `RET-${index + 1}` && (
+                                <span className="text-gray-500 text-sm ml-2">
+                                  ({ret.number})
+                                </span>
+                              )}
                             </TableCell>
-                            <TableCell className="text-right font-semibold">
-                              {formatCurrency(ret.amount)}
+                            <TableCell className="text-center">
+                              {ret.porcentaje != null ? (
+                                <span className="text-gray-600">
+                                  {(ret.porcentaje * 100).toFixed(1)}%
+                                </span>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-red-600">
+                              -{formatCurrency(ret.amount)}
                             </TableCell>
                             <TableCell>
                               {ret.fileUrl && (
