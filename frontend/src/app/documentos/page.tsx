@@ -478,7 +478,8 @@ export default function DocumentsPage() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {(() => {
-                        const emisor = doc.parseData?.documento?.cabecera;
+                        const parseData = doc.parseData as any;
+                        const emisor = parseData?.documento?.cabecera;
                         const razonSocial = emisor?.razonSocialEmisor || doc.providerTenant?.name || '-';
                         const cuit = emisor?.cuitEmisor || doc.providerTenant?.taxId || '';
                         return (
