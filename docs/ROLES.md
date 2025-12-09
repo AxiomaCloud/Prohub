@@ -1,6 +1,6 @@
 # ARQUITECTURA DE ROLES - HUB
 
-Sistema de roles y permisos para el portal de proveedores.
+Sistema de roles y permisos para la plataforma completa.
 
 ---
 
@@ -9,7 +9,9 @@ Sistema de roles y permisos para el portal de proveedores.
 Definir una arquitectura de roles flexible que soporte:
 - **Usuario Empresa**: Empleados del cliente que gestionan proveedores
 - **Usuario Proveedor**: Proveedores que suben documentos y ven pagos
-- **Usuario Cliente** (Futuro): Para roles duales (proveedor Y cliente)
+- **Usuario Cliente**: Clientes que consumen servicios (Oficina Virtual)
+- **Usuario Comercial**: Gestores de cartera de clientes (Oficina Virtual)
+- **Roles duales**: Un usuario puede tener múltiples roles simultáneamente
 
 ---
 
@@ -118,38 +120,188 @@ interface PermisosProveedor {
 
 ---
 
-### 3. ROL CLIENTE (Futuro)
+### 3. ROL CLIENTE (Oficina Virtual)
 
-Para implementar **roles duales**: un proveedor puede ser cliente de otro.
+Cliente que consume servicios de la empresa (software, suscripciones, etc).
 
-#### Contexto de Uso:
+#### Subroles:
 
-- Empresa A vende a Empresa B → A es proveedor de B
-- Empresa B vende a Empresa A → B es proveedor de A
-- Usuario de A necesita:
-  - **Como Proveedor**: Subir docs a B
-  - **Como Cliente**: Recibir docs de B
+| Subrol | Descripción | Permisos |
+|--------|-------------|----------|
+| **Cliente Principal** | Dueño de la cuenta del cliente | Todos los permisos del cliente |
+| **Usuario Cliente** | Empleado del cliente | Consultar servicios, facturas, pagos, crear gestiones |
+| **Consulta Cliente** | Solo lectura | Ver servicios, facturas, pagos |
 
-#### Permisos:
-
-Combina permisos de **Empresa** y **Proveedor** según contexto activo.
+#### Permisos Detallados:
 
 ```typescript
-interface RolDual {
-  contexto_activo: 'proveedor' | 'cliente';
-  empresa_id: string;
+interface PermisosCliente {
+  // Servicios
+  ver_mis_servicios: boolean;              // Ver servicios contratados
+  ver_detalles_servicios: boolean;         // Ver características y uso
+  solicitar_cambios: boolean;              // Solicitar upgrades/downgrades
 
-  // Como Proveedor
-  como_proveedor: {
-    clientes: string[];  // IDs de empresas a las que provee
-    permisos: PermisosProveedor;
+  // Cuenta
+  ver_estado_cuenta: boolean;              // Ver estado general
+  ver_limite_credito: boolean;             // Ver límite si aplica
+
+  // Facturas
+  ver_mis_facturas: boolean;               // Ver facturas emitidas
+  descargar_facturas: boolean;             // Descargar PDFs
+  exportar_facturas: boolean;              // Exportar Excel/CSV
+
+  // Pagos
+  ver_mis_pagos: boolean;                  // Ver historial de pagos
+  pagar_facturas: boolean;                 // Realizar pagos online
+  descargar_comprobantes: boolean;         // Descargar recibos
+
+  // Gestiones
+  crear_gestiones: boolean;                // Crear tickets/solicitudes
+  ver_mis_gestiones: boolean;              // Ver mis gestiones
+  comentar_gestiones: boolean;             // Agregar comentarios
+  adjuntar_archivos: boolean;              // Adjuntar documentos
+
+  // Asistente IA
+  usar_axio: boolean;                      // Acceder a asistente AXIO
+
+  // Perfil
+  ver_mi_perfil: boolean;                  // Ver datos de cuenta
+  solicitar_cambio_datos: boolean;         // Solicitar modificaciones
+
+  // Comunicaciones
+  ver_notificaciones: boolean;             // Ver alertas
+  configurar_notificaciones: boolean;      // Preferencias de notifs
+  contactar_comercial: boolean;            // Enviar mensajes
+}
+```
+
+---
+
+### 4. ROL COMERCIAL (Oficina Virtual)
+
+Ejecutivo comercial que gestiona cartera de clientes.
+
+#### Subroles:
+
+| Subrol | Descripción | Permisos |
+|--------|-------------|----------|
+| **Gerente Comercial** | Administrador del área | Todos los permisos comerciales |
+| **Ejecutivo Comercial** | Gestiona su cartera | Ver y editar clientes asignados |
+| **Asistente Comercial** | Soporte | Ver clientes, crear gestiones |
+
+#### Permisos Detallados:
+
+```typescript
+interface PermisosComercial {
+  // Clientes
+  ver_mis_clientes: boolean;               // Ver clientes asignados
+  ver_todos_clientes: boolean;             // Ver cartera completa
+  crear_clientes: boolean;                 // Dar de alta nuevos
+  editar_clientes: boolean;                // Modificar datos
+  asignar_clientes: boolean;               // Reasignar a otro comercial
+
+  // Servicios y Contratos
+  ver_servicios_clientes: boolean;         // Ver servicios contratados
+  modificar_servicios: boolean;            // Cambiar planes
+  crear_servicios: boolean;                // Contratar nuevos servicios
+  cancelar_servicios: boolean;             // Dar de baja
+  aplicar_descuentos: boolean;             // Descuentos especiales
+  modificar_precios: boolean;              // Ajustar precios
+
+  // Facturas
+  ver_facturas_clientes: boolean;          // Ver facturas emitidas
+  crear_facturas: boolean;                 // Generar nuevas facturas
+  modificar_facturas: boolean;             // Editar facturas (con auditoría)
+  anular_facturas: boolean;                // Anular facturas
+  crear_nc_nd: boolean;                    // Notas de crédito/débito
+
+  // Cuenta Corriente
+  ver_cuenta_corriente: boolean;           // Ver movimientos
+  registrar_pagos_manuales: boolean;       // Registrar pagos offline
+  modificar_limite_credito: boolean;       // Ajustar límites
+  exportar_cc: boolean;                    // Exportar estado de cuenta
+
+  // Gestiones
+  ver_gestiones_clientes: boolean;         // Ver tickets de clientes
+  atender_gestiones: boolean;              // Responder y resolver
+  crear_gestiones: boolean;                // Crear gestiones internas
+  asignar_gestiones: boolean;              // Reasignar a otros
+  cerrar_gestiones: boolean;               // Marcar como resueltas
+
+  // Reportes
+  ver_reportes_cartera: boolean;           // Métricas de cartera
+  ver_reportes_facturacion: boolean;       // Reportes de ventas
+  exportar_reportes: boolean;              // Exportar datos
+
+  // Comunicaciones
+  enviar_emails_clientes: boolean;         // Enviar comunicaciones
+  enviar_whatsapp: boolean;                // WhatsApp Business
+  ver_historial_comunicaciones: boolean;   // Ver historial
+
+  // Configuración
+  configurar_campos_custom: boolean;       // Campos adicionales
+  gestionar_usuarios_clientes: boolean;    // CRUD usuarios del cliente
+}
+```
+
+---
+
+### 5. ROLES DUALES Y MÚLTIPLES
+
+Un usuario puede tener **múltiples roles simultáneamente**.
+
+#### Ejemplos de Combinaciones:
+
+| Usuario | Roles | Casos de Uso |
+|---------|-------|--------------|
+| Juan Pérez | Comprador + Comercial | Gestiona compras internas Y atiende clientes externos |
+| María González | Proveedor + Cliente | Provee servicios a Empresa A Y consume servicios de Empresa B |
+| Pedro Ruiz | Aprobador + Comercial | Aprueba compras Y gestiona cartera de clientes |
+| Ana Torres | Cliente + Proveedor | Consume HUB como cliente Y provee servicios a otros clientes de HUB |
+
+#### Implementación:
+
+```typescript
+interface UsuarioMultiRol {
+  userId: string;
+  email: string;
+  name: string;
+
+  // Roles activos
+  roles: {
+    // Portal de Compras
+    compras?: {
+      role: 'SOLICITANTE' | 'APROBADOR' | 'COMPRAS' | 'ADMIN';
+      tenantId: string;
+      permissions: PermisosCompras;
+    };
+
+    // Portal de Proveedores
+    proveedor?: {
+      role: 'PROVEEDOR_PRINCIPAL' | 'USUARIO_PROVEEDOR';
+      companyId: string;
+      clientes: string[];  // IDs de empresas a las que provee
+      permissions: PermisosProveedor;
+    };
+
+    // Oficina Virtual - Cliente
+    cliente?: {
+      role: 'CLIENTE_PRINCIPAL' | 'USUARIO_CLIENTE';
+      accountId: string;
+      permissions: PermisosCliente;
+    };
+
+    // Oficina Virtual - Comercial
+    comercial?: {
+      role: 'GERENTE_COMERCIAL' | 'EJECUTIVO_COMERCIAL';
+      tenantId: string;
+      clientesAsignados?: string[];  // IDs de clientes
+      permissions: PermisosComercial;
+    };
   };
 
-  // Como Cliente
-  como_cliente: {
-    proveedores: string[];  // IDs de proveedores
-    permisos: PermisosEmpresa;
-  };
+  // Contexto activo (qué rol está usando en este momento)
+  contextoActivo: 'compras' | 'proveedor' | 'cliente' | 'comercial';
 }
 ```
 
@@ -224,7 +376,7 @@ model UserCompany {
 }
 
 enum Role {
-  // Roles Empresa
+  // Roles Empresa (Compras)
   ADMIN_EMPRESA
   APROBADOR
   CONSULTA_EMPRESA
@@ -234,6 +386,16 @@ enum Role {
   PROVEEDOR_PRINCIPAL
   USUARIO_PROVEEDOR
   CONSULTA_PROVEEDOR
+
+  // Roles Oficina Virtual - Cliente
+  CLIENTE_PRINCIPAL
+  USUARIO_CLIENTE
+  CONSULTA_CLIENTE
+
+  // Roles Oficina Virtual - Comercial
+  GERENTE_COMERCIAL
+  EJECUTIVO_COMERCIAL
+  ASISTENTE_COMERCIAL
 }
 
 model Permission {
@@ -444,63 +606,121 @@ const documents = await prisma.document.findMany({
 └────────────────────────────────────────────────────────┘
 ```
 
-### Switch de Contexto (Rol Dual - Futuro)
+### Dashboard - ROL CLIENTE
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│ juan@empresa.com                    [Switch Context]   │
-│ Empresa A                                          [▼] │
-├────────────────────────────────────────────────────────┤
+│ [SIDEBAR]    Mi Oficina Virtual                        │
+│              ═══════════════════                       │
 │                                                        │
-│ Selecciona tu contexto:                                │
-│                                                        │
-│ ┌────────────────────┐  ┌────────────────────┐       │
-│ │ 📤 Como Proveedor  │  │ 📥 Como Cliente    │       │
-│ │                    │  │                    │       │
-│ │ Envío docs a:      │  │ Recibo docs de:    │       │
-│ │ • Empresa B        │  │ • Empresa C        │       │
-│ │ • Empresa D        │  │ • Empresa E        │       │
-│ │                    │  │                    │       │
-│ │ [Acceder →]        │  │ [Acceder →]        │       │
-│ └────────────────────┘  └────────────────────┘       │
+│ Menú:                                                  │
+│ • 📊 Dashboard                                         │
+│ • 📋 Mis Servicios                                     │
+│ • 💳 Mis Facturas                                      │
+│ • 💰 Mis Pagos                                         │
+│ • 📝 Gestiones                                         │
+│ • 🤖 Asistente AXIO                                    │
+│ • ⚙️ Mi Perfil                                         │
 │                                                        │
 └────────────────────────────────────────────────────────┘
+```
+
+### Dashboard - ROL COMERCIAL
+
+```
+┌────────────────────────────────────────────────────────┐
+│ [SIDEBAR]    Panel Comercial                           │
+│              ════════════════                          │
+│                                                        │
+│ Menú:                                                  │
+│ • 📊 Dashboard                                         │
+│ • 👥 Mis Clientes                                      │
+│ • 💳 Facturas                                          │
+│ • 📊 Cuenta Corriente                                  │
+│ • 📝 Gestiones                                         │
+│ • 📄 Contratos                                         │
+│ • 📈 Reportes                                          │
+│ • ⚙️ Configuración                                     │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+### Switch de Contexto (Roles Múltiples)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ juan@empresa.com                          [Switch Context]   [▼] │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│ Selecciona tu contexto:                                          │
+│                                                                  │
+│ ┌───────────────────┐  ┌───────────────────┐                   │
+│ │ 🛒 Compras        │  │ 📤 Proveedor      │                   │
+│ │                   │  │                   │                   │
+│ │ Gestiono compras  │  │ Proveo servicios  │                   │
+│ │ en Empresa A      │  │ a 3 clientes      │                   │
+│ │                   │  │                   │                   │
+│ │ [Acceder →]       │  │ [Acceder →]       │                   │
+│ └───────────────────┘  └───────────────────┘                   │
+│                                                                  │
+│ ┌───────────────────┐  ┌───────────────────┐                   │
+│ │ 🏢 Mi Cuenta      │  │ 👔 Comercial      │                   │
+│ │                   │  │                   │                   │
+│ │ Consumo HUB como  │  │ Gestiono cartera  │                   │
+│ │ cliente           │  │ de 24 clientes    │                   │
+│ │                   │  │                   │                   │
+│ │ [Acceder →]       │  │ [Acceder →]       │                   │
+│ └───────────────────┘  └───────────────────┘                   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## ✅ CHECKLIST DE IMPLEMENTACIÓN
 
-### Fase 1: Roles Base
-- [ ] Schema Prisma con roles
-- [ ] CRUD de usuarios
-- [ ] CRUD de empresas
-- [ ] Asignación de roles
+### Fase 1: Roles Base (Completado)
+- [x] Schema Prisma con roles Empresa y Proveedor
+- [x] CRUD de usuarios
+- [x] CRUD de empresas
+- [x] Asignación de roles
 
-### Fase 2: Permisos
-- [ ] Definir permisos por rol
-- [ ] Middleware de autorización
-- [ ] API route protection
-- [ ] Frontend guards
+### Fase 2: Permisos Base (Completado)
+- [x] Definir permisos por rol Empresa/Proveedor
+- [x] Middleware de autorización
+- [x] API route protection
+- [x] Frontend guards
 
-### Fase 3: Multi-Tenant
-- [ ] UserCompany relationship
-- [ ] Selector de empresa
-- [ ] Aislamiento de datos por companyId
-- [ ] Switch de contexto
+### Fase 3: Multi-Tenant (Completado)
+- [x] UserCompany relationship
+- [x] Selector de empresa
+- [x] Aislamiento de datos por companyId
+- [x] Switch de contexto
 
-### Fase 4: Rol Dual (Futuro)
-- [ ] Contexto proveedor/cliente
-- [ ] UI de switch
-- [ ] Permisos combinados
-- [ ] Data scoping por contexto
+### Fase 4: Oficina Virtual - Roles Cliente y Comercial (Próxima Iteración)
+- [ ] Ampliar enum Role con CLIENTE_* y COMERCIAL_*
+- [ ] Definir permisos Cliente
+- [ ] Definir permisos Comercial
+- [ ] Modelo de datos para Cuentas de Cliente
+- [ ] Modelo de datos para Servicios Contratados
+- [ ] Middleware para roles Cliente/Comercial
+- [ ] API route protection por rol
+- [ ] Frontend guards por rol
+
+### Fase 5: Roles Múltiples
+- [ ] Un usuario puede tener múltiples roles
+- [ ] Switch de contexto entre 4 roles
+- [ ] UI mejorada con selector de contexto
+- [ ] Permisos combinados según contexto activo
+- [ ] Data scoping por contexto y rol
 
 ---
 
 ## 📚 PRÓXIMOS PASOS
 
 Ver también:
-- `/docs/PORTAL_DOCUMENTOS_DESIGN.md` - Módulo de documentos
-- `/docs/PAGOS_CUENTA_CORRIENTE_DESIGN.md` - Módulo de pagos
+- `/docs/PORTAL_DOCUMENTOS_DESIGN.md` - Módulo de documentos (Proveedores)
+- `/docs/PAGOS_DESIGN.md` - Módulo de pagos (Proveedores)
 - `/docs/ONBOARDING_PROVEEDOR_DESIGN.md` - Alta de proveedores
+- `/docs/OFICINA_VIRTUAL_DESIGN.md` - Portal de Cliente y Panel Comercial (Próxima iteración)
 - `/docs/MULTI_TENANT.md` - Arquitectura multi-tenant existente
