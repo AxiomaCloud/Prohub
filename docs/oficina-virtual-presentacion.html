@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OFICINA VIRTUAL - Portal de Cliente | HUB ProHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            background: #F9FAFB;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #8E6AAA 0%, #352151 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .version {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+
+        /* Navigation */
+        .nav {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav a {
+            color: #6B7280;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav a:hover {
+            color: #8E6AAA;
+        }
+
+        /* Section */
+        section {
+            padding: 60px 20px;
+        }
+
+        section:nth-child(even) {
+            background: white;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: #1F2937;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: 1.8rem;
+            color: #352151;
+            margin: 40px 0 20px;
+        }
+
+        h4 {
+            font-size: 1.3rem;
+            color: #6B7280;
+            margin: 20px 0 10px;
+        }
+
+        /* Cards Grid */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+        }
+
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .card h3 {
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .card li {
+            padding: 8px 0;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .card li:last-child {
+            border-bottom: none;
+        }
+
+        .card li:before {
+            content: "✓";
+            color: #10B981;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        /* Roles Table */
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .role-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #8E6AAA;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .role-card h4 {
+            margin-top: 0;
+            color: #352151;
+        }
+
+        .role-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .role-type.externo {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .role-type.interno {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        /* Mockup */
+        .mockup {
+            background: #1F2937;
+            color: #E5E7EB;
+            padding: 30px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            overflow-x: auto;
+            margin: 30px 0;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .mockup pre {
+            margin: 0;
+            white-space: pre;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+            margin: 40px 0;
+        }
+
+        .timeline:before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background: #8E6AAA;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(odd) {
+            flex-direction: row-reverse;
+        }
+
+        .timeline-content {
+            width: 45%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .timeline-marker {
+            width: 20px;
+            height: 20px;
+            background: #8E6AAA;
+            border: 4px solid white;
+            border-radius: 50%;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 0 4px #8E6AAA;
+        }
+
+        /* Features List */
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #E5E7EB;
+            transition: border-color 0.3s;
+        }
+
+        .feature-item:hover {
+            border-color: #8E6AAA;
+        }
+
+        .feature-item h4 {
+            margin-top: 0;
+            color: #352151;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Estimations */
+        .estimation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .estimation-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .estimation-card.mvp {
+            border-top: 4px solid #3B82F6;
+        }
+
+        .estimation-card.full {
+            border-top: 4px solid #10B981;
+        }
+
+        .estimation-time {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #352151;
+            margin: 20px 0;
+        }
+
+        .estimation-label {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        /* Screenshots */
+        .screenshot {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+
+        .screenshot-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Footer */
+        .footer {
+            background: #1F2937;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: #8E6AAA;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 20px 10px;
+            transition: background 0.3s;
+        }
+
+        .cta-button:hover {
+            background: #352151;
+        }
+
+        .cta-button.secondary {
+            background: transparent;
+            border: 2px solid white;
+        }
+
+        .cta-button.secondary:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            .timeline:before {
+                left: 20px;
+            }
+
+            .timeline-item,
+            .timeline-item:nth-child(odd) {
+                flex-direction: row;
+            }
+
+            .timeline-content {
+                width: calc(100% - 60px);
+                margin-left: 60px;
+            }
+
+            .timeline-marker {
+                left: 20px;
+            }
+
+            .estimation-time {
+                font-size: 2rem;
+            }
+        }
+
+        /* Highlight Box */
+        .highlight {
+            background: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .highlight strong {
+            color: #92400E;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        th {
+            background: #F3F4F6;
+            font-weight: 600;
+            color: #1F2937;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #F9FAFB;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge.new {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .badge.pending {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <h1>🏢 OFICINA VIRTUAL</h1>
+            <p>Portal de Cliente y Panel Comercial para HUB ProHub</p>
+            <div class="version">Próxima Iteración • Versión 2.1</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="#vision">Visión</a>
+            <a href="#roles">Nuevos Roles</a>
+            <a href="#cliente">Portal Cliente</a>
+            <a href="#comercial">Panel Comercial</a>
+            <a href="#axio">Asistente AXIO</a>
+            <a href="#estimaciones">Estimaciones</a>
+        </div>
+    </nav>
+
+    <!-- Visión General -->
+    <section id="vision">
+        <div class="container">
+            <h2>🎯 Visión General</h2>
+            <p style="text-align: center; font-size: 1.2rem; max-width: 800px; margin: 0 auto 40px;">
+                Extender HUB con un <strong>portal de autogestión para clientes</strong> que consumen nuestros servicios
+                y un <strong>panel comercial</strong> para gestionar la cartera de clientes.
+            </p>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-icon">👥</div>
+                    <h3>2 Nuevos Roles</h3>
+                    <ul>
+                        <li>Cliente (Externo)</li>
+                        <li>Comercial (Interno)</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🎨</div>
+                    <h3>Módulos Multi-Rol</h3>
+                    <ul>
+                        <li>Portal de Proveedores</li>
+                        <li>Sistema de Compras</li>
+                        <li>Oficina Virtual (Nuevo)</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🤖</div>
+                    <h3>IA Integrada</h3>
+                    <ul>
+                        <li>Asistente AXIO</li>
+                        <li>Respuestas contextuales</li>
+                        <li>Soporte 24/7</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Nuevos Roles -->
+    <section id="roles">
+        <div class="container">
+            <h2>👥 Nuevos Roles del Sistema</h2>
+
+            <div class="roles-grid">
+                <div class="role-card">
+                    <span class="role-type externo">EXTERNO</span>
+                    <h4>🏢 Cliente</h4>
+                    <p>Consume servicios de la empresa (software, suscripciones, etc.)</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #6B7280;">
+                        <strong>Acciones:</strong> Consulta servicios, facturas, pagos y realiza gestiones
+                    </p>
+                </div>
+
+                <div class="role-card">
+                    <span class="role-type interno">INTERNO</span>
+                    <h4>👔 Comercial</h4>
+                    <p>Ejecutivo que gestiona cartera de clientes</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #6B7280;">
+                        <strong>Acciones:</strong> Gestiona clientes, modifica contratos/facturas, reportes
+                    </p>
+                </div>
+
+                <div class="role-card">
+                    <span class="role-type interno">INTERNO</span>
+                    <h4>🛒 Comprador</h4>
+                    <p>Gestiona compras y proveedores internos</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #6B7280;">
+                        <strong>Módulo:</strong> Sistema de Compras
+                    </p>
+                </div>
+
+                <div class="role-card">
+                    <span class="role-type externo">EXTERNO</span>
+                    <h4>📦 Proveedor</h4>
+                    <p>Cotiza, entrega y factura servicios/productos</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #6B7280;">
+                        <strong>Módulo:</strong> Portal de Proveedores
+                    </p>
+                </div>
+            </div>
+
+            <div class="highlight">
+                <strong>🌟 Característica Multi-Rol:</strong> Un usuario puede tener múltiples roles simultáneamente.
+                Ejemplo: Juan es <em>Comprador</em> en su empresa Y <em>Comercial</em> atendiendo clientes externos.
+            </div>
+        </div>
+    </section>
+
+    <!-- Portal Cliente -->
+    <section id="cliente">
+        <div class="container">
+            <h2>🏢 Portal Cliente - Oficina Virtual</h2>
+            <p style="text-align: center; font-size: 1.1rem; margin-bottom: 40px;">
+                Los clientes pueden autogestionar su cuenta, consultar servicios, facturas, pagos y realizar trámites.
+            </p>
+
+            <h3>✨ Funcionalidades Principales</h3>
+            <div class="features-list">
+                <div class="feature-item">
+                    <h4>📊 Dashboard</h4>
+                    <p>Resumen de cuenta con estado, servicios activos, próximos vencimientos y notificaciones</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>📋 Mis Servicios</h4>
+                    <p>Consulta servicios contratados: qué tiene, bajo qué modalidad, características, fecha de renovación</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>💳 Mis Facturas</h4>
+                    <p>Listado de facturas con estados (vencida, pendiente, pagada), descarga de PDFs, exportación</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>💰 Mis Pagos</h4>
+                    <p>Historial de pagos realizados, descargar comprobantes, ver retenciones</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>📝 Gestiones</h4>
+                    <p>Sistema de tickets/trámites: cambios de plan, consultas, reclamos, soporte técnico</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>🤖 Asistente AXIO</h4>
+                    <p>IA conversacional para responder consultas, guiar al usuario, ejecutar acciones rápidas</p>
+                </div>
+            </div>
+
+            <h3>🖥️ Vista del Dashboard</h3>
+            <div class="mockup">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│ [SIDEBAR]    🏢 Mi Oficina Virtual              [Usuario Cliente]   │
+│                                                                     │
+│  Bienvenido, Juan Pérez                                             │
+│  Empresa: ACME Corp SA                                              │
+│  CUIT: 30-12345678-9                                                │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ RESUMEN DE CUENTA                                            │  │
+│  │                                                              │  │
+│  │ ┌────────────┐ ┌────────────┐ ┌────────────┐               │  │
+│  │ │ Estado     │ │ Servicios  │ │ Próximo    │               │  │
+│  │ │ Cuenta     │ │ Activos    │ │ Venc.      │               │  │
+│  │ │ ✅ AL DÍA  │ │ 3          │ │ 15/12/2025 │               │  │
+│  │ │            │ │ contratados│ │ $125,000   │               │  │
+│  │ └────────────┘ └────────────┘ └────────────┘               │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  ACCESOS RÁPIDOS                                                    │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐                     │
+│  │📋 Servicios│ │💳 Facturas │ │💰 Pagos    │                     │
+│  └────────────┘ └────────────┘ └────────────┘                     │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐                     │
+│  │📝 Gestiones│ │🤖 AXIO     │ │📞 Contacto │                     │
+│  └────────────┘ └────────────┘ └────────────┘                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+            </div>
+
+            <h3>📄 Vista de Facturas</h3>
+            <div class="mockup">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│ [SIDEBAR]    💳 Mis Facturas                                        │
+│              ═══════════                                            │
+│                                                                     │
+│  [🔍 Filtrar]                ← 1/5 →          [⬇️ Exportar]        │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ Estado  Número      Fecha    Vencimiento Monto    Acciones   │  │
+│  ├──────────────────────────────────────────────────────────────┤  │
+│  │ 🔴      FC-B-189    01/10/25 21/10/25    $125,000 [👁️][⬇️][💰]│  │
+│  │ Vencida                      -15d        Adeuda:             │  │
+│  │                                          $125,000            │  │
+│  ├──────────────────────────────────────────────────────────────┤  │
+│  │ 🟡      FC-B-190    01/11/25 21/11/25    $175,000 [👁️][⬇️][💰]│  │
+│  │ Pdte.                        Vence en 8d Adeuda:             │  │
+│  │                                          $175,000            │  │
+│  ├──────────────────────────────────────────────────────────────┤  │
+│  │ ✅      FC-B-188    01/09/25 21/09/25    $125,000 [👁️][⬇️]   │  │
+│  │ Pagada                       Pagada      $125,000            │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  [💰 Pagar todas las pendientes]                                   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Panel Comercial -->
+    <section id="comercial">
+        <div class="container">
+            <h2>👔 Panel Comercial</h2>
+            <p style="text-align: center; font-size: 1.1rem; margin-bottom: 40px;">
+                Los ejecutivos comerciales gestionan su cartera de clientes, modifican contratos/facturas y atienden gestiones.
+            </p>
+
+            <h3>✨ Funcionalidades Principales</h3>
+            <div class="features-list">
+                <div class="feature-item">
+                    <h4>📊 Dashboard</h4>
+                    <p>Métricas de cartera: clientes activos, facturación, deuda, gestiones pendientes</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>👥 Mis Clientes</h4>
+                    <p>Listado de clientes asignados, estado de cuenta, servicios contratados</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>💳 Gestión de Facturas</h4>
+                    <p>Ver, crear, modificar facturas (con auditoría), generar NC/ND</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>📊 Cuenta Corriente</h4>
+                    <p>Ver movimientos, saldo, deuda, límite de crédito por cliente</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>📄 Contratos</h4>
+                    <p>Modificar servicios, planes, precios, aplicar descuentos, cambiar modalidades</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>📝 Gestiones</h4>
+                    <p>Atender solicitudes de clientes, responder, asignar, resolver tickets</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>📈 Reportes</h4>
+                    <p>Métricas de facturación, cobranza, nuevos contratos, bajas</p>
+                </div>
+            </div>
+
+            <h3>🖥️ Vista del Dashboard Comercial</h3>
+            <div class="mockup">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│ [SIDEBAR]    👔 Panel Comercial                [Usuario Comercial]  │
+│                                                                     │
+│  Bienvenida, María González                                         │
+│  Ejecutiva de Cuentas                                               │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ RESUMEN DE CARTERA                                           │  │
+│  │                                                              │  │
+│  │ ┌────────────┐ ┌────────────┐ ┌────────────┐               │  │
+│  │ │ Clientes   │ │ Facturación│ │ Deuda Total│               │  │
+│  │ │ Activos    │ │ Mes        │ │            │               │  │
+│  │ │ 24         │ │ $4,500,000 │ │ $850,000   │               │  │
+│  │ │ ↗️ +2 este │ │ ↗️ +12%    │ │ 🔴 12 venc.│               │  │
+│  │ │   mes      │ │            │ │            │               │  │
+│  │ └────────────┘ └────────────┘ └────────────┘               │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  ALERTAS Y NOTIFICACIONES                                           │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ 🔴 Cliente ACME Corp tiene 1 factura vencida - $125,000     │  │
+│  │    [📞 Contactar] [👁️ Ver cuenta]                            │  │
+│  ├──────────────────────────────────────────────────────────────┤  │
+│  │ 💬 Nueva gestión de TechSoft SA - Solicitud cambio plan     │  │
+│  │    [👁️ Revisar]                                              │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+            </div>
+
+            <h3>💼 Ficha de Cliente</h3>
+            <div class="mockup">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│ ← Volver    ACME Corp SA                                            │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ INFORMACIÓN DEL CLIENTE                                      │  │
+│  │                                                              │  │
+│  │ Razón Social: ACME Corp SA                                   │  │
+│  │ CUIT: 30-12345678-9                                          │  │
+│  │ Email: contacto@acmecorp.com                                 │  │
+│  │ Estado: ⚠️ CON DEUDA VENCIDA                                 │  │
+│  │ Antigüedad: 2 años 5 meses                                   │  │
+│  │ Ejecutivo: María González                                    │  │
+│  │                                                              │  │
+│  │ [✏️ Editar datos] [📧 Enviar email] [📞 Registrar llamada]   │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  TABS: [Servicios] [Cuenta Corriente] [Facturas] [Pagos]           │
+│                                                                     │
+│  ═══ SERVICIOS ACTIVOS ═════════════════════════════════════════   │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ Servicio            Plan         Modalidad  Precio  Acciones │  │
+│  ├──────────────────────────────────────────────────────────────┤  │
+│  │ 💼 HUB Sistema     Empresarial   Mensual   $100,000 [✏️][🗑️]│  │
+│  │    25 usuarios     Premium                                   │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  Total mensual: $175,000.00 + IVA = $211,750.00                    │
+│  [+ Agregar servicio] [📋 Generar propuesta]                       │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Asistente AXIO -->
+    <section id="axio">
+        <div class="container">
+            <h2>🤖 Asistente AXIO (IA)</h2>
+            <p style="text-align: center; font-size: 1.1rem; margin-bottom: 40px;">
+                Asistente conversacional con IA integrada para soporte 24/7 a clientes.
+            </p>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-icon">💬</div>
+                    <h3>Conversacional</h3>
+                    <ul>
+                        <li>Chat en lenguaje natural</li>
+                        <li>Contexto del cliente</li>
+                        <li>Historial de conversación</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">⚡</div>
+                    <h3>Acciones Rápidas</h3>
+                    <ul>
+                        <li>Ver estado de facturas</li>
+                        <li>Consultar servicios</li>
+                        <li>Crear gestiones</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🎯</div>
+                    <h3>Inteligente</h3>
+                    <ul>
+                        <li>Entrenado con datos del negocio</li>
+                        <li>Respuestas contextuales</li>
+                        <li>Aprende de interacciones</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>💬 Ejemplo de Conversación</h3>
+            <div class="mockup">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│ 🤖 Asistente AXIO                                                   │
+│                                                                     │
+│  👤 TÚ - 14:30                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ ¿Tengo alguna factura vencida? ¿Cuánto debo?                 │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  🤖 AXIO - 14:30                                                    │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ Sí, tienes 1 factura vencida:                                │  │
+│  │                                                              │  │
+│  │ • Factura FC B 00001-189                                     │  │
+│  │   Vencimiento: 21/10/2025 (vencida hace 15 días)            │  │
+│  │   Monto adeudado: $125,000.00                                │  │
+│  │                                                              │  │
+│  │ También tienes 1 factura próxima a vencer:                   │  │
+│  │ • FC B 00001-190 - Vence 21/11/2025 (8 días) - $175,000     │  │
+│  │                                                              │  │
+│  │ ¿Quieres que te ayude con el pago?                           │  │
+│  │ [💰 Pagar ahora] [📄 Ver facturas] [💬 Plan de pago]        │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  👤 TÚ - 14:32                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ ¿Cuáles son mis servicios contratados?                       │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  🤖 AXIO - 14:32                                                    │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ Actualmente tienes 3 servicios activos:                      │  │
+│  │                                                              │  │
+│  │ 1. 💼 HUB - Plan Empresarial Premium                         │  │
+│  │    25 usuarios - $100,000/mes                                │  │
+│  │                                                              │  │
+│  │ 2. 🔧 Soporte Técnico Plus                                   │  │
+│  │    $25,000/mes                                               │  │
+│  │                                                              │  │
+│  │ 3. 📊 Módulo Business Intelligence                           │  │
+│  │    $50,000/mes                                               │  │
+│  │                                                              │  │
+│  │ Total mensual: $175,000 + IVA                                │  │
+│  │                                                              │  │
+│  │ [📋 Ver detalles] [✏️ Modificar] [📊 Ver uso]               │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Estimaciones -->
+    <section id="estimaciones">
+        <div class="container">
+            <h2>📅 Estimaciones de Desarrollo</h2>
+
+            <div class="estimation-grid">
+                <div class="estimation-card mvp">
+                    <div class="estimation-label">MVP - Rápido</div>
+                    <div class="estimation-time">6 semanas</div>
+                    <h4>Portal Cliente Básico</h4>
+                    <ul style="text-align: left; margin-top: 20px;">
+                        <li>✓ Dashboard con resumen</li>
+                        <li>✓ Mis Servicios (solo consulta)</li>
+                        <li>✓ Mis Facturas (listado y descarga)</li>
+                        <li>✓ Mis Pagos (historial)</li>
+                        <li>✓ Sistema de Gestiones básico</li>
+                        <li>✓ Responsive mobile</li>
+                    </ul>
+                </div>
+
+                <div class="estimation-card full">
+                    <div class="estimation-label">Versión Completa</div>
+                    <div class="estimation-time">12 semanas</div>
+                    <h4>Portal + Comercial + AXIO</h4>
+                    <ul style="text-align: left; margin-top: 20px;">
+                        <li>✓ Todo lo del MVP</li>
+                        <li>✓ Panel Comercial completo</li>
+                        <li>✓ Edición de facturas/contratos</li>
+                        <li>✓ Cuenta corriente</li>
+                        <li>✓ Asistente AXIO integrado</li>
+                        <li>✓ Notificaciones automáticas</li>
+                        <li>✓ Reportes y métricas</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>📈 Roadmap de Desarrollo</h3>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h4>Semanas 1-2</h4>
+                        <p>Roles y permisos + Modelos de datos para Cliente/Comercial</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h4>Semanas 3-4</h4>
+                        <p>Portal Cliente: Dashboard, Servicios, Facturas, Pagos (consulta)</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h4>Semanas 5-6</h4>
+                        <p>Sistema de Gestiones + Testing MVP + Deploy</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h4>Semanas 7-8</h4>
+                        <p>Panel Comercial: Dashboard, Clientes, Cuenta Corriente</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h4>Semanas 9-10</h4>
+                        <p>Edición facturas/contratos + Auditoría + Reportes</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h4>Semanas 11-12</h4>
+                        <p>Asistente AXIO + Notificaciones + Testing Final + Deploy</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Integración -->
+    <section>
+        <div class="container">
+            <h2>🔗 Integración con Módulos Existentes</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Módulo</th>
+                        <th>Relación</th>
+                        <th>Reutilización</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Portal de Proveedores</strong></td>
+                        <td>Arquitectura similar pero roles diferentes</td>
+                        <td>Componentes UI, Sistema de notificaciones, Axioma Docs (PDFs)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sistema de Compras</strong></td>
+                        <td>Clientes pueden ser compradores internos</td>
+                        <td>Dashboard unificado para usuarios multi-rol</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sistema de Roles</strong></td>
+                        <td>Ampliar roles existentes</td>
+                        <td>Multi-tenant, permisos granulares, switch de contexto</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>🌟 Ventajas de la Integración</h3>
+            <div class="features-list">
+                <div class="feature-item">
+                    <h4>♻️ Reutilización</h4>
+                    <p>Aprovecha componentes, diseño y lógica ya existente del portal de proveedores</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>🎨 Consistencia</h4>
+                    <p>Misma paleta de colores, tipografía y UX en todos los módulos</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>👥 Multi-Rol</h4>
+                    <p>Un usuario puede ser Comprador, Proveedor, Cliente y Comercial simultáneamente</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>📊 Datos Unificados</h4>
+                    <p>Modelo de datos coherente que relaciona todos los módulos</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resumen Ejecutivo -->
+    <section>
+        <div class="container">
+            <h2>📊 Resumen Ejecutivo</h2>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-icon">🎯</div>
+                    <h3>Objetivo</h3>
+                    <p style="margin-top: 10px;">
+                        Extender HUB con autogestión de clientes y panel comercial,
+                        mejorando la experiencia del cliente y eficiencia comercial.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">💡</div>
+                    <h3>Valor Agregado</h3>
+                    <ul>
+                        <li>Clientes autogestionan su cuenta 24/7</li>
+                        <li>Reducción de consultas manuales</li>
+                        <li>Comerciales más eficientes</li>
+                        <li>IA para soporte automatizado</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📈</div>
+                    <h3>Impacto</h3>
+                    <ul>
+                        <li>Mejor experiencia del cliente</li>
+                        <li>Gestión comercial centralizada</li>
+                        <li>Visibilidad de métricas</li>
+                        <li>Escalabilidad del negocio</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="highlight" style="margin-top: 40px;">
+                <strong>📋 Estado:</strong> Diseño completo documentado en
+                <code>/docs/OFICINA_VIRTUAL_DESIGN.md</code> y
+                <code>/docs/ROLES.md</code>.
+                Pendiente de aprobación para iniciar desarrollo.
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer / CTA -->
+    <div class="footer">
+        <div class="footer-content">
+            <h2 style="color: white; margin-bottom: 20px;">¿Próximos Pasos?</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 30px;">
+                Revisá la documentación completa y decidí si arrancamos con el MVP (6 semanas)
+                o la versión completa (12 semanas).
+            </p>
+
+            <a href="../docs/OFICINA_VIRTUAL_DESIGN.md" class="cta-button">
+                📄 Ver Documentación Completa
+            </a>
+
+            <a href="../docs/ROLES.md" class="cta-button secondary">
+                👥 Ver Arquitectura de Roles
+            </a>
+
+            <p style="margin-top: 40px; opacity: 0.7;">
+                Desarrollado por AXIOMA • Versión 2.1 • Diciembre 2025
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scroll para navegación
+        document.querySelectorAll('.nav a').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            });
+        });
+
+        // Highlight active nav item on scroll
+        window.addEventListener('scroll', () => {
+            let current = '';
+            document.querySelectorAll('section').forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            document.querySelectorAll('.nav a').forEach(link => {
+                link.style.color = '#6B7280';
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.style.color = '#8E6AAA';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
