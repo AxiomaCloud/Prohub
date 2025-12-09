@@ -409,27 +409,19 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess, supplierCuit, 
           {/* Step 3: Review */}
           {step === 'review' && parsedDocument && (
             <div className="space-y-4">
-              {/* Confidence indicator - different message for basic vs AI extraction */}
-              {parsedDocument.parseData?.metadata?.metodoExtraccion === 'BASIC_REGEX' ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 text-blue-700">
-                  <ScanLine className="w-4 h-4" />
-                  <span className="text-sm">
-                    Datos extraídos automáticamente - Revisa y completa la información
-                  </span>
-                </div>
-              ) : parsedDocument.parseConfidence && (
-                <div className={`flex items-center gap-2 p-3 rounded-lg ${
-                  parsedDocument.parseConfidence >= 0.8 ? 'bg-green-50 text-green-700' :
-                  parsedDocument.parseConfidence >= 0.5 ? 'bg-yellow-50 text-yellow-700' :
-                  'bg-red-50 text-red-700'
-                }`}>
-                  <Bot className="w-4 h-4" />
-                  <span className="text-sm">
-                    Axio extrajo los datos con {Math.round(parsedDocument.parseConfidence * 100)}% de confianza
-                    {parsedDocument.parseConfidence < 0.8 && ' - Revisa los datos cuidadosamente'}
-                  </span>
-                </div>
-              )}
+              {/* Confidence indicator */}
+              <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                parsedDocument.parseConfidence && parsedDocument.parseConfidence >= 0.8 ? 'bg-green-50 text-green-700' :
+                parsedDocument.parseConfidence && parsedDocument.parseConfidence >= 0.5 ? 'bg-yellow-50 text-yellow-700' :
+                'bg-purple-50 text-purple-700'
+              }`}>
+                <Bot className="w-4 h-4" />
+                <span className="text-sm">
+                  {parsedDocument.parseConfidence
+                    ? `Axio extrajo los datos con ${Math.round(parsedDocument.parseConfidence * 100)}% de confianza${parsedDocument.parseConfidence < 0.8 ? ' - Revisa los datos cuidadosamente' : ''}`
+                    : 'Datos extraídos con Axio - Revisa y completa la información'}
+                </span>
+              </div>
 
               {/* Editable Extracted Data */}
               <div className="space-y-2">
