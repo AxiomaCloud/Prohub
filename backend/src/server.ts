@@ -81,7 +81,10 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 // Servir archivos estáticos de uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+// En producción __dirname apunta a dist/, así que usamos process.cwd() para la raíz del proyecto
+const uploadsPath = path.join(process.cwd(), 'uploads');
+console.log('📁 [SERVER] Serving uploads from:', uploadsPath);
+app.use('/uploads', express.static(uploadsPath))
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {

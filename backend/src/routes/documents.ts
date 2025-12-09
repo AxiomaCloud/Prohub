@@ -9,9 +9,11 @@ import { BasicParseService } from '../services/basicParseService';
 const router = Router();
 
 // Configure multer for file uploads
+// Usar process.cwd() para consistencia entre desarrollo y producción
+const uploadsDir = path.join(process.cwd(), 'uploads');
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads'));
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -118,7 +120,7 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
     if (existingDocument) {
       // Delete the uploaded file since it's a duplicate
       const fs = require('fs');
-      const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+      const filePath = path.join(uploadsDir, req.file.filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -194,7 +196,7 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
     console.log(`✅ [DOCUMENTS] Document uploaded: ${document.number} (${document.id})`);
 
     // Process document - use AI or basic extraction based on useAI parameter
-    const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+    const filePath = path.join(uploadsDir, req.file.filename);
 
     try {
       let updatedDocument;
@@ -401,7 +403,7 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
     // Delete uploaded file if database operation failed
     if (req.file) {
       const fs = require('fs');
-      const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+      const filePath = path.join(uploadsDir, req.file.filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -533,7 +535,7 @@ router.post('/parse', authenticate, upload.single('file'), async (req: Request, 
 
     console.log(`📤 [PARSE] Parsing document for preview: ${req.file.originalname}`);
 
-    const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+    const filePath = path.join(uploadsDir, req.file.filename);
 
     try {
       const parseResult = await ParseService.processDocument(filePath, req.file.originalname, {
@@ -602,7 +604,7 @@ router.post('/parse', authenticate, upload.single('file'), async (req: Request, 
     // Clean up file if exists
     if (req.file) {
       const fs = require('fs');
-      const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+      const filePath = path.join(uploadsDir, req.file.filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -858,7 +860,7 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
 
     // Delete the physical file
     const fs = require('fs');
-    const filePath = path.join(__dirname, '../../uploads', path.basename(document.fileUrl));
+    const filePath = path.join(uploadsDir, path.basename(document.fileUrl));
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
@@ -1065,7 +1067,7 @@ router.post('/:id/parse-ai', authenticate, async (req: Request, res: Response) =
 
     // Check if file exists
     const fs = require('fs');
-    const filePath = path.join(__dirname, '../../uploads', path.basename(document.fileUrl));
+    const filePath = path.join(uploadsDir, path.basename(document.fileUrl));
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({

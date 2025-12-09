@@ -12,8 +12,8 @@ import crypto from 'crypto';
 const router = Router();
 const prisma = new PrismaClient();
 
-// Configurar multer para documentos de proveedores
-const uploadDir = path.join(__dirname, '../../uploads/suppliers');
+// Configurar multer para documentos de proveedores (usar process.cwd() para consistencia en producción)
+const uploadDir = path.join(process.cwd(), 'uploads/suppliers');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

@@ -138,7 +138,7 @@ const statusIcons: Record<Document['status'], React.ComponentType<{ className?: 
 export default function DocumentDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { get, post, delete: deleteApi } = useApiClient();
+  const { get, post, patch, delete: deleteApi } = useApiClient();
   const { confirm } = useConfirmDialog();
   const { user } = useAuth();
 
@@ -147,6 +147,8 @@ export default function DocumentDetailPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const [statusReason, setStatusReason] = useState('');
 
   useEffect(() => {
     if (params.id) {
@@ -251,6 +253,31 @@ export default function DocumentDetailPage() {
     }
   };
 
+  const handleChangeStatus = async (newStatus: Document['status']) => {
+    if (!document || newStatus === document.status) return;
+
+    setChangingStatus(true);
+    try {
+      await patch(`/api/documents/${document.id}/status`, {
+        status: newStatus,
+        reason: statusReason.trim() || undefined
+      });
+
+      // Recargar el documento para ver los cambios
+      await fetchDocument();
+      setStatusReason('');
+    } catch (error) {
+      console.error('Error changing status:', error);
+      await confirm(
+        'Hubo un error al cambiar el estado. Por favor, intenta nuevamente.',
+        'Error',
+        'danger'
+      );
+    } finally {
+      setChangingStatus(false);
+    }
+  };
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -342,6 +369,42 @@ export default function DocumentDetailPage() {
           {/* Status and Basic Info */}
           <div className="bg-white rounded-lg shadow-sm border border-border p-6">
             <h2 className="text-lg font-semibold text-text-primary mb-4">Información General</h2>
+
+            {/* Cambiar Estado */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <label className="block text-sm font-medium text-text-secondary mb-2">Cambiar Estado</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={document.status}
+                  onChange={(e) => handleChangeStatus(e.target.value as Document['status'])}
+                  disabled={changingStatus}
+                  className="flex-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {Object.entries(documentStatusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder="Motivo (opcional)"
+                  disabled={changingStatus}
+                  className="flex-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                />
+                {changingStatus && (
+                  <div className="flex items-center text-sm text-text-secondary">
+                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    Cambiando...
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-text-secondary mt-2">
+                Estado actual: <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[document.status]}`}>
+                  {documentStatusLabels[document.status]}
+                </span>
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -449,30 +512,6 @@ export default function DocumentDetailPage() {
             </div>
           </div>
 
-          {/* Organizations */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-6">
-            <h2 className="text-lg font-semibold text-text-primary mb-4">Organizaciones</h2>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-5 h-5 text-palette-purple" />
-                  <label className="text-sm font-medium text-text-secondary">Proveedor</label>
-                </div>
-                <p className="text-text-primary font-medium">{document.providerTenant.name}</p>
-                <p className="text-text-secondary text-sm">{document.providerTenant.taxId}</p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-5 h-5 text-palette-blue" />
-                  <label className="text-sm font-medium text-text-secondary">Cliente</label>
-                </div>
-                <p className="text-text-primary font-medium">{document.clientTenant.name}</p>
-                <p className="text-text-secondary text-sm">{document.clientTenant.taxId}</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Sidebar */}

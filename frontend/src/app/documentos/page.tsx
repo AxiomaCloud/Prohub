@@ -434,7 +434,7 @@ export default function DocumentsPage() {
                     Fecha
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Empresa
+                    Emisor
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Monto Total
@@ -477,8 +477,13 @@ export default function DocumentsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-text-primary truncate max-w-[150px]" title={doc.clientTenant.name}>
-                        {doc.clientTenant.name}
+                      <div className="max-w-[200px]" title={`${doc.providerTenant.name} - ${doc.providerTenant.taxId}`}>
+                        <div className="text-sm text-text-primary truncate">
+                          {doc.providerTenant.name}
+                        </div>
+                        <div className="text-xs text-text-secondary">
+                          {doc.providerTenant.taxId}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
