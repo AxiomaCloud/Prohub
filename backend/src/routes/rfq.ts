@@ -654,9 +654,11 @@ router.post('/:id/publish', authenticate, async (req: Request, res: Response) =>
 
     // Enviar notificaciones por email a cada proveedor
     if (updated) {
-      try {
-        for (const invitation of updated.invitedSuppliers) {
-          if (invitation.supplier.email) {
+      console.log(`📧 [RFQ Publish] Enviando invitaciones a ${updated.invitedSuppliers.length} proveedores`);
+      for (const invitation of updated.invitedSuppliers) {
+        if (invitation.supplier.email) {
+          try {
+            console.log(`  → Enviando a: ${invitation.supplier.nombre} (${invitation.supplier.email})`);
             await NotificationService.notifyRFQInvitation(
               invitation.supplier.email,
               invitation.supplier.nombre,
@@ -667,11 +669,14 @@ router.post('/:id/publish', authenticate, async (req: Request, res: Response) =>
               updated.id,
               updated.tenantId
             );
+            console.log(`  ✅ Email enviado a ${invitation.supplier.email}`);
+          } catch (notifError) {
+            console.error(`  ❌ Error enviando a ${invitation.supplier.email}:`, notifError);
+            // No fallar la operacion por errores de notificacion
           }
+        } else {
+          console.log(`  ⚠️ Proveedor ${invitation.supplier.nombre} sin email configurado`);
         }
-      } catch (notifError) {
-        console.error('Error enviando notificaciones de invitacion:', notifError);
-        // No fallar la operacion por errores de notificacion
       }
     }
 
@@ -1121,6 +1126,26 @@ router.post('/:id/generate-po', authenticate, async (req: Request, res: Response
       where: { id: rfq.purchaseRequestId },
       data: { estado: 'OC_GENERADA' }
     });
+
+    // Notificar al proveedor sobre la OC generada
+    if (awardedQuotation.supplier?.email) {
+      try {
+        const tenant = await prisma.tenant.findUnique({ where: { id: rfq.tenantId } });
+        await NotificationService.notifyOCToSupplier(
+          awardedQuotation.supplier.email,
+          awardedQuotation.supplier.nombre || 'Proveedor',
+          ocNumber,
+          total,
+          rfq.currency,
+          purchaseOrder.fechaEntregaEstimada,
+          tenant?.name || 'Hub',
+          rfq.tenantId
+        );
+        console.log(`📧 [OC] Notificación enviada a ${awardedQuotation.supplier.email}`);
+      } catch (notifError) {
+        console.error(`❌ Error enviando notificación OC a proveedor:`, notifError);
+      }
+    }
 
     res.json({
       purchaseOrder,

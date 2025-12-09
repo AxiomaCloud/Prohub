@@ -191,6 +191,12 @@ export default function PortalCotizacionDetallePage() {
           }));
           setQuotationItems(emptyItems);
         }
+      } else if (response.status === 401) {
+        // Token expirado - limpiar y redirigir a login
+        localStorage.removeItem('token');
+        localStorage.removeItem('hub_token');
+        router.push('/login');
+        return;
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Error al cargar la solicitud');
@@ -201,7 +207,7 @@ export default function PortalCotizacionDetallePage() {
     } finally {
       setLoading(false);
     }
-  }, [rfqId]);
+  }, [rfqId, router]);
 
   useEffect(() => {
     if (rfqId) {
@@ -571,8 +577,8 @@ export default function PortalCotizacionDetallePage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Descripcion</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase w-24">Cantidad</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase w-20">Unidad</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase w-32">Precio Unit.</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase w-32">Subtotal</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase w-44">Precio Unit.</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase w-40">Subtotal</th>
                     {esEditable && (
                       <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase w-32">Marca/Modelo</th>
                     )}
@@ -610,7 +616,7 @@ export default function PortalCotizacionDetallePage() {
                                 placeholder="0.00"
                                 min="0"
                                 step="0.01"
-                                className="w-full pl-7 pr-2 py-1.5 text-right border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                                className="w-full pl-7 pr-2 py-1.5 text-right border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             </div>
                           ) : (

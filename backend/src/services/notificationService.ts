@@ -810,13 +810,39 @@ export class NotificationService {
     await this.sendNotification('RFQ_DEADLINE_REMINDER', supplierEmail, context);
   }
 
+  /**
+   * Notifica al proveedor que se generó una Orden de Compra
+   */
+  static async notifyOCToSupplier(
+    supplierEmail: string,
+    supplierName: string,
+    ocNumber: string,
+    ocTotal: number,
+    currency: string,
+    deliveryDate: Date | null,
+    clientName: string,
+    tenantId: string
+  ): Promise<void> {
+    const context: NotificationContext = {
+      tenantId,
+      numero: ocNumber,
+      titulo: `Orden de Compra ${ocNumber}`,
+      proveedor: supplierName,
+      montoTotal: this.formatCurrency(ocTotal, currency),
+      fechaAprobacion: deliveryDate ? deliveryDate.toLocaleDateString('es-AR') : 'A convenir',
+      actionUrl: `${FRONTEND_URL}/portal/ordenes`,
+    };
+
+    await this.sendNotification('OC_SUPPLIER_NOTIFIED', supplierEmail, context);
+  }
+
   // Helpers
-  private static formatCurrency(amount: any): string {
+  private static formatCurrency(amount: any, currency: string = 'ARS'): string {
     if (!amount) return '$0';
     const num = typeof amount === 'object' ? parseFloat(amount.toString()) : parseFloat(amount);
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
-      currency: 'ARS',
+      currency: currency,
     }).format(num);
   }
 

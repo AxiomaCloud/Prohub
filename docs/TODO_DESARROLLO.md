@@ -1,6 +1,6 @@
 # TODO - Plan de Desarrollo Hub
 
-**Última actualización:** 2025-12-07 (Sesión 7)
+**Última actualización:** 2025-12-08 (Sesión 8)
 
 ---
 
@@ -16,7 +16,7 @@
 | MVP Compras | En progreso | 60% |
 | Notificaciones | Completado | 90% |
 | **Cotizaciones y Licitaciones** | **Completado** | **95%** |
-| **Portal Proveedor** | **Completado** | **95%** |
+| **Portal Proveedor** | **Completado** | **98%** |
 
 ---
 
@@ -431,7 +431,19 @@ En lugar de duplicar código, las siguientes páginas detectan si el usuario es 
   - Mis Pagos → /pagos (reutiliza)
   - Mi Empresa → /portal/empresa
 
-#### 9.6 Pendiente
+#### 9.6 Mis Facturas - Portal Proveedor (COMPLETADO - SESIÓN 8)
+- [x] **Página /portal/facturas** - Gestión de facturas del proveedor
+  - Botón "Cargar documento" con DocumentUploadModal
+  - Procesamiento con IA (Axioma Parse) para extracción automática
+  - Paso de revisión y corrección de datos extraídos
+  - Filtros por estado (Procesando, Presentado, En Revisión, Aprobado, Pagado, Rechazado)
+  - Filtros por tipo (Factura, Nota Crédito, Nota Débito, Recibo)
+  - Paginación con 10 items por página
+  - Stats cards (Total, Pendientes, Aprobadas, Pagadas, Por cobrar)
+  - Modal de detalle con información completa
+  - Descarga de archivos
+
+#### 9.7 Pendiente
 - [ ] Notificaciones in-app para proveedores
 - [ ] Upload de documentos propios (constancias, certificados)
 - [ ] Historial de transacciones
@@ -481,6 +493,11 @@ frontend/src/
 │   ├── pagos/            ← Módulo pagos
 │   │   ├── page.tsx      ← Listado con stats
 │   │   └── [id]/page.tsx ← Detalle con facturas/retenciones
+│   ├── portal/           ← Portal Proveedor (COMPLETO)
+│   │   ├── dashboard/page.tsx   ← Dashboard proveedor
+│   │   ├── cotizaciones/        ← RFQs del proveedor
+│   │   ├── facturas/page.tsx    ← Mis Facturas con upload (SESIÓN 8)
+│   │   └── empresa/page.tsx     ← Datos de mi empresa
 │   └── configuracion/
 │       └── notificaciones/page.tsx ← Preferencias de notificaciones
 ├── components/
@@ -520,13 +537,18 @@ frontend/src/
    - [ ] Agregar opciones de menú Portal Proveedor (manual desde admin)
    - [ ] Adjuntar archivos a cotizaciones
 
-2. **Portal Proveedor (70% COMPLETADO):**
+2. **Portal Proveedor (95% COMPLETADO):**
    - [x] Dashboard con resumen
    - [x] Cotizaciones (listar, ver, cotizar)
-   - [ ] Mis Órdenes de Compra (pendiente)
-   - [ ] Mis Facturas (pendiente)
-   - [ ] Mis Pagos (pendiente)
-   - [ ] Datos de Mi Empresa (pendiente)
+   - [x] Mis Órdenes de Compra (reutiliza /compras/ordenes-compra con filtro)
+   - [x] Mis Facturas (/portal/facturas) - **SESIÓN 8**
+     - Botón "Cargar documento" con DocumentUploadModal
+     - Procesamiento con IA (Axioma Parse)
+     - Paso de revisión y corrección de datos
+     - Filtros por estado y tipo de documento
+     - Paginación
+   - [x] Mis Pagos (reutiliza /pagos con filtro)
+   - [x] Datos de Mi Empresa (/portal/empresa)
 
 3. **Sistema de Roles (pendiente):**
    - [ ] Selector de empresa en UI (multi-tenant)

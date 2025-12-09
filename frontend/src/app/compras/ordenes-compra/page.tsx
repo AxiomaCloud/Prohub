@@ -212,8 +212,8 @@ function NuevaOCModal({
   const itemsSeleccionados = itemsSeleccionables.filter(i => i.seleccionado);
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const impuestos = subtotal * 0.21;
-  const total = subtotal + impuestos;
+  const impuestos = 0; // OC sin impuestos
+  const total = subtotal;
 
   const handleSubmit = () => {
     if (!requerimientoId || !proveedorId || items.length === 0) {

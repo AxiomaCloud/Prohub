@@ -162,8 +162,9 @@ export default function CompararCotizacionesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(result.message);
-        router.push(`/compras/ordenes-compra/${result.purchaseOrder.id}`);
+        alert(`${result.message}\n\nOC: ${result.purchaseOrder.numero}`);
+        // Volver a la lista de cotizaciones
+        router.push('/compras/cotizaciones');
       } else {
         const error = await response.json();
         alert(error.error || 'Error al generar OC');

@@ -133,11 +133,11 @@ export default function PortalCotizacionesPage() {
         const data = await response.json();
         setInvitations(data.invitations || []);
       } else if (response.status === 401) {
-        // Token inválido o expirado - redirigir a login
-        setError('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-        // Opcional: limpiar token y redirigir
-        // localStorage.removeItem('token');
-        // router.push('/login');
+        // Token inválido o expirado - limpiar y redirigir a login
+        localStorage.removeItem('token');
+        localStorage.removeItem('hub_token');
+        router.push('/login');
+        return;
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Error al cargar las invitaciones');
@@ -148,7 +148,7 @@ export default function PortalCotizacionesPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, router]);
 
   useEffect(() => {
     fetchInvitations();

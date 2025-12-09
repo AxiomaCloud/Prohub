@@ -190,6 +190,165 @@ const emailTemplates = [
     bodyText: 'Recepción {{numero}} completada para OC {{numeroOC}}. Ver en: {{actionUrl}}'
   },
 
+  // Cotizaciones (RFQ)
+  {
+    eventType: 'RFQ_INVITATION' as NotificationEventType,
+    subject: 'Invitación a cotizar: {{numero}} - {{titulo}}',
+    bodyHtml: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Solicitud de Cotización</h1>
+        </div>
+        <div style="padding: 30px; background: #f9fafb;">
+          <p style="font-size: 16px; color: #374151;">Hola <strong>{{proveedor}}</strong>,</p>
+          <p style="font-size: 16px; color: #374151;">Has sido invitado a cotizar para el siguiente requerimiento:</p>
+          <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+            <p><strong>Número:</strong> {{numero}}</p>
+            <p><strong>Título:</strong> {{titulo}}</p>
+            <p><strong>Fecha límite:</strong> {{fechaAprobacion}}</p>
+          </div>
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{actionUrl}}" style="display: inline-block; background: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+              Ver y Cotizar
+            </a>
+          </div>
+          <p style="color: #6b7280; margin-top: 30px; font-size: 14px; text-align: center;">
+            Ingresa al portal de proveedores para ver los detalles y enviar tu cotización.
+          </p>
+        </div>
+      </div>
+    `,
+    bodyText: 'Has sido invitado a cotizar para {{numero}} - {{titulo}}. Fecha límite: {{fechaAprobacion}}. Cotiza en: {{actionUrl}}'
+  },
+  {
+    eventType: 'RFQ_AWARDED' as NotificationEventType,
+    subject: '¡Felicitaciones! Tu cotización fue adjudicada: {{numero}}',
+    bodyHtml: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0;">¡Cotización Adjudicada!</h1>
+        </div>
+        <div style="padding: 30px; background: #f9fafb;">
+          <p style="font-size: 16px; color: #374151;">Hola <strong>{{proveedor}}</strong>,</p>
+          <p style="font-size: 16px; color: #374151;">Nos complace informarte que tu cotización ha sido seleccionada:</p>
+          <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 8px;">
+            <p><strong>Número:</strong> {{numero}}</p>
+            <p><strong>Título:</strong> {{titulo}}</p>
+            <p><strong>Monto adjudicado:</strong> {{montoTotal}}</p>
+          </div>
+          <p style="font-size: 16px; color: #374151;">Próximamente recibirás la Orden de Compra correspondiente.</p>
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{actionUrl}}" style="display: inline-block; background: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+              Ver Detalles
+            </a>
+          </div>
+        </div>
+      </div>
+    `,
+    bodyText: '¡Tu cotización para {{numero}} - {{titulo}} fue adjudicada! Monto: {{montoTotal}}. Ver en: {{actionUrl}}'
+  },
+  {
+    eventType: 'RFQ_NOT_AWARDED' as NotificationEventType,
+    subject: 'Resultado de cotización: {{numero}}',
+    bodyHtml: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #6b7280; padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Proceso de Cotización Finalizado</h1>
+        </div>
+        <div style="padding: 30px; background: #f9fafb;">
+          <p style="font-size: 16px; color: #374151;">Hola <strong>{{proveedor}}</strong>,</p>
+          <p style="font-size: 16px; color: #374151;">Te informamos que el proceso de cotización ha finalizado y en esta oportunidad tu propuesta no fue seleccionada:</p>
+          <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+            <p><strong>Número:</strong> {{numero}}</p>
+            <p><strong>Título:</strong> {{titulo}}</p>
+          </div>
+          <p style="font-size: 16px; color: #374151;">Agradecemos tu participación y esperamos contar contigo en futuras oportunidades.</p>
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{actionUrl}}" style="display: inline-block; background: #6b7280; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+              Ver Detalles
+            </a>
+          </div>
+        </div>
+      </div>
+    `,
+    bodyText: 'El proceso de cotización {{numero}} - {{titulo}} ha finalizado. En esta oportunidad tu propuesta no fue seleccionada. Ver en: {{actionUrl}}'
+  },
+  {
+    eventType: 'RFQ_QUOTATION_RECEIVED' as NotificationEventType,
+    subject: 'Nueva cotización recibida: {{numero}}',
+    bodyHtml: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a56db;">Nueva Cotización Recibida</h2>
+        <p>Se ha recibido una nueva cotización:</p>
+        <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Número:</strong> {{numero}}</p>
+          <p><strong>Proveedor:</strong> {{proveedor}}</p>
+          <p><strong>Monto Total:</strong> {{montoTotal}}</p>
+        </div>
+        <a href="{{actionUrl}}" style="display: inline-block; background: #1a56db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Ver Cotización</a>
+      </div>
+    `,
+    bodyText: 'Nueva cotización {{numero}} recibida de {{proveedor}}. Monto: {{montoTotal}}. Ver en: {{actionUrl}}'
+  },
+  {
+    eventType: 'RFQ_DEADLINE_REMINDER' as NotificationEventType,
+    subject: 'Recordatorio: Cotización {{numero}} vence pronto',
+    bodyHtml: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #d97706; padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Recordatorio de Vencimiento</h1>
+        </div>
+        <div style="padding: 30px; background: #f9fafb;">
+          <p style="font-size: 16px; color: #374151;">Hola <strong>{{proveedor}}</strong>,</p>
+          <p style="font-size: 16px; color: #374151;">Te recordamos que la solicitud de cotización está por vencer:</p>
+          <div style="background: #fffbeb; border: 1px solid #d97706; padding: 20px; margin: 20px 0; border-radius: 8px;">
+            <p><strong>Número:</strong> {{numero}}</p>
+            <p><strong>Título:</strong> {{titulo}}</p>
+            <p><strong>Estado:</strong> {{comentario}}</p>
+          </div>
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{actionUrl}}" style="display: inline-block; background: #d97706; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+              Enviar Cotización
+            </a>
+          </div>
+        </div>
+      </div>
+    `,
+    bodyText: 'Recordatorio: La cotización {{numero}} - {{titulo}} vence pronto. {{comentario}}. Cotiza en: {{actionUrl}}'
+  },
+
+  // Orden de Compra al Proveedor
+  {
+    eventType: 'OC_SUPPLIER_NOTIFIED' as NotificationEventType,
+    subject: 'Orden de Compra recibida: {{numero}}',
+    bodyHtml: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1a56db 0%, #3b82f6 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Orden de Compra</h1>
+        </div>
+        <div style="padding: 30px; background: #f9fafb;">
+          <p style="font-size: 16px; color: #374151;">Hola <strong>{{proveedor}}</strong>,</p>
+          <p style="font-size: 16px; color: #374151;">Te informamos que se ha generado una Orden de Compra a tu favor:</p>
+          <div style="background: #eff6ff; border: 1px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 8px;">
+            <p><strong>Número OC:</strong> {{numero}}</p>
+            <p><strong>Monto Total:</strong> {{montoTotal}}</p>
+            <p><strong>Fecha de Entrega:</strong> {{fechaAprobacion}}</p>
+          </div>
+          <p style="font-size: 16px; color: #374151;">Por favor, revisa los detalles en el portal de proveedores.</p>
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{actionUrl}}" style="display: inline-block; background: #1a56db; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+              Ver Orden de Compra
+            </a>
+          </div>
+          <p style="color: #6b7280; margin-top: 30px; font-size: 14px; text-align: center;">
+            Gracias por ser nuestro proveedor.
+          </p>
+        </div>
+      </div>
+    `,
+    bodyText: 'Orden de Compra {{numero}} generada. Monto: {{montoTotal}}. Fecha de entrega: {{fechaAprobacion}}. Ver en: {{actionUrl}}'
+  },
+
   // Delegaciones
   {
     eventType: 'DELEGATION_RECEIVED' as NotificationEventType,

@@ -23,6 +23,9 @@ import {
   Eye,
   Plus,
   Star,
+  Bot,
+  ScanLine,
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { BankDataForm } from '@/components/suppliers/BankDataForm';
@@ -83,6 +86,7 @@ interface Supplier {
   motivoRechazo: string | null;
   documentos: SupplierDocument[];
   createdAt: string;
+  useAIParse: boolean;
 }
 
 interface SupplierDocument {
@@ -144,7 +148,7 @@ export default function SupplierDetailPage() {
   const { token } = useAuth();
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'info' | 'bank' | 'docs'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'bank' | 'docs' | 'config'>('info');
   const [editMode, setEditMode] = useState<'none' | 'bank' | 'company'>('none');
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -275,6 +279,22 @@ export default function SupplierDetailPage() {
       await fetchSupplier();
     } catch (error) {
       console.error('Error deleting document:', error);
+    }
+  };
+
+  const handleToggleAIParse = async (value: boolean) => {
+    try {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ useAIParse: value }),
+      });
+      await fetchSupplier();
+    } catch (error) {
+      console.error('Error updating AI parse setting:', error);
     }
   };
 
@@ -498,6 +518,17 @@ export default function SupplierDetailPage() {
           >
             <FileText className="w-4 h-4 inline mr-2" />
             Documentos ({supplier.documentos?.length || 0})
+          </button>
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'config'
+                ? 'border-secondary text-secondary'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Settings className="w-4 h-4 inline mr-2" />
+            Configuración
           </button>
         </nav>
       </div>
@@ -769,6 +800,56 @@ export default function SupplierDetailPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Config Tab */}
+        {activeTab === 'config' && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Configuración del Proveedor
+            </h2>
+
+            {/* Switch de IA para extracción de datos */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${supplier.useAIParse ? 'bg-purple-100 dark:bg-purple-800' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                  {supplier.useAIParse ? (
+                    <Bot className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  ) : (
+                    <ScanLine className="w-5 h-5 text-gray-500" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {supplier.useAIParse ? 'Extracción con IA (Axio)' : 'Extracción básica'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {supplier.useAIParse
+                      ? 'Usa IA para mayor precisión en datos complejos (facturas con muchos items, formatos no estándar)'
+                      : 'Extrae datos básicos automáticamente sin costo adicional'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleAIParse(!supplier.useAIParse)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                  supplier.useAIParse ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    supplier.useAIParse ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Esta configuración aplica cuando el proveedor sube sus facturas a través del portal.
+              El uso de IA tiene un costo adicional pero mejora la precisión de extracción de datos.
+            </p>
           </div>
         )}
       </div>

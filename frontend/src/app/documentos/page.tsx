@@ -18,7 +18,9 @@ import {
   Trash2,
   Download,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bot,
+  Loader2
 } from 'lucide-react';
 
 interface Document {
@@ -35,6 +37,13 @@ interface Document {
   date: string | null;
   uploadedAt: string;
   purchaseOrderId: string | null;
+  parseData?: {
+    metadata?: {
+      metodoExtraccion?: string;
+      confianza?: number;
+    };
+  };
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'ERROR';
   providerTenant: {
     id: string;
     name: string;
@@ -84,7 +93,7 @@ const documentStatusLabels: Record<Document['status'], string> = {
 
 export default function DocumentsPage() {
   const router = useRouter();
-  const { get, delete: deleteApi } = useApiClient();
+  const { get, delete: deleteApi, post } = useApiClient();
   const { user, tenant, isLoading: authLoading } = useAuth();
   const { confirm } = useConfirmDialog();
   const { isSupplier, supplierId, loading: supplierLoading } = useSupplier();
@@ -97,6 +106,7 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [extractingAI, setExtractingAI] = useState<Set<string>>(new Set()); // IDs de docs siendo procesados con IA
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -238,6 +248,37 @@ export default function DocumentsPage() {
         );
       }
     }
+  };
+
+  // Función para extraer datos con IA bajo demanda
+  const handleExtractAI = async (doc: Document) => {
+    // Marcar como en proceso
+    setExtractingAI(prev => new Set(prev).add(doc.id));
+
+    try {
+      await post(`/api/documents/${doc.id}/parse-ai`, {});
+      // Recargar documentos para ver los datos actualizados
+      await fetchDocuments();
+    } catch (error) {
+      console.error('Error extracting with AI:', error);
+      await confirm(
+        'Hubo un error al extraer los datos con IA. Por favor, intenta nuevamente.',
+        'Error',
+        'danger'
+      );
+    } finally {
+      // Quitar de la lista de procesando
+      setExtractingAI(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(doc.id);
+        return newSet;
+      });
+    }
+  };
+
+  // Verificar si un documento fue procesado con extracción básica (sin IA)
+  const isBasicExtraction = (doc: Document) => {
+    return doc.parseData?.metadata?.metodoExtraccion === 'BASIC_REGEX';
   };
 
   // Loading mientras se verifica si es proveedor
@@ -456,6 +497,21 @@ export default function DocumentsPage() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
+                        {/* Botón Extraer con IA - solo visible si es extracción básica y no es proveedor */}
+                        {!isSupplier && isBasicExtraction(doc) && (
+                          <button
+                            onClick={() => handleExtractAI(doc)}
+                            disabled={extractingAI.has(doc.id)}
+                            className="text-purple-600 hover:text-purple-800 p-1.5 hover:bg-purple-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Extraer datos completos con IA"
+                          >
+                            {extractingAI.has(doc.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Bot className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => router.push(`/documentos/${doc.id}`)}
                           className="text-text-secondary hover:text-palette-purple p-1.5 hover:bg-gray-100 rounded transition-colors"

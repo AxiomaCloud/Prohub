@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { FileDropzone } from './FileDropzone';
+import { DocumentoParseEditView } from './DocumentoParseEditView';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   X,
@@ -14,16 +15,21 @@ import {
   ArrowLeft,
   Eye,
   FileText,
-  Edit3,
-  Calendar,
-  DollarSign,
-  AlertCircle
+  AlertCircle,
+  Bot,
+  ScanLine,
+  FileEdit
 } from 'lucide-react';
 
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  // Props opcionales para portal de proveedor
+  supplierCuit?: string;  // CUIT del proveedor (para buscar su tenant)
+  clientTenantId?: string; // Tenant del cliente al que factura
+  useAI?: boolean; // Si es false, usa extracción básica sin IA (default: true para tenant, false para proveedor)
+  asDraft?: boolean; // Si es true, crea el documento como borrador (default: true para proveedor)
 }
 
 type UploadStep = 'select' | 'uploading' | 'review' | 'success';
@@ -43,14 +49,9 @@ interface ParsedDocument {
   parseConfidence?: number;
 }
 
-const documentTypeLabels: Record<string, string> = {
-  INVOICE: 'Factura',
-  CREDIT_NOTE: 'Nota de Crédito',
-  DEBIT_NOTE: 'Nota de Débito',
-  RECEIPT: 'Recibo'
-};
-
-export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUploadModalProps) {
+export function DocumentUploadModal({ isOpen, onClose, onSuccess, supplierCuit, clientTenantId, useAI, asDraft }: DocumentUploadModalProps) {
+  // Por defecto: proveedor crea como borrador, tenant no
+  const shouldCreateAsDraft = asDraft !== undefined ? asDraft : !!supplierCuit;
   const router = useRouter();
   const { user, tenant } = useAuth();
 
@@ -59,9 +60,11 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: { status: string; error?: boolean }}>({});
   const [uploadResults, setUploadResults] = useState<{ success: number; failed: number; documentId?: string }>({ success: 0, failed: 0 });
 
+  // Switch de IA - por defecto: false (extracción básica), usuario puede activar IA
+  const [enableAI, setEnableAI] = useState(useAI !== undefined ? useAI : false);
+
   // Review step state
   const [parsedDocument, setParsedDocument] = useState<ParsedDocument | null>(null);
-  const [editedData, setEditedData] = useState<Partial<ParsedDocument>>({});
   const [isConfirming, setIsConfirming] = useState(false);
 
   const handleClose = () => {
@@ -71,7 +74,6 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
       setUploadProgress({});
       setUploadResults({ success: 0, failed: 0 });
       setParsedDocument(null);
-      setEditedData({});
       onClose();
     }
   };
@@ -106,13 +108,15 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
     }
 
     const tenants = user?.tenantMemberships?.map(m => m.tenant) || [];
-    if (tenants.length === 0) {
+    if (tenants.length === 0 && !supplierCuit) {
       handleClose();
       return;
     }
 
-    const providerTenantId = tenants[0].id;
-    const clientTenantId = tenants.length >= 2 ? tenants[1].id : tenants[0].id;
+    // Si viene supplierCuit (portal de proveedor), usamos eso para buscar/crear el tenant
+    // Si no, usamos los tenants del usuario
+    let providerTenantIdToUse = tenants[0]?.id;
+    let clientTenantIdToUse = clientTenantId || (tenants.length >= 2 ? tenants[1].id : tenants[0]?.id);
 
     const results = { success: 0, failed: 0, documentId: '' };
 
@@ -127,8 +131,23 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
     try {
       const uploadData = new FormData();
       uploadData.append('file', file);
-      uploadData.append('providerTenantId', providerTenantId);
-      uploadData.append('clientTenantId', clientTenantId);
+
+      // Si viene supplierCuit, el backend buscará/creará el tenant del proveedor
+      if (supplierCuit) {
+        uploadData.append('supplierCuit', supplierCuit);
+        uploadData.append('clientTenantId', clientTenantIdToUse);
+      } else {
+        uploadData.append('providerTenantId', providerTenantIdToUse);
+        uploadData.append('clientTenantId', clientTenantIdToUse);
+      }
+
+      // Determinar si usar IA o extracción básica (según el switch)
+      uploadData.append('useAI', enableAI ? 'true' : 'false');
+
+      // Si es borrador, enviar como draft
+      if (shouldCreateAsDraft) {
+        uploadData.append('asDraft', 'true');
+      }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const response = await fetch(`${apiUrl}/api/documents/new`, {
@@ -174,17 +193,6 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
         parseConfidence: result.parseConfidence
       });
 
-      setEditedData({
-        number: result.number,
-        type: result.type,
-        amount: result.amount || 0,
-        taxAmount: result.taxAmount || 0,
-        totalAmount: result.totalAmount || 0,
-        currency: result.currency || 'ARS',
-        date: result.date ? result.date.split('T')[0] : '',
-        dueDate: result.dueDate ? result.dueDate.split('T')[0] : ''
-      });
-
       setUploadResults(results);
 
       // Move to review step
@@ -211,6 +219,9 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
       const token = localStorage.getItem('hub_token');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+      // Extraer datos de la cabecera del parseData editado
+      const cabecera = parsedDocument.parseData?.documento?.cabecera || {};
+
       const response = await fetch(`${apiUrl}/api/documents/${parsedDocument.id}`, {
         method: 'PATCH',
         headers: {
@@ -218,8 +229,14 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ...editedData,
-          confirm: true // This will change status to PRESENTED
+          number: `${cabecera.puntoVenta || '0001'}-${cabecera.numeroComprobante || '00000001'}`,
+          amount: cabecera.subtotal || parsedDocument.amount,
+          taxAmount: cabecera.iva || parsedDocument.taxAmount,
+          totalAmount: cabecera.total || parsedDocument.totalAmount,
+          currency: cabecera.moneda || parsedDocument.currency,
+          date: cabecera.fecha || parsedDocument.date,
+          parseData: parsedDocument.parseData,
+          confirm: true
         })
       });
 
@@ -248,7 +265,6 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
     setUploadProgress({});
     setUploadResults({ success: 0, failed: 0 });
     setParsedDocument(null);
-    setEditedData({});
   };
 
   const handleGoToList = () => {
@@ -258,33 +274,11 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
     handleClose();
   };
 
-  const formatCurrency = (amount: number, currency: string = 'ARS') => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency
-    }).format(amount);
-  };
-
-  const handleEditField = (field: keyof ParsedDocument, value: any) => {
-    setEditedData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-
-    // Auto-calculate total if amount or tax changes
-    if (field === 'amount' || field === 'taxAmount') {
-      const newAmount = field === 'amount' ? parseFloat(value) || 0 : parseFloat(editedData.amount?.toString() || '0');
-      const newTax = field === 'taxAmount' ? parseFloat(value) || 0 : parseFloat(editedData.taxAmount?.toString() || '0');
-      setEditedData(prev => ({
-        ...prev,
-        [field]: value,
-        totalAmount: newAmount + newTax
-      }));
-    }
-  };
+  // Tamaño del modal según el paso
+  const modalSize = step === 'review' ? '2xl' : 'lg';
 
   return (
-    <Modal open={isOpen} onClose={handleClose} size={step === 'review' ? 'xl' : 'lg'}>
+    <Modal open={isOpen} onClose={handleClose} size={modalSize}>
       <div className="relative">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -327,6 +321,44 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
                 </div>
               )}
 
+              {/* Switch de IA - SOLO para tenant (no para proveedor) */}
+              {!supplierCuit && (
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${enableAI ? 'bg-purple-100' : 'bg-gray-100'}`}>
+                      {enableAI ? (
+                        <Bot className="w-5 h-5 text-purple-600" />
+                      ) : (
+                        <ScanLine className="w-5 h-5 text-gray-500" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">
+                        {enableAI ? 'Extracción con IA (Axio)' : 'Extracción básica'}
+                      </p>
+                      <p className="text-xs text-text-secondary">
+                        {enableAI
+                          ? 'Mayor precisión en datos complejos'
+                          : 'Extrae datos básicos sin costo adicional'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEnableAI(!enableAI)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                      enableAI ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        enableAI ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <Button variant="outline" onClick={handleClose}>
                   Cancelar
@@ -346,15 +378,37 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
           {step === 'uploading' && (
             <div className="space-y-6 py-8">
               <div className="flex flex-col items-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                </div>
-                <h3 className="text-lg font-medium text-text-primary mb-2">
-                  Axioma Parse - IA en acción
-                </h3>
-                <p className="text-sm text-text-secondary text-center">
-                  Analizando y extrayendo datos del documento...
-                </p>
+                {enableAI ? (
+                  <>
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                      <Bot className="w-10 h-10 text-white animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                      <h3 className="text-lg font-medium text-text-primary">
+                        Extrayendo con Axio
+                      </h3>
+                    </div>
+                    <p className="text-sm text-text-secondary text-center">
+                      Analizando el documento con IA y extrayendo información...
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                      <ScanLine className="w-10 h-10 text-white animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                      <h3 className="text-lg font-medium text-text-primary">
+                        Procesando documento
+                      </h3>
+                    </div>
+                    <p className="text-sm text-text-secondary text-center">
+                      Extrayendo datos básicos del documento...
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -397,171 +451,49 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
 
           {/* Step 3: Review */}
           {step === 'review' && parsedDocument && (
-            <div className="space-y-6">
-              {/* Confidence indicator */}
-              {parsedDocument.parseConfidence && (
+            <div className="space-y-4">
+              {/* Confidence indicator - different message for basic vs AI extraction */}
+              {parsedDocument.parseData?.metadata?.metodoExtraccion === 'BASIC_REGEX' ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 text-blue-700">
+                  <ScanLine className="w-4 h-4" />
+                  <span className="text-sm">
+                    Datos extraídos automáticamente - Revisa y completa la información
+                  </span>
+                </div>
+              ) : parsedDocument.parseConfidence && (
                 <div className={`flex items-center gap-2 p-3 rounded-lg ${
                   parsedDocument.parseConfidence >= 0.8 ? 'bg-green-50 text-green-700' :
                   parsedDocument.parseConfidence >= 0.5 ? 'bg-yellow-50 text-yellow-700' :
                   'bg-red-50 text-red-700'
                 }`}>
-                  <AlertCircle className="w-4 h-4" />
+                  <Bot className="w-4 h-4" />
                   <span className="text-sm">
-                    Confianza de extracción: {Math.round(parsedDocument.parseConfidence * 100)}%
-                    {parsedDocument.parseConfidence < 0.8 && ' - Por favor revisa los datos cuidadosamente'}
+                    Axio extrajo los datos con {Math.round(parsedDocument.parseConfidence * 100)}% de confianza
+                    {parsedDocument.parseConfidence < 0.8 && ' - Revisa los datos cuidadosamente'}
                   </span>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* PDF Preview */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                    <Eye className="w-4 h-4" />
-                    Vista previa del documento
-                  </h3>
-                  <div className="border border-border rounded-lg overflow-hidden bg-gray-100 h-[400px]">
-                    <iframe
-                      src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${parsedDocument.fileUrl}`}
-                      className="w-full h-full"
-                      title="Document preview"
-                    />
-                  </div>
-                </div>
-
-                {/* Extracted Data Form */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                    <Edit3 className="w-4 h-4" />
-                    Datos extraídos (editables)
-                  </h3>
-
-                  <div className="space-y-4">
-                    {/* Document Type */}
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary mb-1">
-                        Tipo de Comprobante
-                      </label>
-                      <select
-                        value={editedData.type || ''}
-                        onChange={(e) => handleEditField('type', e.target.value)}
-                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        {Object.entries(documentTypeLabels).map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Number */}
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary mb-1">
-                        Número de Comprobante
-                      </label>
-                      <input
-                        type="text"
-                        value={editedData.number || ''}
-                        onChange={(e) => handleEditField('number', e.target.value)}
-                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                    </div>
-
-                    {/* Dates */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-text-primary mb-1">
-                          <Calendar className="w-3 h-3 inline mr-1" />
-                          Fecha Emisión
-                        </label>
-                        <input
-                          type="date"
-                          value={editedData.date || ''}
-                          onChange={(e) => handleEditField('date', e.target.value)}
-                          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-text-primary mb-1">
-                          <Calendar className="w-3 h-3 inline mr-1" />
-                          Vencimiento
-                        </label>
-                        <input
-                          type="date"
-                          value={editedData.dueDate || ''}
-                          onChange={(e) => handleEditField('dueDate', e.target.value)}
-                          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Currency */}
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary mb-1">
-                        Moneda
-                      </label>
-                      <select
-                        value={editedData.currency || 'ARS'}
-                        onChange={(e) => handleEditField('currency', e.target.value)}
-                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="ARS">ARS - Peso Argentino</option>
-                        <option value="USD">USD - Dólar</option>
-                        <option value="EUR">EUR - Euro</option>
-                      </select>
-                    </div>
-
-                    {/* Amounts */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-text-primary mb-1">
-                          <DollarSign className="w-3 h-3 inline mr-1" />
-                          Neto
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editedData.amount || 0}
-                          onChange={(e) => handleEditField('amount', e.target.value)}
-                          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-text-primary mb-1">
-                          IVA
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editedData.taxAmount || 0}
-                          onChange={(e) => handleEditField('taxAmount', e.target.value)}
-                          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-text-primary mb-1">
-                          Total
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editedData.totalAmount || 0}
-                          onChange={(e) => handleEditField('totalAmount', e.target.value)}
-                          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-semibold"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Summary */}
-                    <div className="bg-gray-50 rounded-lg p-4 mt-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-text-secondary">Total a presentar:</span>
-                        <span className="text-xl font-bold text-primary">
-                          {formatCurrency(editedData.totalAmount || 0, editedData.currency || 'ARS')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* Editable Extracted Data */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Datos extraídos - Edita lo que necesites
+                </h3>
+                <DocumentoParseEditView
+                  parseData={parsedDocument.parseData}
+                  onChange={(newParseData) => {
+                    setParsedDocument(prev => prev ? {
+                      ...prev,
+                      parseData: newParseData,
+                      // Actualizar campos del documento desde la cabecera
+                      totalAmount: newParseData?.documento?.cabecera?.total || prev.totalAmount,
+                      amount: newParseData?.documento?.cabecera?.subtotal || prev.amount,
+                      taxAmount: newParseData?.documento?.cabecera?.iva || prev.taxAmount,
+                      currency: newParseData?.documento?.cabecera?.moneda || prev.currency,
+                    } : null);
+                  }}
+                />
               </div>
 
               <div className="flex justify-between pt-4 border-t border-border">
@@ -597,14 +529,20 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUplo
               <div className="flex flex-col items-center text-center">
                 {uploadResults.success > 0 ? (
                   <>
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                      <CheckCircle className="w-8 h-8 text-green-600" />
+                    <div className={`w-16 h-16 ${shouldCreateAsDraft ? 'bg-orange-100' : 'bg-green-100'} rounded-full flex items-center justify-center mb-4`}>
+                      {shouldCreateAsDraft ? (
+                        <FileEdit className="w-8 h-8 text-orange-600" />
+                      ) : (
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      )}
                     </div>
                     <h3 className="text-lg font-medium text-text-primary mb-2">
-                      Comprobante enviado exitosamente
+                      {shouldCreateAsDraft ? 'Borrador guardado' : 'Comprobante enviado exitosamente'}
                     </h3>
                     <p className="text-sm text-text-secondary mt-2">
-                      El documento ha sido presentado y está pendiente de revisión.
+                      {shouldCreateAsDraft
+                        ? 'El documento se guardó como borrador. Podrás revisarlo y enviarlo cuando estés listo.'
+                        : 'El documento ha sido presentado y está pendiente de revisión.'}
                     </p>
                   </>
                 ) : (

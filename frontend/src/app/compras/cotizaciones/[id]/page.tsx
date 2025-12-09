@@ -391,9 +391,9 @@ export default function RFQDetailPage() {
         const data = await response.json();
         showAlert(
           'Orden de Compra Generada',
-          data.message || 'La Orden de Compra se generó exitosamente',
+          `${data.message || 'La Orden de Compra se generó exitosamente'}\n\nOC: ${data.purchaseOrder.numero}`,
           'success',
-          () => router.push(`/compras/ordenes-compra/${data.purchaseOrder.id}`)
+          () => router.push('/compras/cotizaciones')
         );
       } else {
         const error = await response.json();

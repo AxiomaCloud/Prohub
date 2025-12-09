@@ -281,6 +281,21 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       });
     }
 
+    // Validar que la fecha necesaria no sea anterior a hoy
+    const fechaFinal = fechaNecesaria || fechaNecesidad;
+    if (fechaFinal) {
+      const fechaNecesidadDate = new Date(fechaFinal);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      fechaNecesidadDate.setHours(0, 0, 0, 0);
+
+      if (fechaNecesidadDate < hoy) {
+        return res.status(400).json({
+          error: 'La fecha necesaria no puede ser anterior a hoy'
+        });
+      }
+    }
+
     // Generar número de requerimiento
     const year = new Date().getFullYear();
     const prefix = `REQ-${year}-`;

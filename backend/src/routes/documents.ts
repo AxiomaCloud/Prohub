@@ -4,6 +4,7 @@ import path from 'path';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
 import { ParseService } from '../services/parseService';
+import { BasicParseService } from '../services/basicParseService';
 
 const router = Router();
 
@@ -52,16 +53,56 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
     const {
       providerTenantId,
       clientTenantId,
+      supplierCuit, // CUIT del proveedor (para portal de proveedores)
       date,
       dueDate,
-      purchaseOrderId
+      purchaseOrderId,
+      useAI = 'true', // Si es 'false', usa extracción básica sin IA
+      asDraft = 'false' // Si es 'true', crea como borrador (DRAFT)
     } = req.body;
 
-    // Solo validamos que existan los tenant IDs
-    if (!providerTenantId || !clientTenantId) {
+    let shouldUseAI = useAI === 'true' || useAI === true;
+    const createAsDraft = asDraft === 'true' || asDraft === true;
+
+    let finalProviderTenantId = providerTenantId;
+    let finalClientTenantId = clientTenantId;
+
+    // Si viene supplierCuit, buscar el tenant del proveedor por CUIT y su configuración de IA
+    if (supplierCuit && !providerTenantId) {
+      const supplierTenant = await prisma.tenant.findFirst({
+        where: { taxId: supplierCuit }
+      });
+
+      if (supplierTenant) {
+        finalProviderTenantId = supplierTenant.id;
+      } else {
+        // Si no existe tenant, usar el clientTenantId como fallback
+        // (el documento queda asociado al cliente pero se puede identificar por los datos del parse)
+        console.log(`⚠️ [DOCUMENTS] No tenant found for supplier CUIT: ${supplierCuit}, using clientTenantId`);
+        finalProviderTenantId = finalClientTenantId;
+      }
+
+      // Buscar la configuración de useAIParse del proveedor en el tenant del cliente
+      const supplierConfig = await prisma.supplier.findFirst({
+        where: {
+          tenantId: finalClientTenantId,
+          cuit: supplierCuit.replace(/[-.]/g, '') // Limpiar formato del CUIT
+        },
+        select: { useAIParse: true }
+      });
+
+      if (supplierConfig) {
+        // Usar la configuración del proveedor (definida por el tenant)
+        shouldUseAI = supplierConfig.useAIParse;
+        console.log(`📋 [DOCUMENTS] Using supplier AI config for CUIT ${supplierCuit}: useAI=${shouldUseAI}`);
+      }
+    }
+
+    // Validamos que existan los tenant IDs finales
+    if (!finalProviderTenantId || !finalClientTenantId) {
       return res.status(400).json({
         error: 'Missing required fields',
-        message: 'providerTenantId and clientTenantId are required'
+        message: 'providerTenantId and clientTenantId are required (or supplierCuit)'
       });
     }
 
@@ -69,8 +110,8 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
     const existingDocument = await prisma.document.findFirst({
       where: {
         fileName: req.file.originalname,
-        providerTenantId,
-        clientTenantId
+        providerTenantId: finalProviderTenantId,
+        clientTenantId: finalClientTenantId
       }
     });
 
@@ -89,6 +130,7 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
     }
 
     // Create document record con valores por defecto (Parse los actualizará)
+    // Si asDraft=true, se crea como DRAFT (borrador, solo visible para el proveedor)
     const document = await prisma.document.create({
       data: {
         number: `PENDING-${Date.now()}`, // Número temporal hasta que Parse extraiga el real
@@ -102,13 +144,16 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
         fileName: req.file.originalname,
         fileType: req.file.mimetype,
         fileSize: req.file.size,
-        providerTenantId,
-        clientTenantId,
+        providerTenantId: finalProviderTenantId,
+        clientTenantId: finalClientTenantId,
         uploadedBy: req.user.id,
         date: date ? new Date(date) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
         purchaseOrderId: purchaseOrderId || null,
         parseStatus: 'PENDING',
+        // Estado de envío: DRAFT si es borrador, SUBMITTED si se envía directamente
+        submissionStatus: createAsDraft ? 'DRAFT' : 'SUBMITTED',
+        submittedAt: createAsDraft ? null : new Date(),
       },
       include: {
         providerTenant: {
@@ -148,86 +193,187 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
 
     console.log(`✅ [DOCUMENTS] Document uploaded: ${document.number} (${document.id})`);
 
-    // Process with Parse API (synchronous - wait for result)
+    // Process document - use AI or basic extraction based on useAI parameter
     const filePath = path.join(__dirname, '../../uploads', req.file.filename);
 
     try {
-      console.log(`📤 [PARSE] Sending document to Parse API: ${req.file.originalname}`);
+      let updatedDocument;
 
-      const parseResult = await ParseService.processDocument(filePath, req.file.originalname, {
-        read: [req.user.id],
-        write: [req.user.id]
-      });
+      if (shouldUseAI) {
+        // === EXTRACCIÓN CON IA (usa tokens de OpenAI/Anthropic) ===
+        console.log(`📤 [PARSE] Sending document to Parse API (AI): ${req.file.originalname}`);
 
-      console.log(`✅ [PARSE] Document processed successfully`);
+        const parseResult = await ParseService.processDocument(filePath, req.file.originalname, {
+          read: [req.user.id],
+          write: [req.user.id]
+        });
 
-      // Extract data from Parse response
-      const cabecera = parseResult.documento.cabecera;
-      const metadata = parseResult.metadata;
+        console.log(`✅ [PARSE] Document processed with AI successfully`);
 
-      // Map tipo comprobante to our DocumentType
-      let docType: 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'RECEIPT' = 'INVOICE';
-      if (cabecera.tipoComprobante?.includes('CREDITO')) {
-        docType = 'CREDIT_NOTE';
-      } else if (cabecera.tipoComprobante?.includes('DEBITO')) {
-        docType = 'DEBIT_NOTE';
-      } else if (cabecera.tipoComprobante?.includes('RECIBO')) {
-        docType = 'RECEIPT';
-      }
+        // Extract data from Parse response
+        const cabecera = parseResult.documento.cabecera;
+        const metadata = parseResult.metadata;
 
-      // Update document with Parse data
-      const updatedDocument = await prisma.document.update({
-        where: { id: document.id },
-        data: {
-          parseStatus: 'COMPLETED',
-          parseData: parseResult as any,
-          parsedAt: new Date(),
-          parseConfidence: metadata.confianza,
-          // Update document fields with extracted data
-          ...(cabecera.numeroComprobante && {
-            number: cabecera.numeroComprobante
-          }),
-          type: docType,
-          ...(cabecera.total && {
-            totalAmount: cabecera.total
-          }),
-          ...(cabecera.subtotal && {
-            amount: cabecera.subtotal
-          }),
-          ...(cabecera.iva && {
-            taxAmount: cabecera.iva
-          }),
-          ...(cabecera.moneda && {
-            currency: cabecera.moneda
-          }),
-          ...(cabecera.fecha && {
-            date: new Date(cabecera.fecha)
-          }),
-        },
-        include: {
-          providerTenant: {
-            select: {
-              id: true,
-              name: true,
-              taxId: true
-            }
+        // Map tipo comprobante to our DocumentType
+        let docType: 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'RECEIPT' = 'INVOICE';
+        if (cabecera.tipoComprobante?.includes('CREDITO')) {
+          docType = 'CREDIT_NOTE';
+        } else if (cabecera.tipoComprobante?.includes('DEBITO')) {
+          docType = 'DEBIT_NOTE';
+        } else if (cabecera.tipoComprobante?.includes('RECIBO')) {
+          docType = 'RECEIPT';
+        }
+
+        // Update document with Parse data
+        updatedDocument = await prisma.document.update({
+          where: { id: document.id },
+          data: {
+            parseStatus: 'COMPLETED',
+            parseData: parseResult as any,
+            parsedAt: new Date(),
+            parseConfidence: metadata.confianza,
+            // Update document fields with extracted data
+            ...(cabecera.numeroComprobante && {
+              number: cabecera.numeroComprobante
+            }),
+            type: docType,
+            ...(cabecera.total && {
+              totalAmount: cabecera.total
+            }),
+            ...(cabecera.subtotal && {
+              amount: cabecera.subtotal
+            }),
+            ...(cabecera.iva && {
+              taxAmount: cabecera.iva
+            }),
+            ...(cabecera.moneda && {
+              currency: cabecera.moneda
+            }),
+            ...(cabecera.fecha && {
+              date: new Date(cabecera.fecha)
+            }),
           },
-          clientTenant: {
-            select: {
-              id: true,
-              name: true,
-              taxId: true
-            }
-          },
-          uploader: {
-            select: {
-              id: true,
-              name: true,
-              email: true
+          include: {
+            providerTenant: {
+              select: {
+                id: true,
+                name: true,
+                taxId: true
+              }
+            },
+            clientTenant: {
+              select: {
+                id: true,
+                name: true,
+                taxId: true
+              }
+            },
+            uploader: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
             }
           }
+        });
+      } else {
+        // === EXTRACCIÓN BÁSICA SIN IA (gratis, usa regex) ===
+        console.log(`📄 [BASIC_PARSE] Extracting basic data without AI: ${req.file.originalname}`);
+
+        const basicResult = await BasicParseService.extractBasicData(filePath);
+
+        console.log(`✅ [BASIC_PARSE] Basic extraction completed`);
+
+        const cabecera = basicResult.documento.cabecera;
+
+        // Map tipo comprobante to our DocumentType
+        let docType: 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'RECEIPT' = 'INVOICE';
+        if (cabecera.tipoComprobante?.includes('CREDITO')) {
+          docType = 'CREDIT_NOTE';
+        } else if (cabecera.tipoComprobante?.includes('DEBITO')) {
+          docType = 'DEBIT_NOTE';
+        } else if (cabecera.tipoComprobante?.includes('RECIBO')) {
+          docType = 'RECEIPT';
         }
-      });
+
+        // Build number from puntoVenta + numeroComprobante
+        let number = document.number;
+        if (cabecera.puntoVenta && cabecera.numeroComprobante) {
+          number = `${cabecera.puntoVenta}-${cabecera.numeroComprobante}`;
+        }
+
+        // Create parseData structure compatible with DocumentoParseEditView
+        const parseData = {
+          documento: {
+            cabecera: {
+              tipoComprobante: cabecera.tipoComprobante || 'FACTURA',
+              puntoVenta: cabecera.puntoVenta || '',
+              numeroComprobante: cabecera.numeroComprobante || '',
+              fecha: cabecera.fecha || '',
+              cuitEmisor: cabecera.cuitEmisor || '',
+              razonSocialEmisor: cabecera.razonSocialEmisor || '',
+              total: cabecera.total || 0,
+              subtotal: 0, // Basic extraction doesn't get subtotal
+              iva: 0, // Basic extraction doesn't get IVA breakdown
+              moneda: cabecera.moneda || 'ARS',
+              cae: cabecera.cae || '',
+            },
+            items: [], // Basic extraction doesn't get items
+            impuestos: [] // Basic extraction doesn't get tax breakdown
+          },
+          metadata: {
+            confianza: 0.5, // Lower confidence for basic extraction
+            metodoExtraccion: 'BASIC_REGEX',
+            requiereRevision: true
+          }
+        };
+
+        // Update document with basic extracted data
+        updatedDocument = await prisma.document.update({
+          where: { id: document.id },
+          data: {
+            parseStatus: 'COMPLETED',
+            parseData: parseData as any,
+            parsedAt: new Date(),
+            parseConfidence: 0.5, // Lower confidence
+            number: number,
+            type: docType,
+            ...(cabecera.total && {
+              totalAmount: cabecera.total
+            }),
+            ...(cabecera.moneda && {
+              currency: cabecera.moneda
+            }),
+            ...(cabecera.fecha && {
+              date: new Date(cabecera.fecha)
+            }),
+          },
+          include: {
+            providerTenant: {
+              select: {
+                id: true,
+                name: true,
+                taxId: true
+              }
+            },
+            clientTenant: {
+              select: {
+                id: true,
+                name: true,
+                taxId: true
+              }
+            },
+            uploader: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        });
+      }
 
       res.status(201).json(updatedDocument);
     } catch (parseError) {
@@ -285,6 +431,89 @@ router.post('/new', authenticate, upload.single('file'), async (req: Request, re
       error: userMessage,
       message: userMessage
     });
+  }
+});
+
+/**
+ * POST /api/documents/:id/submit
+ * Marcar un documento borrador como enviado (de DRAFT a SUBMITTED)
+ * El proveedor usa este endpoint para enviar definitivamente la factura al cliente
+ */
+router.post('/:id/submit', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { id } = req.params;
+
+    // Buscar el documento
+    const document = await prisma.document.findUnique({
+      where: { id },
+      include: {
+        providerTenant: true,
+        clientTenant: true,
+        uploader: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    if (!document) {
+      return res.status(404).json({ error: 'Documento no encontrado' });
+    }
+
+    // Verificar que el usuario sea el que subió el documento o tenga acceso
+    if (document.uploadedBy !== req.user.id) {
+      return res.status(403).json({ error: 'No tienes permiso para enviar este documento' });
+    }
+
+    // Verificar que esté en estado DRAFT
+    if (document.submissionStatus !== 'DRAFT') {
+      return res.status(400).json({
+        error: 'Este documento ya fue enviado',
+        message: 'Solo se pueden enviar documentos en estado borrador'
+      });
+    }
+
+    // Actualizar a SUBMITTED
+    const updatedDocument = await prisma.document.update({
+      where: { id },
+      data: {
+        submissionStatus: 'SUBMITTED',
+        submittedAt: new Date(),
+        status: 'PRESENTED' // Cambiar también el status general a PRESENTED
+      },
+      include: {
+        providerTenant: {
+          select: { id: true, name: true, taxId: true }
+        },
+        clientTenant: {
+          select: { id: true, name: true, taxId: true }
+        },
+        uploader: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    // Crear evento de timeline
+    await prisma.documentEvent.create({
+      data: {
+        documentId: id,
+        fromStatus: 'PROCESSING',
+        toStatus: 'PRESENTED',
+        reason: 'Documento enviado por el proveedor',
+        userId: req.user.id
+      }
+    });
+
+    console.log(`✅ [DOCUMENTS] Document submitted: ${updatedDocument.number} (${id})`);
+
+    res.json(updatedDocument);
+  } catch (error) {
+    console.error('❌ [DOCUMENTS] Error submitting document:', error);
+    res.status(500).json({ error: 'Error al enviar el documento' });
   }
 });
 
@@ -403,20 +632,23 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       providerTenantId,
       clientTenantId,
       supplierId, // Filtro para portal de proveedor
+      submissionStatus, // Filtro por estado de envío (DRAFT, SUBMITTED)
+      includeDrafts, // Si es 'true', incluye borradores (solo para el proveedor)
       limit = '50',
       offset = '0'
     } = req.query;
 
     const where: any = {};
 
-    // Si viene supplierId, buscar el tenant correspondiente al proveedor por CUIT
+    // Si viene supplierId, filtrar documentos subidos por el usuario del supplier
+    // El proveedor ve TODOS sus documentos (incluyendo borradores)
     if (supplierId) {
       const supplier = await prisma.supplier.findUnique({
         where: { id: supplierId as string }
       });
 
       if (supplier) {
-        // Buscar tenant con el mismo CUIT que el proveedor
+        // Primero intentar por providerTenantId si existe tenant con CUIT del proveedor
         const supplierTenant = await prisma.tenant.findFirst({
           where: { taxId: supplier.cuit }
         });
@@ -424,10 +656,15 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         if (supplierTenant) {
           // Filtrar documentos donde el proveedor es quien envía
           where.providerTenantId = supplierTenant.id;
+        } else if (supplier.userId) {
+          // Si no hay tenant, filtrar por usuario que subió el documento
+          where.uploadedBy = supplier.userId;
         } else {
-          // Si no hay tenant para este proveedor, no mostrar documentos
-          where.id = 'NO_MATCH';
+          // Fallback: filtrar por clientTenantId del supplier
+          where.clientTenantId = supplier.tenantId;
         }
+        // El proveedor ve todos sus documentos (DRAFT y SUBMITTED)
+        // No filtramos por submissionStatus aquí
       }
     } else {
       // Filter by provider or client tenant
@@ -436,7 +673,17 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
           { providerTenantId: tenantId },
           { clientTenantId: tenantId }
         ];
+        // El tenant solo ve documentos SUBMITTED (no borradores del proveedor)
+        // a menos que se pida explícitamente incluir borradores
+        if (includeDrafts !== 'true') {
+          where.submissionStatus = 'SUBMITTED';
+        }
       }
+    }
+
+    // Filtro explícito por submissionStatus si se proporciona
+    if (submissionStatus) {
+      where.submissionStatus = submissionStatus;
     }
 
     if (providerTenantId) {
@@ -790,6 +1037,163 @@ router.patch('/:id/status', authenticate, async (req: Request, res: Response) =>
     console.error('❌ [DOCUMENTS] Error updating status:', error);
     res.status(500).json({
       error: 'Error updating document status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/documents/:id/parse-ai
+ * Re-process document with AI extraction (on-demand)
+ * This is for tenants who want to extract full data with AI after basic extraction
+ */
+router.post('/:id/parse-ai', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const document = await prisma.document.findUnique({
+      where: { id }
+    });
+
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Check if file exists
+    const fs = require('fs');
+    const filePath = path.join(__dirname, '../../uploads', path.basename(document.fileUrl));
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        error: 'File not found',
+        message: 'El archivo original no está disponible para reprocesar'
+      });
+    }
+
+    console.log(`📤 [PARSE-AI] Re-processing document with AI: ${document.fileName} (${id})`);
+
+    // Update status to processing
+    await prisma.document.update({
+      where: { id },
+      data: {
+        parseStatus: 'PROCESSING'
+      }
+    });
+
+    try {
+      // Process with Parse API (AI)
+      const parseResult = await ParseService.processDocument(filePath, document.fileName, {
+        read: [req.user.id],
+        write: [req.user.id]
+      });
+
+      console.log(`✅ [PARSE-AI] Document processed with AI successfully`);
+
+      // Extract data from Parse response
+      const cabecera = parseResult.documento.cabecera;
+      const metadata = parseResult.metadata;
+
+      // Map tipo comprobante to our DocumentType
+      let docType: 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'RECEIPT' = 'INVOICE';
+      if (cabecera.tipoComprobante?.includes('CREDITO')) {
+        docType = 'CREDIT_NOTE';
+      } else if (cabecera.tipoComprobante?.includes('DEBITO')) {
+        docType = 'DEBIT_NOTE';
+      } else if (cabecera.tipoComprobante?.includes('RECIBO')) {
+        docType = 'RECEIPT';
+      }
+
+      // Update document with AI Parse data
+      const updatedDocument = await prisma.document.update({
+        where: { id },
+        data: {
+          parseStatus: 'COMPLETED',
+          parseData: parseResult as any,
+          parsedAt: new Date(),
+          parseConfidence: metadata.confianza,
+          // Update document fields with extracted data
+          ...(cabecera.numeroComprobante && {
+            number: cabecera.numeroComprobante
+          }),
+          type: docType,
+          ...(cabecera.total && {
+            totalAmount: cabecera.total
+          }),
+          ...(cabecera.subtotal && {
+            amount: cabecera.subtotal
+          }),
+          ...(cabecera.iva && {
+            taxAmount: cabecera.iva
+          }),
+          ...(cabecera.moneda && {
+            currency: cabecera.moneda
+          }),
+          ...(cabecera.fecha && {
+            date: new Date(cabecera.fecha)
+          }),
+        },
+        include: {
+          providerTenant: {
+            select: {
+              id: true,
+              name: true,
+              taxId: true
+            }
+          },
+          clientTenant: {
+            select: {
+              id: true,
+              name: true,
+              taxId: true
+            }
+          },
+          uploader: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      // Create event for AI extraction
+      await prisma.documentEvent.create({
+        data: {
+          documentId: id,
+          fromStatus: document.status,
+          toStatus: document.status,
+          reason: 'Document re-processed with AI extraction',
+          userId: req.user.id
+        }
+      });
+
+      res.json(updatedDocument);
+    } catch (parseError) {
+      console.error(`❌ [PARSE-AI] Error processing document ${id}:`, parseError);
+
+      // Update document with error
+      await prisma.document.update({
+        where: { id },
+        data: {
+          parseStatus: 'ERROR',
+          parseError: parseError instanceof Error ? parseError.message : 'Unknown error'
+        }
+      });
+
+      res.status(500).json({
+        error: 'Error al procesar con IA',
+        message: parseError instanceof Error ? parseError.message : 'Unknown error'
+      });
+    }
+  } catch (error) {
+    console.error('❌ [PARSE-AI] Error:', error);
+    res.status(500).json({
+      error: 'Error al procesar documento',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
