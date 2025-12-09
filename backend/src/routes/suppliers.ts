@@ -787,9 +787,6 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
     const [suppliers, total] = await Promise.all([
       prisma.supplier.findMany({
         where,
-        include: {
-          documentos: true,
-        },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
