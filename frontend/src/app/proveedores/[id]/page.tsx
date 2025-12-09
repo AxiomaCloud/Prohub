@@ -26,6 +26,7 @@ import {
   Bot,
   ScanLine,
   Settings,
+  Send,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { BankDataForm } from '@/components/suppliers/BankDataForm';
@@ -226,6 +227,22 @@ export default function SupplierDetailPage() {
       await fetchSupplier();
     } catch (error) {
       console.error('Error approving:', error);
+    }
+  };
+
+  const handleSendToApproval = async () => {
+    try {
+      await fetch(`${API_URL}/api/suppliers/${supplierId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: 'PENDING_APPROVAL' }),
+      });
+      await fetchSupplier();
+    } catch (error) {
+      console.error('Error sending to approval:', error);
     }
   };
 
@@ -462,6 +479,15 @@ export default function SupplierDetailPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          {(supplier.status === 'PENDING_COMPLETION' || supplier.status === 'INVITED') && (
+            <button
+              onClick={handleSendToApproval}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              Enviar a Aprobación
+            </button>
+          )}
           {supplier.status === 'PENDING_APPROVAL' && (
             <>
               <button

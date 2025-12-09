@@ -73,6 +73,7 @@ export class NotificationService {
 
   /**
    * Notifica cuando un requerimiento es aprobado
+   * Envía al solicitante y a los compradores del tenant
    */
   static async notifyRequirementApproved(
     purchaseRequest: SimplePurchaseRequest,
@@ -80,17 +81,125 @@ export class NotificationService {
     comment?: string,
     tenantId?: string
   ): Promise<void> {
-    const context: NotificationContext = {
-      tenantId: tenantId || '',
-      numero: purchaseRequest.numero,
-      titulo: purchaseRequest.titulo,
-      aprobador: approverName,
-      fechaAprobacion: new Date().toLocaleDateString('es-AR'),
-      comentario: comment,
-      actionUrl: `${FRONTEND_URL}/compras/requerimientos?id=${purchaseRequest.id}`,
-    };
+    const actionUrl = `${FRONTEND_URL}/compras/requerimientos?id=${purchaseRequest.id}`;
+    const fechaAprobacion = new Date().toLocaleDateString('es-AR');
+    const montoFormateado = this.formatCurrency(purchaseRequest.montoEstimado);
 
-    await this.sendNotification('REQ_APPROVED', purchaseRequest.requester.email, context);
+    // Verificar si existe template
+    const template = tenantId ? await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'REQ_APPROVED',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    }) : null;
+
+    // 1. Notificar al solicitante
+    if (template) {
+      const context: NotificationContext = {
+        tenantId: tenantId || '',
+        numero: purchaseRequest.numero,
+        titulo: purchaseRequest.titulo,
+        aprobador: approverName,
+        fechaAprobacion,
+        comentario: comment,
+        actionUrl,
+      };
+      await this.sendNotification('REQ_APPROVED', purchaseRequest.requester.email, context);
+    } else {
+      console.log(`📧 [REQ_APPROVED] No hay template, enviando email directo a ${purchaseRequest.requester.email}`);
+      await EmailService.sendEmail({
+        to: purchaseRequest.requester.email,
+        subject: `Requerimiento aprobado - ${purchaseRequest.numero}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">✅ Requerimiento Aprobado</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Hola <strong>${purchaseRequest.requester.name}</strong>,</p>
+              <p style="font-size: 16px; color: #374151;">Tu requerimiento ha sido <strong style="color: #10b981;">aprobado</strong>:</p>
+              <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p><strong>Número:</strong> ${purchaseRequest.numero}</p>
+                <p><strong>Título:</strong> ${purchaseRequest.titulo}</p>
+                <p><strong>Monto Estimado:</strong> ${montoFormateado}</p>
+                <p><strong>Aprobado por:</strong> ${approverName}</p>
+                <p><strong>Fecha:</strong> ${fechaAprobacion}</p>
+                ${comment ? `<p><strong>Comentario:</strong> ${comment}</p>` : ''}
+              </div>
+              <p style="font-size: 16px; color: #374151;">El área de compras procederá con la gestión de la cotización.</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${actionUrl}" style="display: inline-block; background: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Ver Requerimiento
+                </a>
+              </div>
+            </div>
+            <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+              Este es un mensaje automático del sistema de compras.
+            </div>
+          </div>
+        `,
+      });
+    }
+
+    // 2. Notificar a los compradores del tenant para que generen la cotización
+    if (tenantId) {
+      const buyerMemberships = await prisma.tenantMembership.findMany({
+        where: {
+          tenantId,
+          isActive: true,
+          roles: { hasSome: ['PURCHASE_ADMIN'] },
+        },
+      });
+
+      const rfqActionUrl = `${FRONTEND_URL}/compras/cotizaciones/nueva?requerimiento=${purchaseRequest.id}`;
+
+      for (const membership of buyerMemberships) {
+        // Obtener el usuario por separado
+        const buyerUser = await prisma.user.findUnique({
+          where: { id: membership.userId },
+          select: { email: true, name: true },
+        });
+
+        if (!buyerUser || buyerUser.email === purchaseRequest.requester.email) continue; // No duplicar si es el mismo
+
+        console.log(`📧 [REQ_APPROVED] Notificando al comprador ${buyerUser.email} para generar cotización`);
+        await EmailService.sendEmail({
+          to: buyerUser.email,
+          subject: `Nuevo requerimiento aprobado para cotizar - ${purchaseRequest.numero}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">📋 Requerimiento Listo para Cotizar</h1>
+              </div>
+              <div style="padding: 30px; background: #f9fafb;">
+                <p style="font-size: 16px; color: #374151;">Hola <strong>${buyerUser.name}</strong>,</p>
+                <p style="font-size: 16px; color: #374151;">Se ha aprobado un nuevo requerimiento que está listo para iniciar el proceso de cotización:</p>
+                <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                  <p><strong>Número:</strong> ${purchaseRequest.numero}</p>
+                  <p><strong>Título:</strong> ${purchaseRequest.titulo}</p>
+                  <p><strong>Monto Estimado:</strong> ${montoFormateado}</p>
+                  <p><strong>Solicitante:</strong> ${purchaseRequest.requester.name}</p>
+                  <p><strong>Aprobado por:</strong> ${approverName}</p>
+                </div>
+                <p style="font-size: 16px; color: #374151;">Por favor, genera una solicitud de cotización para este requerimiento.</p>
+                <div style="text-align: center; margin-top: 30px;">
+                  <a href="${rfqActionUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                    Crear Solicitud de Cotización
+                  </a>
+                </div>
+              </div>
+              <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+                Este es un mensaje automático del sistema de compras.
+              </div>
+            </div>
+          `,
+        });
+      }
+    }
   }
 
   /**
@@ -123,17 +232,142 @@ export class NotificationService {
     levelName: string,
     tenantId: string
   ): Promise<void> {
-    const context: NotificationContext = {
-      tenantId,
-      numero: purchaseRequest.numero,
-      titulo: purchaseRequest.titulo,
-      solicitante: purchaseRequest.requester.name,
-      montoEstimado: this.formatCurrency(purchaseRequest.montoEstimado),
-      nivelAprobacion: levelName,
-      actionUrl: `${FRONTEND_URL}/compras/aprobaciones?id=${purchaseRequest.id}`,
-    };
+    const montoFormateado = this.formatCurrency(purchaseRequest.montoEstimado);
+    const actionUrl = `${FRONTEND_URL}/compras/aprobaciones?id=${purchaseRequest.id}`;
 
-    await this.sendNotification('REQ_NEEDS_APPROVAL', approverEmail, context);
+    // Verificar si existe template
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'REQ_NEEDS_APPROVAL',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    });
+
+    if (template) {
+      const context: NotificationContext = {
+        tenantId,
+        numero: purchaseRequest.numero,
+        titulo: purchaseRequest.titulo,
+        solicitante: purchaseRequest.requester.name,
+        montoEstimado: montoFormateado,
+        nivelAprobacion: levelName,
+        actionUrl,
+      };
+      await this.sendNotification('REQ_NEEDS_APPROVAL', approverEmail, context);
+    } else {
+      // Si no hay template, enviar email directo
+      console.log(`📧 [REQ_NEEDS_APPROVAL] No hay template, enviando email directo a ${approverEmail}`);
+      await EmailService.sendEmail({
+        to: approverEmail,
+        subject: `Requerimiento pendiente de aprobación - ${purchaseRequest.numero}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">⏳ Aprobación Pendiente</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Tienes un nuevo requerimiento pendiente de aprobación:</p>
+              <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p><strong>Número:</strong> ${purchaseRequest.numero}</p>
+                <p><strong>Título:</strong> ${purchaseRequest.titulo}</p>
+                <p><strong>Solicitante:</strong> ${purchaseRequest.requester.name}</p>
+                <p><strong>Monto Estimado:</strong> <span style="color: #f59e0b; font-weight: bold;">${montoFormateado}</span></p>
+                <p><strong>Nivel de Aprobación:</strong> ${levelName}</p>
+              </div>
+              <p style="font-size: 16px; color: #374151;">Por favor revisa y toma una decisión sobre este requerimiento.</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${actionUrl}" style="display: inline-block; background: #f59e0b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Revisar Requerimiento
+                </a>
+              </div>
+            </div>
+            <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+              Este es un mensaje automático del sistema de compras.
+            </div>
+          </div>
+        `,
+      });
+    }
+  }
+
+  /**
+   * Notifica a un aprobador que tiene una OC pendiente de aprobación
+   */
+  static async notifyOCApprovalNeeded(
+    ocNumero: string,
+    ocTotal: number,
+    currency: string,
+    supplierName: string,
+    requesterName: string,
+    approverEmail: string,
+    levelName: string,
+    tenantId: string,
+    ocId: string
+  ): Promise<void> {
+    const montoFormateado = this.formatCurrency(ocTotal, currency);
+    const actionUrl = `${FRONTEND_URL}/compras/ordenes?id=${ocId}`;
+
+    // Verificar si existe template
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'OC_NEEDS_APPROVAL',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    });
+
+    if (template) {
+      const context: NotificationContext = {
+        tenantId,
+        numero: ocNumero,
+        montoTotal: montoFormateado,
+        proveedor: supplierName,
+        solicitante: requesterName,
+        nivelAprobacion: levelName,
+        actionUrl,
+      };
+      await this.sendNotification('OC_NEEDS_APPROVAL', approverEmail, context);
+    } else {
+      // Si no hay template, enviar email directo
+      console.log(`📧 [OC_NEEDS_APPROVAL] No hay template, enviando email directo a ${approverEmail}`);
+      await EmailService.sendEmail({
+        to: approverEmail,
+        subject: `Orden de Compra pendiente de aprobación - ${ocNumero}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">📋 OC Pendiente de Aprobación</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Tienes una nueva Orden de Compra pendiente de aprobación:</p>
+              <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p><strong>Número de OC:</strong> ${ocNumero}</p>
+                <p><strong>Proveedor:</strong> ${supplierName}</p>
+                <p><strong>Monto Total:</strong> <span style="color: #8b5cf6; font-weight: bold;">${montoFormateado}</span></p>
+                <p><strong>Solicitante:</strong> ${requesterName}</p>
+                <p><strong>Nivel de Aprobación:</strong> ${levelName}</p>
+              </div>
+              <p style="font-size: 16px; color: #374151;">Por favor revisa y toma una decisión sobre esta orden de compra.</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${actionUrl}" style="display: inline-block; background: #8b5cf6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Revisar Orden de Compra
+                </a>
+              </div>
+            </div>
+            <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+              Este es un mensaje automático del sistema de compras.
+            </div>
+          </div>
+        `,
+      });
+    }
   }
 
   /**
@@ -454,14 +688,58 @@ export class NotificationService {
     inviteUrl: string,
     tenantId: string
   ): Promise<void> {
-    const context: NotificationContext = {
-      tenantId,
-      proveedor: supplierName,
-      titulo: `Invitación de ${clientName}`,
-      actionUrl: inviteUrl,
-    };
+    // Verificar si existe template
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'SUPPLIER_INVITED',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId }
+        ]
+      }
+    });
 
-    await this.sendNotification('SUPPLIER_INVITED', supplierEmail, context);
+    if (template) {
+      const context: NotificationContext = {
+        tenantId,
+        proveedor: supplierName,
+        titulo: `Invitación de ${clientName}`,
+        actionUrl: inviteUrl,
+      };
+      await this.sendNotification('SUPPLIER_INVITED', supplierEmail, context);
+    } else {
+      // Si no hay template, enviar email directo
+      console.log(`📧 [SUPPLIER_INVITED] No hay template, enviando email directo a ${supplierEmail}`);
+      await EmailService.sendEmail({
+        to: supplierEmail,
+        subject: `Invitación para ser proveedor de ${clientName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0;">🤝 Invitación de Proveedor</h1>
+            </div>
+            <div style="padding: 30px; background: #f9fafb;">
+              <p style="font-size: 16px; color: #374151;">Hola <strong>${supplierName}</strong>,</p>
+              <p style="font-size: 16px; color: #374151;"><strong>${clientName}</strong> te ha invitado a formar parte de su red de proveedores.</p>
+              <p style="font-size: 16px; color: #374151;">Para completar tu registro y comenzar a recibir solicitudes de cotización, haz clic en el siguiente botón:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${inviteUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 18px;">
+                  Completar Registro
+                </a>
+              </div>
+              <p style="font-size: 14px; color: #6b7280; text-align: center;">
+                Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                <a href="${inviteUrl}" style="color: #6366f1; word-break: break-all;">${inviteUrl}</a>
+              </p>
+            </div>
+            <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+              Este es un mensaje automático. Si no esperabas esta invitación, puedes ignorar este email.
+            </div>
+          </div>
+        `,
+      });
+    }
   }
 
   /**
