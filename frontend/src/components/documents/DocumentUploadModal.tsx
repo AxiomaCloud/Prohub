@@ -17,7 +17,6 @@ import {
   FileText,
   AlertCircle,
   Bot,
-  ScanLine,
   FileEdit
 } from 'lucide-react';
 
@@ -60,8 +59,8 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess, supplierCuit, 
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: { status: string; error?: boolean }}>({});
   const [uploadResults, setUploadResults] = useState<{ success: number; failed: number; documentId?: string }>({ success: 0, failed: 0 });
 
-  // Switch de IA - por defecto: false (extracción básica), usuario puede activar IA
-  const [enableAI, setEnableAI] = useState(useAI !== undefined ? useAI : false);
+  // Siempre usar extracción con IA (Axio)
+  const enableAI = true;
 
   // Review step state
   const [parsedDocument, setParsedDocument] = useState<ParsedDocument | null>(null);
@@ -321,43 +320,20 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess, supplierCuit, 
                 </div>
               )}
 
-              {/* Switch de IA - SOLO para tenant (no para proveedor) */}
-              {!supplierCuit && (
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${enableAI ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                      {enableAI ? (
-                        <Bot className="w-5 h-5 text-purple-600" />
-                      ) : (
-                        <ScanLine className="w-5 h-5 text-gray-500" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">
-                        {enableAI ? 'Extracción con IA (Axio)' : 'Extracción básica'}
-                      </p>
-                      <p className="text-xs text-text-secondary">
-                        {enableAI
-                          ? 'Mayor precisión en datos complejos'
-                          : 'Extrae datos básicos sin costo adicional'}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEnableAI(!enableAI)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                      enableAI ? 'bg-purple-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        enableAI ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
+              {/* Mensaje informativo sobre extracción con Axio */}
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                <div className="p-2 rounded-lg bg-purple-100">
+                  <Bot className="w-5 h-5 text-purple-600" />
                 </div>
-              )}
+                <div>
+                  <p className="text-sm font-medium text-text-primary">
+                    Extracción inteligente con Axio
+                  </p>
+                  <p className="text-xs text-text-secondary">
+                    Los datos del comprobante se extraerán automáticamente para tu revisión
+                  </p>
+                </div>
+              </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <Button variant="outline" onClick={handleClose}>
@@ -378,37 +354,18 @@ export function DocumentUploadModal({ isOpen, onClose, onSuccess, supplierCuit, 
           {step === 'uploading' && (
             <div className="space-y-6 py-8">
               <div className="flex flex-col items-center">
-                {enableAI ? (
-                  <>
-                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center mb-4 shadow-lg">
-                      <Bot className="w-10 h-10 text-white animate-pulse" />
-                    </div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
-                      <h3 className="text-lg font-medium text-text-primary">
-                        Extrayendo con Axio
-                      </h3>
-                    </div>
-                    <p className="text-sm text-text-secondary text-center">
-                      Analizando el documento con IA y extrayendo información...
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center mb-4 shadow-lg">
-                      <ScanLine className="w-10 h-10 text-white animate-pulse" />
-                    </div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                      <h3 className="text-lg font-medium text-text-primary">
-                        Procesando documento
-                      </h3>
-                    </div>
-                    <p className="text-sm text-text-secondary text-center">
-                      Extrayendo datos básicos del documento...
-                    </p>
-                  </>
-                )}
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                  <Bot className="w-10 h-10 text-white animate-pulse" />
+                </div>
+                <div className="flex items-center gap-3 mb-2">
+                  <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                  <h3 className="text-lg font-medium text-text-primary">
+                    Extrayendo con Axio
+                  </h3>
+                </div>
+                <p className="text-sm text-text-secondary text-center">
+                  Analizando el documento y extrayendo información...
+                </p>
               </div>
 
               <div className="space-y-2 max-h-48 overflow-y-auto">
