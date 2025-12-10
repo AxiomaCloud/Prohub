@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXIOMA HUB - Pricing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1a365d;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            border-bottom: 4px solid #3182ce;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            color: #2d3748;
+            font-size: 1.8rem;
+            margin: 40px 0 20px 0;
+            padding-left: 15px;
+            border-left: 5px solid #3182ce;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #2d3748;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        .price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2b6cb0;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .highlight {
+            background: #ebf8ff;
+            padding: 20px;
+            border-left: 5px solid #3182ce;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .note {
+            background: #fffaf0;
+            padding: 15px;
+            border-left: 5px solid #f6ad55;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 0.95rem;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AXIOMA HUB - Pricing</h1>
+        <p class="subtitle">Lista de precios - Planes mensuales y servicios de onboarding</p>
+
+        <h2>1. Portal de Proveedores</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Plan</th>
+                    <th>Precio Mensual</th>
+                    <th>Documentos/Mes</th>
+                    <th>Usuarios Admin</th>
+                    <th>Características</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Básico</strong></td>
+                    <td class="price">$120,000</td>
+                    <td class="text-center">Hasta 500</td>
+                    <td class="text-center">5</td>
+                    <td>
+                        • Buzón de documentos<br>
+                        • Gestión de facturas<br>
+                        • Consulta de pagos y OCs<br>
+                        • Notificaciones email
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Professional</strong></td>
+                    <td class="price">$220,000</td>
+                    <td class="text-center">Hasta 2,000</td>
+                    <td class="text-center">15</td>
+                    <td>
+                        • Todo lo anterior<br>
+                        • Timeline completo<br>
+                        • Dashboard ejecutivo<br>
+                        • Reportes avanzados<br>
+                        • Exportación Excel/CSV
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Enterprise</strong></td>
+                    <td class="price">$380,000</td>
+                    <td class="text-center">Ilimitados</td>
+                    <td class="text-center">Ilimitados</td>
+                    <td>
+                        • Todo lo anterior<br>
+                        • API de integración<br>
+                        • SLA 99.9%<br>
+                        • Soporte prioritario<br>
+                        • Customizaciones
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>2. Plataforma Completa de Compras</h2>
+        <p style="margin-bottom: 20px; color: #4a5568;"><em>Incluye todo el Portal de Proveedores + Módulos de Compras Internas</em></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Plan</th>
+                    <th>Precio Mensual</th>
+                    <th>Usuarios Internos</th>
+                    <th>Usuarios Admin</th>
+                    <th>Características Adicionales</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Básico</strong></td>
+                    <td class="price">$200,000</td>
+                    <td class="text-center">10</td>
+                    <td class="text-center">5</td>
+                    <td>
+                        • Portal Básico completo<br>
+                        • Requerimientos de compra<br>
+                        • Aprobaciones (2 niveles)<br>
+                        • Recepciones básicas
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Professional</strong></td>
+                    <td class="price">$380,000</td>
+                    <td class="text-center">50</td>
+                    <td class="text-center">15</td>
+                    <td>
+                        • Portal Professional completo<br>
+                        • Aprobaciones multinivel<br>
+                        • RFQ/Cotizaciones completo<br>
+                        • Chatbot IA (3,000 consultas/mes)<br>
+                        • Delegaciones de aprobación
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Enterprise</strong></td>
+                    <td class="price">$650,000</td>
+                    <td class="text-center">Ilimitados</td>
+                    <td class="text-center">Ilimitados</td>
+                    <td>
+                        • Portal Enterprise completo<br>
+                        • Chatbot IA (10,000 consultas/mes)<br>
+                        • Workflows personalizados<br>
+                        • API completa<br>
+                        • SLA 99.9%
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>3. Add-ons Opcionales</h2>
+
+        <h3 style="color: #4a5568; font-size: 1.2rem; margin: 25px 0 15px 0;">Parse IA - Extracción Automática de Datos</h3>
+        <p style="margin-bottom: 20px; color: #4a5568;"><em>Producto separado que se integra con HUB</em></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Plan Parse</th>
+                    <th>Precio Adicional/Mes</th>
+                    <th>Documentos/Mes</th>
+                    <th>Beneficio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Starter</strong></td>
+                    <td class="price">+$50,000</td>
+                    <td class="text-center">300</td>
+                    <td>Extracción automática: de 10 min a 30 seg por documento</td>
+                </tr>
+                <tr>
+                    <td><strong>Professional</strong></td>
+                    <td class="price">+$120,000</td>
+                    <td class="text-center">1,000</td>
+                    <td>Extracción automática: de 10 min a 30 seg por documento</td>
+                </tr>
+                <tr>
+                    <td><strong>Enterprise</strong></td>
+                    <td class="price">+$200,000</td>
+                    <td class="text-center">Ilimitados</td>
+                    <td>Extracción automática: de 10 min a 30 seg por documento</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 style="color: #4a5568; font-size: 1.2rem; margin: 25px 0 15px 0;">AXIO - Asistente IA para Requerimientos</h3>
+        <p style="margin-bottom: 20px; color: #4a5568;"><em>Crear requerimientos con lenguaje natural</em></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Plan AXIO</th>
+                    <th>Precio Adicional/Mes</th>
+                    <th>Consultas/Mes</th>
+                    <th>Disponibilidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Starter</strong></td>
+                    <td class="price">+$150,000</td>
+                    <td class="text-center">5,000</td>
+                    <td>Para planes sin Chatbot IA incluido</td>
+                </tr>
+                <tr>
+                    <td><strong>Professional</strong></td>
+                    <td class="price">+$250,000</td>
+                    <td class="text-center">12,000</td>
+                    <td>Para planes sin Chatbot IA incluido</td>
+                </tr>
+                <tr>
+                    <td><strong>Enterprise</strong></td>
+                    <td class="price">+$400,000</td>
+                    <td class="text-center">25,000</td>
+                    <td>Para planes sin Chatbot IA incluido</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="note">
+            <strong>Nota:</strong> El Chatbot IA ya está incluido en los planes <strong>Compras Professional</strong> y <strong>Compras Enterprise</strong>. AXIO solo se vende como add-on para clientes que tienen Portal de Proveedores sin módulo de Compras.
+        </div>
+
+        <h2>4. Servicios de Onboarding</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo de Onboarding</th>
+                    <th>Horas Incluidas</th>
+                    <th>Precio</th>
+                    <th>Incluye</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Onboarding Básico</strong></td>
+                    <td class="text-center">12 horas</td>
+                    <td class="price">$420,000</td>
+                    <td>
+                        • Configuración inicial del sistema<br>
+                        • Creación de usuarios (hasta 10)<br>
+                        • Training básico (2 sesiones de 2 horas)<br>
+                        • Carga inicial de datos<br>
+                        • Soporte post-implementación (1 semana)
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Onboarding Professional</strong></td>
+                    <td class="text-center">30 horas</td>
+                    <td class="price">$1,050,000</td>
+                    <td>
+                        • Todo lo anterior<br>
+                        • Configuración de workflows de aprobación<br>
+                        • Personalización de reportes<br>
+                        • Training avanzado (4 sesiones de 3 horas)<br>
+                        • Configuración de notificaciones<br>
+                        • Integración básica con sistemas existentes<br>
+                        • Soporte post-implementación (1 mes)
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Onboarding Enterprise</strong></td>
+                    <td class="text-center">60 horas</td>
+                    <td class="price">$2,100,000</td>
+                    <td>
+                        • Todo lo anterior<br>
+                        • Integración completa con ERP<br>
+                        • Customizaciones específicas<br>
+                        • Training para equipos grandes (8+ sesiones)<br>
+                        • Configuración multi-tenant avanzada<br>
+                        • Migración de datos históricos<br>
+                        • Documentación personalizada<br>
+                        • Soporte post-implementación (3 meses)
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="highlight">
+            <strong>Horas Adicionales de Consultoría:</strong> $35,000 ARS/hora
+            <p style="margin-top: 10px; font-size: 0.95rem;">Disponibles para: personalización adicional, training extendido, integraciones complejas, desarrollo de funcionalidades específicas.</p>
+        </div>
+
+        <h2>5. Paquetes Recomendados</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Paquete</th>
+                    <th>Componentes</th>
+                    <th>Precio Mensual</th>
+                    <th>Onboarding Recomendado</th>
+                    <th>Total Primer Mes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Portal + Parse</strong></td>
+                    <td>
+                        • Portal Professional<br>
+                        • Parse Professional
+                    </td>
+                    <td class="price">$340,000</td>
+                    <td>Professional ($1,050k)</td>
+                    <td class="price">$1,390,000</td>
+                </tr>
+                <tr>
+                    <td><strong>Compras + Parse</strong></td>
+                    <td>
+                        • Compras Professional<br>
+                        • Parse Professional
+                    </td>
+                    <td class="price">$500,000</td>
+                    <td>Professional ($1,050k)</td>
+                    <td class="price">$1,550,000</td>
+                </tr>
+                <tr>
+                    <td><strong>Compras + Parse + AXIO</strong></td>
+                    <td>
+                        • Compras Professional<br>
+                        • Parse Professional<br>
+                        • AXIO Professional
+                    </td>
+                    <td class="price">$750,000</td>
+                    <td>Enterprise ($2,100k)</td>
+                    <td class="price">$2,850,000</td>
+                </tr>
+                <tr>
+                    <td><strong>Enterprise Completo</strong></td>
+                    <td>
+                        • Compras Enterprise<br>
+                        • Parse Enterprise<br>
+                        • AXIO incluido
+                    </td>
+                    <td class="price">$850,000</td>
+                    <td>Enterprise ($2,100k)</td>
+                    <td class="price">$2,950,000</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="note">
+            <p><strong>Notas Importantes:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>Todos los precios son en pesos argentinos (ARS)</li>
+                <li>Precios mensuales con facturación mensual</li>
+                <li>Descuentos disponibles para contratos anuales (consultar)</li>
+                <li>El onboarding es un pago único al inicio</li>
+                <li>Los planes incluyen proveedores ilimitados</li>
+                <li>Soporte técnico incluido en todos los planes</li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #e2e8f0; text-align: center; color: #718096;">
+            <p><strong>AXIOMA HUB - Lista de Precios</strong></p>
+            <p>Versión: Diciembre 2025</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Para más información: <a href="mailto:ventas@axioma.com" style="color: #3182ce;">ventas@axioma.com</a></p>
+        </div>
+    </div>
+</body>
+</html>
