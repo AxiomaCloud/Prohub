@@ -50,10 +50,46 @@
   - PermissionGate: Renderiza condicionalmente por permiso/rol
   - RequireAdmin, RequireSuperAdmin
   - CanView, CanCreate, CanApprove
+- [x] **Sistema de Menú basado en Roles (Sesión 11-Dic-2025)**:
+  - Campo `allowedRoles: Role[]` en modelo MenuItem
+  - Lógica: `allowedRoles = []` significa solo superusers pueden ver
+  - API `PATCH /api/menu/:id/roles` para actualizar roles permitidos
+  - Componente `MenuRolePermissions.tsx` con switches por rol
+  - Cascada automática: activar padre activa hijos, activar hijo activa padre
+  - Preview dinámico del menú filtrado por rol
+  - Eliminadas validaciones de rol en páginas individuales (acceso controlado por menú)
 
 #### Pendiente:
 - [ ] Selector de empresa en UI (multi-tenant)
 - [ ] Panel de gestión de roles (admin)
+
+#### 🆕 PERMISOS GRANULARES - Solo Lectura (Planificado)
+
+**Objetivo**: Controlar qué puede HACER el usuario dentro de cada página (ver vs editar/eliminar)
+
+**Estrategia acordada**:
+1. Agregar switch "Solo Lectura" en el admin de permisos por rol
+2. Crear modelo `MenuItemRolePermission` con campo `readOnly: boolean`
+3. Crear componentes wrapper: `ProtectedButton`, `ProtectedModal`, `ProtectedDeleteAction`
+4. Los wrappers consultan si el usuario tiene `readOnly` para la página actual
+
+**Tareas**:
+- [ ] Crear modelo Prisma `MenuItemRolePermission` con campos: menuItemId, role, readOnly
+- [ ] Migrar base de datos
+- [ ] Crear endpoint `GET /api/menu/permissions/:menuItemId`
+- [ ] Modificar endpoint `/api/menu` para incluir `readOnly` por item
+- [ ] Crear middleware `checkReadOnly` para validar en backend
+- [ ] Crear componente `ProtectedButton` (oculta si readOnly)
+- [ ] Crear componente `ProtectedModal` (deshabilita formularios si readOnly)
+- [ ] Crear componente `ProtectedDeleteAction` (oculta eliminar si readOnly)
+- [ ] Agregar switch "Solo Lectura" en `MenuRolePermissions.tsx`
+- [ ] Crear hook `usePagePermissions` para consultar readOnly de página actual
+- [ ] Integrar wrappers en páginas: usuarios, documentos, proveedores, pagos, etc.
+- [ ] Testing de permisos granulares
+
+**Estimación**: ~22 horas
+
+**Prioridad**: Media - Después de estabilizar sistema de menú actual
 
 ---
 

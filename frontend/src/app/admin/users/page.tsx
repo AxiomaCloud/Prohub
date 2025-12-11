@@ -127,30 +127,10 @@ export default function UsersPage() {
     }
   }, [currentTenant?.id, get]);
 
-  // useEffect debe estar ANTES de cualquier return condicional
+  // Cargar usuarios al montar el componente
   useEffect(() => {
-    if (isSuperuser) {
-      loadUsers();
-    }
-  }, [isSuperuser, loadUsers]);
-
-  // Solo superusers pueden gestionar usuarios
-  if (!isSuperuser) {
-    return (
-      <ProtectedRoute>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Acceso Denegado
-            </h1>
-            <p className="text-gray-600 mb-4">
-              Solo los superusuarios pueden gestionar usuarios.
-            </p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
+    loadUsers();
+  }, [loadUsers]);
 
   const handleCreateUser = () => {
     setEditingUser(null);
@@ -262,6 +242,10 @@ export default function UsersPage() {
         await put(`/api/users/${editingUser.id}`, submitData);
         toast.success('Usuario actualizado correctamente');
       } else {
+        // Include tenantId when creating new user
+        if (currentTenant?.id) {
+          submitData.tenantId = currentTenant.id;
+        }
         await post('/api/users', submitData);
         toast.success('Usuario creado correctamente');
       }

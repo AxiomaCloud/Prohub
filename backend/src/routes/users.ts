@@ -30,12 +30,21 @@ const AVAILABLE_ROLES = [
 router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
   try {
     const tenantId = req.query.tenantId as string;
+    const currentUserId = req.user?.id;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'tenantId is required' });
     }
 
+    // Verificar si el usuario actual es superuser
+    const currentUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { superuser: true }
+    });
+    const isSuperuser = currentUser?.superuser || false;
+
     // Solo obtener usuarios que tienen membresía en el tenant seleccionado
+    // Si el usuario no es superuser, excluir a los superusers de la lista
     const users = await prisma.user.findMany({
       where: {
         tenantMemberships: {
@@ -43,6 +52,8 @@ router.get('/with-roles', authenticate, async (req: Request, res: Response) => {
             tenantId: tenantId,
           },
         },
+        // Filtrar superusers si el usuario actual no es superuser
+        ...(isSuperuser ? {} : { superuser: false }),
       },
       select: {
         id: true,
@@ -271,11 +282,11 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 
 /**
  * POST /api/users
- * Create new user
+ * Create new user with optional tenant membership
  */
 router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
-    const { email, name, password, phone } = req.body;
+    const { email, name, password, phone, tenantId, roles } = req.body;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -289,7 +300,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     // Hash password
     const passwordHash = await hashPassword(password || 'changeme123');
 
-    // Create user
+    // Create user with optional tenant membership
     const user = await prisma.user.create({
       data: {
         email,
@@ -297,6 +308,17 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
         passwordHash,
         phone,
         emailVerified: true, // Auto-verify for admin created users
+        // Create tenant membership if tenantId is provided
+        ...(tenantId && {
+          tenantMemberships: {
+            create: {
+              tenantId,
+              roles: roles && roles.length > 0 ? roles as Role[] : ['CLIENT_VIEWER'],
+              isActive: true,
+              joinedAt: new Date(),
+            },
+          },
+        }),
       },
       select: {
         id: true,
@@ -307,8 +329,18 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
         emailVerified: true,
         createdAt: true,
         updatedAt: true,
+        tenantMemberships: {
+          select: {
+            id: true,
+            tenantId: true,
+            roles: true,
+            isActive: true,
+          },
+        },
       },
     });
+
+    console.log(`✅ Usuario creado: ${user.email}${tenantId ? ` con membresía en tenant ${tenantId}` : ''}`);
 
     res.status(201).json(user);
   } catch (error) {
@@ -357,7 +389,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 router.put('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, phone, avatar, password } = req.body;
+    const { email, name, phone, avatar, password } = req.body;
 
     // Preparar datos de actualización
     const updateData: any = {
@@ -365,6 +397,23 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
       phone,
       avatar,
     };
+
+    // Actualizar email si se envía
+    if (email) {
+      // Verificar que el email no esté en uso por otro usuario
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          email,
+          id: { not: id }
+        }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ error: 'El email ya está en uso por otro usuario' });
+      }
+
+      updateData.email = email;
+    }
 
     // Si se envía password, hashearla
     if (password && password.trim() !== '') {

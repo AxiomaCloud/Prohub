@@ -16,7 +16,22 @@ import {
   Save,
   CheckCircle,
   Loader2,
+  Plus,
+  Trash2,
+  Star,
 } from 'lucide-react';
+
+interface BankAccount {
+  id?: string;
+  banco: string;
+  tipoCuenta: string;
+  numeroCuenta?: string;
+  cbu: string;
+  alias?: string;
+  titularCuenta: string;
+  moneda: string;
+  esPrincipal: boolean;
+}
 
 interface SupplierData {
   id: string;
@@ -37,12 +52,7 @@ interface SupplierData {
   emailFacturacion?: string;
   contactoNombre?: string;
   contactoCargo?: string;
-  banco?: string;
-  tipoCuenta?: string;
-  numeroCuenta?: string;
-  cbu?: string;
-  alias?: string;
-  titularCuenta?: string;
+  cuentasBancarias: BankAccount[];
   notifEmail: boolean;
   notifWhatsapp: boolean;
   notifDocStatus: boolean;
@@ -71,6 +81,38 @@ const tiposCuenta = [
   { value: 'CAJA_AHORRO', label: 'Caja de Ahorro' },
 ];
 
+const bancos = [
+  { value: 'BANCO_NACION', label: 'Banco de la Nación Argentina' },
+  { value: 'BANCO_PROVINCIA', label: 'Banco de la Provincia de Buenos Aires' },
+  { value: 'BANCO_CIUDAD', label: 'Banco de la Ciudad de Buenos Aires' },
+  { value: 'BANCO_GALICIA', label: 'Banco Galicia' },
+  { value: 'BANCO_SANTANDER', label: 'Banco Santander' },
+  { value: 'BANCO_BBVA', label: 'BBVA Argentina' },
+  { value: 'BANCO_MACRO', label: 'Banco Macro' },
+  { value: 'BANCO_HSBC', label: 'HSBC Argentina' },
+  { value: 'BANCO_ICBC', label: 'ICBC Argentina' },
+  { value: 'BANCO_CREDICOOP', label: 'Banco Credicoop' },
+  { value: 'BANCO_SUPERVIELLE', label: 'Banco Supervielle' },
+  { value: 'BANCO_PATAGONIA', label: 'Banco Patagonia' },
+  { value: 'BANCO_COMAFI', label: 'Banco Comafi' },
+  { value: 'BANCO_HIPOTECARIO', label: 'Banco Hipotecario' },
+  { value: 'BANCO_SAN_JUAN', label: 'Banco San Juan' },
+  { value: 'BANCO_ENTRE_RIOS', label: 'Banco de Entre Ríos' },
+  { value: 'BANCO_SANTA_FE', label: 'Banco de Santa Fe' },
+  { value: 'BANCO_CORDOBA', label: 'Banco de Córdoba' },
+  { value: 'BANCO_CHUBUT', label: 'Banco del Chubut' },
+  { value: 'BRUBANK', label: 'Brubank' },
+  { value: 'UALA', label: 'Ualá' },
+  { value: 'MERCADOPAGO', label: 'Mercado Pago' },
+  { value: 'NARANJA_X', label: 'Naranja X' },
+  { value: 'OTRO', label: 'Otro' },
+];
+
+const monedas = [
+  { value: 'ARS', label: 'Pesos (ARS)' },
+  { value: 'USD', label: 'Dólares (USD)' },
+];
+
 export default function MiEmpresaPage() {
   const router = useRouter();
   const { isSupplier, supplier, supplierId, loading: supplierLoading, refetch } = useSupplier();
@@ -82,6 +124,34 @@ export default function MiEmpresaPage() {
   useEffect(() => {
     if (supplier) {
       console.log('🏢 [MiEmpresa] Cargando datos del supplier:', supplier);
+
+      // Mapear cuentas bancarias del supplier
+      const cuentasBancarias: BankAccount[] = supplier.cuentasBancarias?.map((cuenta: any) => ({
+        id: cuenta.id,
+        banco: cuenta.banco || '',
+        tipoCuenta: cuenta.tipoCuenta || 'CAJA_AHORRO',
+        numeroCuenta: cuenta.numeroCuenta || '',
+        cbu: cuenta.cbu || '',
+        alias: cuenta.alias || '',
+        titularCuenta: cuenta.titularCuenta || '',
+        moneda: cuenta.moneda || 'ARS',
+        esPrincipal: cuenta.esPrincipal || false,
+      })) || [];
+
+      // Si no hay cuentas pero hay datos legacy, crear una cuenta con esos datos
+      if (cuentasBancarias.length === 0 && supplier.cbu) {
+        cuentasBancarias.push({
+          banco: supplier.banco || '',
+          tipoCuenta: supplier.tipoCuenta || 'CAJA_AHORRO',
+          numeroCuenta: supplier.numeroCuenta || '',
+          cbu: supplier.cbu || '',
+          alias: supplier.alias || '',
+          titularCuenta: supplier.titularCuenta || '',
+          moneda: 'ARS',
+          esPrincipal: true,
+        });
+      }
+
       setSupplierData({
         id: supplier.id,
         nombre: supplier.nombre || '',
@@ -101,19 +171,14 @@ export default function MiEmpresaPage() {
         emailFacturacion: supplier.emailFacturacion || '',
         contactoNombre: supplier.contactoNombre || '',
         contactoCargo: supplier.contactoCargo || '',
-        banco: supplier.banco || '',
-        tipoCuenta: supplier.tipoCuenta || '',
-        numeroCuenta: supplier.numeroCuenta || '',
-        cbu: supplier.cbu || '',
-        alias: supplier.alias || '',
-        titularCuenta: supplier.titularCuenta || '',
+        cuentasBancarias,
         notifEmail: supplier.notifEmail ?? true,
         notifWhatsapp: supplier.notifWhatsapp ?? false,
         notifDocStatus: supplier.notifDocStatus ?? true,
         notifPagos: supplier.notifPagos ?? true,
         notifComentarios: supplier.notifComentarios ?? true,
         notifOC: supplier.notifOC ?? true,
-      } as SupplierData);
+      });
     }
   }, [supplier]);
 
@@ -123,6 +188,64 @@ export default function MiEmpresaPage() {
     if (supplierData) {
       setSupplierData({ ...supplierData, [field]: value });
     }
+  };
+
+  // Funciones para manejar cuentas bancarias
+  const addBankAccount = () => {
+    if (!supplierData) return;
+    const newAccount: BankAccount = {
+      banco: '',
+      tipoCuenta: 'CAJA_AHORRO',
+      numeroCuenta: '',
+      cbu: '',
+      alias: '',
+      titularCuenta: supplierData.nombre,
+      moneda: 'ARS',
+      esPrincipal: supplierData.cuentasBancarias.length === 0,
+    };
+    setSupplierData({
+      ...supplierData,
+      cuentasBancarias: [...supplierData.cuentasBancarias, newAccount],
+    });
+  };
+
+  const removeBankAccount = (index: number) => {
+    if (!supplierData) return;
+    const updatedAccounts = supplierData.cuentasBancarias.filter((_, i) => i !== index);
+    // Si eliminamos la cuenta principal y quedan cuentas, marcar la primera como principal
+    if (supplierData.cuentasBancarias[index]?.esPrincipal && updatedAccounts.length > 0) {
+      updatedAccounts[0].esPrincipal = true;
+    }
+    setSupplierData({
+      ...supplierData,
+      cuentasBancarias: updatedAccounts,
+    });
+  };
+
+  const updateBankAccount = (index: number, field: keyof BankAccount, value: any) => {
+    if (!supplierData) return;
+    const updatedAccounts = [...supplierData.cuentasBancarias];
+    updatedAccounts[index] = { ...updatedAccounts[index], [field]: value };
+
+    // Si se marca como principal, desmarcar las demás
+    if (field === 'esPrincipal' && value === true) {
+      updatedAccounts.forEach((acc, i) => {
+        if (i !== index) acc.esPrincipal = false;
+      });
+    }
+
+    setSupplierData({
+      ...supplierData,
+      cuentasBancarias: updatedAccounts,
+    });
+  };
+
+  const getBancoLabel = (value: string) => {
+    return bancos.find(b => b.value === value)?.label || value;
+  };
+
+  const getTipoCuentaLabel = (value: string) => {
+    return tiposCuenta.find(t => t.value === value)?.label || value;
   };
 
   const handleSave = async () => {
@@ -474,85 +597,155 @@ export default function MiEmpresaPage() {
 
           {/* Tab: Datos Bancarios */}
           {activeTab === 'bancario' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Banco
-                </label>
-                <input
-                  type="text"
-                  value={supplierData.banco || ''}
-                  onChange={(e) => handleChange('banco', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
-                />
+            <div className="space-y-6">
+              {/* Header con botón agregar */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-text-primary">Cuentas Bancarias</h3>
+                  <p className="text-sm text-text-secondary">Gestiona las cuentas bancarias para recibir pagos</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={addBankAccount}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar Cuenta
+                </Button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Tipo de Cuenta
-                </label>
-                <select
-                  value={supplierData.tipoCuenta || ''}
-                  onChange={(e) => handleChange('tipoCuenta', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
-                >
-                  <option value="">Seleccionar...</option>
-                  {tiposCuenta.map((tc) => (
-                    <option key={tc.value} value={tc.value}>
-                      {tc.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Lista de cuentas vacía */}
+              {supplierData.cuentasBancarias.length === 0 && (
+                <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
+                  <CreditCard className="w-12 h-12 text-text-secondary mx-auto mb-4" />
+                  <p className="text-text-secondary mb-2">No hay cuentas bancarias registradas</p>
+                  <Button variant="outline" size="sm" onClick={addBankAccount}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar primera cuenta
+                  </Button>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Número de Cuenta
-                </label>
-                <input
-                  type="text"
-                  value={supplierData.numeroCuenta || ''}
-                  onChange={(e) => handleChange('numeroCuenta', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
-                />
-              </div>
+              {/* Grilla de cuentas bancarias */}
+              {supplierData.cuentasBancarias.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-border">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Banco</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tipo</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">CBU</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Alias</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Titular</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Moneda</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase tracking-wider">Principal</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase tracking-wider">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {supplierData.cuentasBancarias.map((cuenta, index) => (
+                        <tr key={index} className={cuenta.esPrincipal ? 'bg-purple-50' : 'hover:bg-gray-50'}>
+                          <td className="px-4 py-3">
+                            <select
+                              value={cuenta.banco}
+                              onChange={(e) => updateBankAccount(index, 'banco', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple"
+                            >
+                              <option value="">Seleccionar...</option>
+                              {bancos.map((b) => (
+                                <option key={b.value} value={b.value}>{b.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={cuenta.tipoCuenta}
+                              onChange={(e) => updateBankAccount(index, 'tipoCuenta', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple"
+                            >
+                              {tiposCuenta.map((tc) => (
+                                <option key={tc.value} value={tc.value}>{tc.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={cuenta.cbu}
+                              onChange={(e) => updateBankAccount(index, 'cbu', e.target.value)}
+                              maxLength={22}
+                              placeholder="0000000000000000000000"
+                              className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple font-mono"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={cuenta.alias || ''}
+                              onChange={(e) => updateBankAccount(index, 'alias', e.target.value)}
+                              placeholder="mi.alias.cbu"
+                              className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={cuenta.titularCuenta}
+                              onChange={(e) => updateBankAccount(index, 'titularCuenta', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={cuenta.moneda}
+                              onChange={(e) => updateBankAccount(index, 'moneda', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-palette-purple"
+                            >
+                              {monedas.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => updateBankAccount(index, 'esPrincipal', true)}
+                              className={`p-1 rounded-full transition-colors ${
+                                cuenta.esPrincipal
+                                  ? 'text-yellow-500'
+                                  : 'text-gray-300 hover:text-yellow-400'
+                              }`}
+                              title={cuenta.esPrincipal ? 'Cuenta principal' : 'Marcar como principal'}
+                            >
+                              <Star className={`w-5 h-5 ${cuenta.esPrincipal ? 'fill-current' : ''}`} />
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeBankAccount(index)}
+                              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                              title="Eliminar cuenta"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  CBU
-                </label>
-                <input
-                  type="text"
-                  value={supplierData.cbu || ''}
-                  onChange={(e) => handleChange('cbu', e.target.value)}
-                  maxLength={22}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Alias CBU
-                </label>
-                <input
-                  type="text"
-                  value={supplierData.alias || ''}
-                  onChange={(e) => handleChange('alias', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Titular de la Cuenta
-                </label>
-                <input
-                  type="text"
-                  value={supplierData.titularCuenta || ''}
-                  onChange={(e) => handleChange('titularCuenta', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-purple"
-                />
-              </div>
+              {/* Nota informativa */}
+              {supplierData.cuentasBancarias.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                  <Star className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Cuenta Principal</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      La cuenta marcada con estrella será la predeterminada para recibir pagos.
+                      Puedes cambiarla haciendo clic en la estrella de otra cuenta.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

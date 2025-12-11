@@ -1,6 +1,8 @@
 import { PrismaClient, PurchaseRequestPriority } from '@prisma/client';
+import { RuleActionExecutor } from './ruleActionExecutor';
 
 const prisma = new PrismaClient();
+const ruleExecutor = new RuleActionExecutor();
 
 /**
  * Action Executor Service
@@ -10,10 +12,24 @@ const prisma = new PrismaClient();
  */
 
 interface AIAction {
-  accion: 'crear_requerimiento' | 'consultar_estado' | 'aprobar_documento' | 'subir_factura' | 'unknown';
+  accion:
+    | 'crear_requerimiento'
+    | 'consultar_estado'
+    | 'aprobar_documento'
+    | 'subir_factura'
+    // Acciones de reglas de autorización
+    | 'crear_regla_aprobacion'
+    | 'modificar_regla_aprobacion'
+    | 'eliminar_regla_aprobacion'
+    | 'listar_reglas_aprobacion'
+    | 'sugerir_reglas'
+    | 'explicar_regla'
+    | 'confirmar_regla_pendiente'
+    | 'cancelar_regla_pendiente'
+    | 'unknown';
   entidades?: any;
   error?: string;
-  requiresUserAction?: 'file_upload';
+  requiresUserAction?: 'file_upload' | 'confirm_rule';
 }
 
 interface ExecutionResult {
@@ -21,8 +37,9 @@ interface ExecutionResult {
   message: string;
   data?: any;
   error?: string;
-  requiresUserAction?: 'file_upload';
+  requiresUserAction?: 'file_upload' | 'confirm_rule';
   actionContext?: any; // Contexto adicional para la acción del usuario
+  pendingRuleId?: string; // ID de regla pendiente de confirmación
 }
 
 class ActionExecutorService {
@@ -51,6 +68,31 @@ class ActionExecutorService {
 
         case 'subir_factura':
           return this.solicitarSubidaFactura(action);
+
+        // === ACCIONES DE REGLAS DE AUTORIZACIÓN ===
+        case 'crear_regla_aprobacion':
+          return await ruleExecutor.prepararReglaAprobacion(action, userId, tenantId, originalPrompt);
+
+        case 'modificar_regla_aprobacion':
+          return await ruleExecutor.prepararModificacionRegla(action, userId, tenantId);
+
+        case 'eliminar_regla_aprobacion':
+          return await ruleExecutor.prepararEliminacionRegla(action, userId, tenantId);
+
+        case 'listar_reglas_aprobacion':
+          return await ruleExecutor.listarReglasAprobacion(action, userId, tenantId);
+
+        case 'sugerir_reglas':
+          return await ruleExecutor.sugerirReglas(action, userId, tenantId);
+
+        case 'explicar_regla':
+          return await ruleExecutor.explicarRegla(action, userId, tenantId);
+
+        case 'confirmar_regla_pendiente':
+          return await ruleExecutor.confirmarReglaAprobacion(action, userId, tenantId);
+
+        case 'cancelar_regla_pendiente':
+          return ruleExecutor.cancelarReglaPendiente(action, userId, tenantId);
 
         case 'unknown':
           return {

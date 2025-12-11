@@ -11,6 +11,7 @@ export interface MenuItem {
   orderIndex: number;
   isActive: boolean;
   requiresPermission: string | null;
+  allowedRoles: string[];
   superuserOnly: boolean;
   tenantId: string | null;
   createdAt: string;

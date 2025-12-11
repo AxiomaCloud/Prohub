@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/hooks/useApiClient';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
 
 interface NotificationPreference {
   id: string;
@@ -208,8 +207,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <ProtectedRoute requiredRoles={['CLIENT_ADMIN', 'SUPER_ADMIN', 'CLIENT_VIEWER', 'CLIENT_APPROVER', 'PURCHASE_REQUESTER', 'PURCHASE_APPROVER', 'PURCHASE_ADMIN']}>
-      <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -322,6 +320,5 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-    </ProtectedRoute>
   );
 }

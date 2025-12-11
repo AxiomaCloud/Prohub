@@ -1342,4 +1342,137 @@ export class NotificationService {
     };
     return translations[priority] || priority;
   }
+
+  private static translateDocumentType(docType: string): string {
+    const translations: Record<string, string> = {
+      DOCUMENT: 'Documento',
+      PURCHASE_ORDER: 'Orden de Compra',
+      PURCHASE_REQUEST: 'Requerimiento',
+      QUOTATION: 'Cotización',
+      PAYMENT: 'Pago',
+    };
+    return translations[docType] || docType;
+  }
+
+  /**
+   * Notifica cuando hay un nuevo mensaje en el chat de un documento
+   */
+  static async notifyDocumentMessage(params: {
+    recipientEmail: string;
+    recipientTenantId: string;
+    senderName: string;
+    senderEmail: string;
+    documentType: string;
+    documentNumber: string;
+    documentId: string;
+    messageText: string;
+    conversationId: string;
+  }): Promise<void> {
+    const {
+      recipientEmail,
+      recipientTenantId,
+      senderName,
+      senderEmail,
+      documentType,
+      documentNumber,
+      documentId,
+      messageText,
+      conversationId,
+    } = params;
+
+    const documentTypeLabel = this.translateDocumentType(documentType);
+
+    // Determinar URL según el tipo de documento
+    let actionUrl = FRONTEND_URL;
+    switch (documentType) {
+      case 'DOCUMENT':
+        actionUrl = `${FRONTEND_URL}/documentos/${documentId}`;
+        break;
+      case 'PURCHASE_ORDER':
+        actionUrl = `${FRONTEND_URL}/portal/ordenes?id=${documentId}`;
+        break;
+      case 'PURCHASE_REQUEST':
+        actionUrl = `${FRONTEND_URL}/compras/requerimientos/${documentId}`;
+        break;
+      case 'QUOTATION':
+        actionUrl = `${FRONTEND_URL}/portal/cotizaciones?id=${documentId}`;
+        break;
+      case 'PAYMENT':
+        actionUrl = `${FRONTEND_URL}/portal/pagos?id=${documentId}`;
+        break;
+    }
+
+    // Verificar si existe template personalizado
+    const template = await prisma.emailTemplate.findFirst({
+      where: {
+        eventType: 'DOC_MESSAGE_RECEIVED',
+        isActive: true,
+        OR: [
+          { tenantId: null },
+          { tenantId: recipientTenantId }
+        ]
+      },
+      orderBy: { tenantId: 'desc' } // Priorizar template del tenant
+    });
+
+    if (template) {
+      // Usar template de la BD
+      await EmailService.sendTemplatedEmail(
+        'DOC_MESSAGE_RECEIVED',
+        recipientEmail,
+        {
+          senderName,
+          senderEmail,
+          documentType: documentTypeLabel,
+          documentNumber,
+          messageText,
+          actionUrl,
+        },
+        recipientTenantId
+      );
+    } else {
+      // Fallback: enviar email hardcoded
+      const subject = `💬 Nuevo mensaje de ${senderName} - ${documentNumber}`;
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">💬 Nuevo mensaje</h1>
+          </div>
+          <div style="padding: 30px; background: #f9fafb;">
+            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+              <strong>${senderName}</strong> te ha enviado un mensaje sobre:
+            </p>
+            <div style="background: white; border: 1px solid #e5e7eb; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">${documentTypeLabel}</p>
+              <p style="margin: 5px 0 0 0; color: #111827; font-weight: 600; font-size: 18px;">${documentNumber}</p>
+            </div>
+
+            <div style="background: #f3f4f6; border-left: 4px solid #6366f1; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="font-size: 15px; color: #374151; white-space: pre-wrap; margin: 0; line-height: 1.6;">
+                ${messageText}
+              </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${actionUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                Responder en Hub
+              </a>
+            </div>
+          </div>
+          <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+            Este mensaje fue enviado desde el sistema Hub. No responder a este email.
+          </div>
+        </div>
+      `;
+
+      await EmailService.sendEmail({
+        to: recipientEmail,
+        subject,
+        html,
+      });
+    }
+
+    console.log(`📧 [NOTIFICATION] Mensaje de documento enviado a ${recipientEmail} por ${senderName}`);
+  }
 }

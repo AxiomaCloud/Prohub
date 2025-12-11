@@ -26,6 +26,8 @@ import {
   Send
 } from 'lucide-react';
 import { DocumentoParseView } from '@/components/documents/DocumentoParseView';
+import { DocumentChatDrawer, DocumentChatBadge } from '@/components/chat/DocumentChatDrawer';
+import { useDocumentChat } from '@/hooks/useDocumentChat';
 
 interface Document {
   id: string;
@@ -149,6 +151,14 @@ export default function DocumentDetailPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const [statusReason, setStatusReason] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Hook para el chat - obtener unread count
+  const { unreadCount: chatUnreadCount } = useDocumentChat({
+    documentType: 'document',
+    documentId: params.id as string,
+    enabled: !!params.id,
+  });
 
   useEffect(() => {
     if (params.id) {
@@ -350,6 +360,19 @@ export default function DocumentDetailPage() {
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Actualizar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsChatOpen(true)}
+              className="relative"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Chat
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+                </span>
+              )}
             </Button>
             <Button
               variant="outline"
@@ -666,6 +689,15 @@ export default function DocumentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Chat Drawer */}
+      <DocumentChatDrawer
+        documentType="document"
+        documentId={document.id}
+        documentNumber={`${documentTypeLabels[document.type]} ${document.number}`}
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+      />
     </div>
   );
 }

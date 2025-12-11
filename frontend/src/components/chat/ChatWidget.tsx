@@ -3,11 +3,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Loader2 } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
+import { RulePreviewCard } from './RulePreviewCard';
 import { chatService, ChatMessage as ChatMessageType } from '@/lib/chatService';
 
 interface ChatWidgetProps {
   tenantId: string;
   token: string;
+}
+
+interface PendingRuleInfo {
+  id: string;
+  rule: any;
+  expiresAt?: Date;
 }
 
 interface ExtendedChatMessage extends ChatMessageType {
@@ -16,6 +23,9 @@ interface ExtendedChatMessage extends ChatMessageType {
     tipoDocumento?: string;
     proveedorNombre?: string;
   };
+  requiresConfirmation?: boolean;
+  pendingRuleId?: string;
+  pendingRule?: any;
 }
 
 export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
@@ -26,6 +36,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessageId, setUploadMessageId] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [pendingRule, setPendingRule] = useState<PendingRuleInfo | null>(null);
+  const [isConfirmingRule, setIsConfirmingRule] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -91,7 +103,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
         timestamp: new Date(),
         data: response.data,
         requiresUpload: response.requiresUserAction === 'file_upload',
-        actionContext: response.actionContext
+        actionContext: response.actionContext,
+        requiresConfirmation: response.requiresConfirmation || response.requiresUserAction === 'confirm_rule',
+        pendingRuleId: response.pendingRuleId,
+        pendingRule: response.pendingRule
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -99,6 +114,15 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
       // Si requiere upload, guardamos el ID del mensaje
       if (response.requiresUserAction === 'file_upload') {
         setUploadMessageId(messageId);
+      }
+
+      // Si requiere confirmación de regla, guardamos la info
+      if ((response.requiresConfirmation || response.requiresUserAction === 'confirm_rule') && response.pendingRuleId) {
+        setPendingRule({
+          id: response.pendingRuleId,
+          rule: response.pendingRule,
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutos
+        });
       }
 
       // Si hubo error, mostrar mensaje adicional
@@ -126,6 +150,60 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantId, token }) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleConfirmRule = async (pendingRuleId: string) => {
+    setIsConfirmingRule(true);
+
+    try {
+      const response = await chatService.confirmRule(pendingRuleId, true, tenantId);
+
+      // Agregar respuesta al chat
+      const resultMessage: ExtendedChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        data: response.data
+      };
+
+      setMessages(prev => [...prev, resultMessage]);
+      setPendingRule(null);
+
+    } catch (error) {
+      console.error('Error confirmando regla:', error);
+
+      const errorMessage: ExtendedChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '❌ Hubo un error al crear la regla. Por favor intentá nuevamente.',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsConfirmingRule(false);
+    }
+  };
+
+  const handleCancelRule = async (pendingRuleId: string) => {
+    try {
+      await chatService.confirmRule(pendingRuleId, false, tenantId);
+
+      // Agregar mensaje de cancelación
+      const cancelMessage: ExtendedChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '❌ Creación de regla cancelada. Si necesitás crear una regla diferente, decime.',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, cancelMessage]);
+      setPendingRule(null);
+
+    } catch (error) {
+      console.error('Error cancelando regla:', error);
     }
   };
 
@@ -199,10 +277,13 @@ Puedo ayudarte a:
 • Crear requerimientos de compra con lenguaje natural
 • **Subir y procesar facturas** automáticamente
 • Consultar el estado de tus documentos
+• **Administrar reglas de autorización**
 
 **Ejemplos:**
 • "Necesito una notebook para diseño, presupuesto $2000"
-• "Quiero subir una factura"`,
+• "Quiero subir una factura"
+• "Crea una regla para que compras mayores a $500K las apruebe el gerente"
+• "Mostrame las reglas de aprobación"`,
         timestamp: new Date()
       };
 
@@ -261,6 +342,18 @@ Puedo ayudarte a:
               />
             ))}
 
+            {/* Mostrar RulePreviewCard si hay regla pendiente */}
+            {pendingRule && (
+              <RulePreviewCard
+                rule={pendingRule.rule}
+                pendingRuleId={pendingRule.id}
+                onConfirm={handleConfirmRule}
+                onCancel={handleCancelRule}
+                isLoading={isConfirmingRule}
+                expiresAt={pendingRule.expiresAt}
+              />
+            )}
+
             {isLoading && (
               <div className="flex items-center gap-2 text-gray-500 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -286,14 +379,11 @@ Puedo ayudarte a:
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={
-                  isAvailable
-                    ? 'Escribe tu mensaje...'
-                    : 'Asistente no disponible'
-                }
+                placeholder={isAvailable ? 'Escribe tu mensaje...' : 'Asistente no disponible'}
                 disabled={isLoading || !isAvailable}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-800 dark:text-white disabled:opacity-50"
               />
+
               <button
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isLoading || !isAvailable}

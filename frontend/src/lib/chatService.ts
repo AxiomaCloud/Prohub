@@ -21,11 +21,40 @@ export interface ChatResponse {
   data?: any;
   error?: string;
   debug?: any;
-  requiresUserAction?: 'file_upload';
+  requiresUserAction?: 'file_upload' | 'confirm_rule';
   actionContext?: {
     tipoDocumento?: string;
     proveedorNombre?: string;
   };
+  pendingRuleId?: string;
+  pendingRule?: any;
+  requiresConfirmation?: boolean;
+}
+
+export interface RuleSuggestion {
+  id: string;
+  title: string;
+  reason: string;
+  confidence: number;
+  suggestedPrompt: string;
+  basedOn: {
+    pattern: string;
+    dataPoints: number;
+  };
+  suggestedRule: {
+    name: string;
+    documentType: string;
+    minAmount?: number;
+    maxAmount?: number;
+    category?: string;
+    approvers: Array<{ type: 'role' | 'user'; value: string }>;
+  };
+}
+
+export interface PendingRule {
+  id: string;
+  rule: any;
+  expiresAt: Date;
 }
 
 class ChatService {
@@ -109,6 +138,133 @@ class ChatService {
         success: false,
         message: 'Error al subir el documento',
         error: error.message
+      };
+    }
+  }
+
+  /**
+   * Obtiene sugerencias de reglas basadas en análisis de patrones
+   */
+  async getRuleSuggestions(tenantId: string): Promise<{ success: boolean; suggestions: RuleSuggestion[]; count: number }> {
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/chat/rule-suggestions`,
+        {
+          params: { tenantId },
+          headers: {
+            ...(this.token && { Authorization: `Bearer ${this.token}` })
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Get rule suggestions error:', error);
+      return {
+        success: false,
+        suggestions: [],
+        count: 0
+      };
+    }
+  }
+
+  /**
+   * Obtiene los patrones de aprobación analizados
+   */
+  async getApprovalPatterns(tenantId: string): Promise<{ success: boolean; patterns: any }> {
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/chat/approval-patterns`,
+        {
+          params: { tenantId },
+          headers: {
+            ...(this.token && { Authorization: `Bearer ${this.token}` })
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Get approval patterns error:', error);
+      return {
+        success: false,
+        patterns: null
+      };
+    }
+  }
+
+  /**
+   * Detecta gaps en la cobertura de reglas
+   */
+  async getCoverageGaps(tenantId: string): Promise<{ success: boolean; gaps: any[]; count: number }> {
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/chat/coverage-gaps`,
+        {
+          params: { tenantId },
+          headers: {
+            ...(this.token && { Authorization: `Bearer ${this.token}` })
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Get coverage gaps error:', error);
+      return {
+        success: false,
+        gaps: [],
+        count: 0
+      };
+    }
+  }
+
+  /**
+   * Confirma o cancela una regla pendiente
+   */
+  async confirmRule(pendingRuleId: string, confirm: boolean, tenantId: string): Promise<ChatResponse> {
+    try {
+      const response = await axios.post<ChatResponse>(
+        `${API_URL}/api/v1/chat/confirm-rule`,
+        { pendingRuleId, confirm, tenantId },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.token && { Authorization: `Bearer ${this.token}` })
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Confirm rule error:', error);
+      if (error.response?.data) {
+        return error.response.data;
+      }
+      return {
+        success: false,
+        message: 'Error al confirmar la regla',
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Obtiene las reglas pendientes de confirmación del usuario
+   */
+  async getPendingRules(): Promise<{ success: boolean; pendingRules: PendingRule[]; count: number }> {
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/chat/pending-rules`,
+        {
+          headers: {
+            ...(this.token && { Authorization: `Bearer ${this.token}` })
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Get pending rules error:', error);
+      return {
+        success: false,
+        pendingRules: [],
+        count: 0
       };
     }
   }
