@@ -334,7 +334,7 @@ export default function ApprovalRulesPage() {
   };
 
   return (
-    <ProtectedRoute requiredRoles={['CLIENT_ADMIN', 'SUPER_ADMIN']}>
+    <ProtectedRoute>
       <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <div>

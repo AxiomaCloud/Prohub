@@ -23,7 +23,9 @@ import {
   FileUp,
   Search,
   Bot,
+  MessageSquare,
 } from 'lucide-react';
+import { DocumentChatDrawer } from '@/components/chat/DocumentChatDrawer';
 
 interface OrdenCompra {
   id: string;
@@ -118,6 +120,9 @@ export default function MisOrdenesPage() {
   // Modal de detalle/cargar factura
   const [selectedOC, setSelectedOC] = useState<OrdenCompra | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+
+  // Estado para chat
+  const [chatOC, setChatOC] = useState<OrdenCompra | null>(null);
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [facturaParseada, setFacturaParseada] = useState<FacturaParseada | null>(null);
@@ -471,6 +476,13 @@ export default function MisOrdenesPage() {
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => setChatOC(oc)}
+                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Chat"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => {
                               setSelectedOC(oc);
                               setShowUploadModal(true);
@@ -560,6 +572,16 @@ export default function MisOrdenesPage() {
             </div>
 
             <div className="p-6 border-t border-border flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setChatOC(selectedOC);
+                  setSelectedOC(null);
+                }}
+                className="inline-flex items-center justify-center px-4 py-2 border border-purple-300 rounded-lg text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Chat
+              </button>
               <Button variant="outline" onClick={() => setSelectedOC(null)}>
                 Cerrar
               </Button>
@@ -901,6 +923,17 @@ export default function MisOrdenesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Chat Drawer */}
+      {chatOC && (
+        <DocumentChatDrawer
+          documentType="purchase-order"
+          documentId={chatOC.id}
+          documentNumber={`OC ${chatOC.numero}`}
+          isOpen={!!chatOC}
+          onClose={() => setChatOC(null)}
+        />
       )}
     </div>
   );

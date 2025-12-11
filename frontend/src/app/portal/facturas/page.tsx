@@ -28,7 +28,9 @@ import {
   Trash2,
   Send,
   FileEdit,
+  MessageSquare,
 } from 'lucide-react';
+import { DocumentChatDrawer } from '@/components/chat/DocumentChatDrawer';
 
 interface Document {
   id: string;
@@ -107,6 +109,9 @@ export default function MisFacturasPage() {
 
   // Modal de detalle
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+
+  // Estado para chat
+  const [chatDocument, setChatDocument] = useState<Document | null>(null);
 
   // Estado para envío de documento
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -488,6 +493,16 @@ export default function MisFacturasPage() {
                             <Download className="w-4 h-4" />
                           </a>
                         )}
+                        {/* Chat solo para documentos enviados */}
+                        {doc.submissionStatus === 'SUBMITTED' && (
+                          <button
+                            onClick={() => setChatDocument(doc)}
+                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Chat con cliente"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* Acciones para borradores */}
                         {doc.submissionStatus === 'DRAFT' && (
                           <>
@@ -669,6 +684,19 @@ export default function MisFacturasPage() {
                 )}
               </div>
               <div className="flex gap-3">
+                {/* Botón de chat solo para documentos enviados */}
+                {selectedDocument.submissionStatus === 'SUBMITTED' && (
+                  <button
+                    onClick={() => {
+                      setChatDocument(selectedDocument);
+                      setSelectedDocument(null);
+                    }}
+                    className="inline-flex items-center justify-center px-4 py-2 border border-purple-300 rounded-lg text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Chat
+                  </button>
+                )}
                 {selectedDocument.fileUrl && (
                   <a
                     href={selectedDocument.fileUrl}
@@ -700,6 +728,17 @@ export default function MisFacturasPage() {
         supplierCuit={supplier?.cuit}
         clientTenantId={supplier?.tenantId}
       />
+
+      {/* Chat Drawer */}
+      {chatDocument && (
+        <DocumentChatDrawer
+          documentType="document"
+          documentId={chatDocument.id}
+          documentNumber={`${documentTypeFull[chatDocument.type]} ${chatDocument.number}`}
+          isOpen={!!chatDocument}
+          onClose={() => setChatDocument(null)}
+        />
+      )}
     </div>
   );
 }

@@ -50,6 +50,8 @@ import { clsx } from 'clsx';
 
 interface MenuPreviewProps {
   items: MenuItem[];
+  filterByRole?: string | null;  // Si se pasa un rol, filtra los items según permisos
+  roleLabel?: string;            // Label del rol para mostrar en el preview
 }
 
 // Mapa de íconos para resolver dinámicamente desde el nombre
@@ -103,7 +105,7 @@ const getIconComponent = (iconName: string): React.ComponentType<{ className?: s
   return IconMap[iconName] || FileText; // FileText como fallback
 };
 
-export function MenuPreview({ items }: MenuPreviewProps) {
+export function MenuPreview({ items, filterByRole, roleLabel }: MenuPreviewProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   const toggleSection = (itemId: string) => {
@@ -116,10 +118,59 @@ export function MenuPreview({ items }: MenuPreviewProps) {
     setExpandedSections(newExpanded);
   };
 
-  if (items.length === 0) {
+  // Función para verificar si un item es visible para el rol seleccionado
+  const isVisibleForRole = (item: MenuItem): boolean => {
+    // Si no hay filtro por rol, mostrar todo (modo edición)
+    if (!filterByRole) return true;
+
+    // SUPER_ADMIN puede ver todo
+    if (filterByRole === 'SUPER_ADMIN') return true;
+
+    // Si es superuserOnly, solo SUPER_ADMIN puede verlo
+    if (item.superuserOnly) return false;
+
+    // Si no tiene roles asignados (array vacío), solo superusers pueden verlo
+    if (!item.allowedRoles || item.allowedRoles.length === 0) return false;
+
+    // Verificar si el rol está en la lista de permitidos
+    return item.allowedRoles.includes(filterByRole);
+  };
+
+  // Filtrar items según el rol
+  const filteredItems = items
+    .filter(item => item.isActive && isVisibleForRole(item))
+    .map(item => ({
+      ...item,
+      children: item.children?.filter(child => child.isActive && isVisibleForRole(child))
+    }))
+    // Remover items padre que no tienen hijos visibles (si no tienen URL propia)
+    .filter(item => item.url || (item.children && item.children.length > 0));
+
+  if (filteredItems.length === 0) {
     return (
-      <div className="bg-gray-100 rounded-lg p-4 text-center text-gray-500 text-sm">
-        No hay items para mostrar
+      <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg p-3 min-h-[400px]">
+        {/* Header simulado */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700 mb-3">
+          <div className="w-6 h-6 bg-palette-yellow rounded flex items-center justify-center">
+            <Boxes className="w-3.5 h-3.5 text-palette-dark" />
+          </div>
+          <span className="text-white font-semibold text-sm">Hub</span>
+        </div>
+
+        {filterByRole && (
+          <div className="mb-3 px-2">
+            <span className="text-xs bg-palette-yellow text-palette-dark px-2 py-1 rounded-full">
+              {roleLabel || filterByRole}
+            </span>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Shield className="w-10 h-10 text-gray-600 mb-3" />
+          <p className="text-gray-400 text-sm">
+            Este rol no tiene acceso a ninguna opción del menú
+          </p>
+        </div>
       </div>
     );
   }
@@ -134,9 +185,17 @@ export function MenuPreview({ items }: MenuPreviewProps) {
         <span className="text-white font-semibold text-sm">Hub</span>
       </div>
 
+      {/* Badge del rol cuando está en modo filtro */}
+      {filterByRole && (
+        <div className="mb-3 px-2">
+          <span className="text-xs bg-palette-yellow text-palette-dark px-2 py-1 rounded-full font-medium">
+            Vista: {roleLabel || filterByRole}
+          </span>
+        </div>
+      )}
+
       {/* Items del menú */}
-      {items
-        .filter(item => item.isActive)
+      {filteredItems
         .sort((a, b) => a.orderIndex - b.orderIndex)
         .map((item) => {
           const hasChildren = item.children && item.children.length > 0;
@@ -180,7 +239,6 @@ export function MenuPreview({ items }: MenuPreviewProps) {
               {hasChildren && isExpanded && (
                 <div className="ml-6 space-y-1 overflow-hidden transition-all">
                   {item.children!
-                    .filter(child => child.isActive)
                     .sort((a, b) => a.orderIndex - b.orderIndex)
                     .map((child) => (
                       <button

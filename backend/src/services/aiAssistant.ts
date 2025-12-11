@@ -8,7 +8,21 @@ import Anthropic from '@anthropic-ai/sdk';
  */
 
 interface AIAction {
-  accion: 'crear_requerimiento' | 'consultar_estado' | 'aprobar_documento' | 'subir_factura' | 'unknown';
+  accion:
+    | 'crear_requerimiento'
+    | 'consultar_estado'
+    | 'aprobar_documento'
+    | 'subir_factura'
+    // Acciones de reglas de autorización
+    | 'crear_regla_aprobacion'
+    | 'modificar_regla_aprobacion'
+    | 'eliminar_regla_aprobacion'
+    | 'listar_reglas_aprobacion'
+    | 'sugerir_reglas'
+    | 'explicar_regla'
+    | 'confirmar_regla_pendiente'
+    | 'cancelar_regla_pendiente'
+    | 'unknown';
   entidades?: {
     items?: Array<{
       descripcion: string;
@@ -22,10 +36,38 @@ interface AIAction {
     // Para subir_factura
     tipoDocumento?: 'FACTURA' | 'NOTA_CREDITO' | 'NOTA_DEBITO' | 'REMITO' | 'AUTO';
     proveedorNombre?: string;
+    // Para reglas de aprobación
+    regla?: {
+      nombre: string;
+      descripcion?: string;
+      documentType: 'PURCHASE_REQUEST' | 'PURCHASE_ORDER' | 'INVOICE';
+      condiciones: {
+        minAmount?: number;
+        maxAmount?: number;
+        purchaseType?: 'DIRECT' | 'WITH_QUOTE' | 'WITH_BID';
+        category?: string;
+      };
+      niveles: Array<{
+        nombre: string;
+        orden: number;
+        modo: 'ANY' | 'ALL';
+        tipo: 'GENERAL' | 'SPECIFICATIONS';
+        aprobadores: Array<{
+          tipo: 'usuario' | 'rol';
+          id?: string;
+          nombre?: string;
+        }>;
+      }>;
+      prioridad?: number;
+      activa?: boolean;
+    };
+    reglaId?: string;
+    pendingRuleId?: string;
+    confirmar?: boolean;
   };
   error?: string;
   // Flag para indicar que se requiere acción del usuario (ej: seleccionar archivo)
-  requiresUserAction?: 'file_upload';
+  requiresUserAction?: 'file_upload' | 'confirm_rule';
 }
 
 interface UserContext {
@@ -139,7 +181,15 @@ ACCIONES DISPONIBLES:
 2. "consultar_estado" - Consultar estado de documentos/requerimientos
 3. "aprobar_documento" - Aprobar un documento pendiente
 4. "subir_factura" - Subir y procesar una factura o documento fiscal
-5. "unknown" - Cuando no puedas identificar la acción
+5. "crear_regla_aprobacion" - Crear una nueva regla de autorización/aprobación
+6. "modificar_regla_aprobacion" - Modificar una regla existente
+7. "eliminar_regla_aprobacion" - Eliminar una regla de autorización
+8. "listar_reglas_aprobacion" - Mostrar las reglas de autorización existentes
+9. "sugerir_reglas" - Analizar patrones y sugerir reglas
+10. "explicar_regla" - Explicar una regla en lenguaje natural
+11. "confirmar_regla_pendiente" - Confirmar creación/modificación de regla pendiente
+12. "cancelar_regla_pendiente" - Cancelar una regla pendiente
+13. "unknown" - Cuando no puedas identificar la acción
 
 FORMATO DE RESPUESTA (JSON estricto):
 Para "crear_requerimiento":
@@ -196,6 +246,102 @@ Para "unknown":
   "error": "Explicación de por qué no se pudo interpretar"
 }
 
+Para "crear_regla_aprobacion":
+{
+  "accion": "crear_regla_aprobacion",
+  "entidades": {
+    "regla": {
+      "nombre": "Nombre descriptivo de la regla",
+      "descripcion": "Descripción detallada (opcional)",
+      "documentType": "PURCHASE_REQUEST" | "PURCHASE_ORDER" | "INVOICE",
+      "condiciones": {
+        "minAmount": número mínimo (null si no aplica),
+        "maxAmount": número máximo (null si no aplica),
+        "purchaseType": "DIRECT" | "WITH_QUOTE" | "WITH_BID" | null,
+        "category": "Categoría específica" | null
+      },
+      "niveles": [
+        {
+          "nombre": "Nombre del nivel (ej: Aprobación Gerencial)",
+          "orden": 1,
+          "modo": "ANY" (cualquier aprobador) | "ALL" (todos deben aprobar),
+          "tipo": "GENERAL" (aprobación general) | "SPECIFICATIONS" (solo especificaciones),
+          "aprobadores": [
+            { "tipo": "usuario", "id": "userId", "nombre": "Nombre Usuario" },
+            { "tipo": "rol", "nombre": "PURCHASE_ADMIN" | "PURCHASE_APPROVER" | "CLIENT_ADMIN" }
+          ]
+        }
+      ],
+      "prioridad": número (mayor = más prioritaria, default 0),
+      "activa": true | false
+    }
+  },
+  "requiresUserAction": "confirm_rule"
+}
+
+Para "modificar_regla_aprobacion":
+{
+  "accion": "modificar_regla_aprobacion",
+  "entidades": {
+    "reglaId": "ID de la regla a modificar",
+    "regla": {
+      // Solo los campos que se quieren modificar
+      "nombre": "Nuevo nombre (opcional)",
+      "condiciones": { ... campos a modificar ... },
+      "niveles": [ ... nuevos niveles si se modifican ... ]
+    }
+  },
+  "requiresUserAction": "confirm_rule"
+}
+
+Para "eliminar_regla_aprobacion":
+{
+  "accion": "eliminar_regla_aprobacion",
+  "entidades": {
+    "reglaId": "ID de la regla a eliminar"
+  },
+  "requiresUserAction": "confirm_rule"
+}
+
+Para "listar_reglas_aprobacion":
+{
+  "accion": "listar_reglas_aprobacion",
+  "entidades": {
+    "documentType": "PURCHASE_REQUEST" | "PURCHASE_ORDER" | "INVOICE" | null (todas)
+  }
+}
+
+Para "sugerir_reglas":
+{
+  "accion": "sugerir_reglas",
+  "entidades": {}
+}
+
+Para "explicar_regla":
+{
+  "accion": "explicar_regla",
+  "entidades": {
+    "reglaId": "ID de la regla a explicar"
+  }
+}
+
+Para "confirmar_regla_pendiente":
+{
+  "accion": "confirmar_regla_pendiente",
+  "entidades": {
+    "pendingRuleId": "ID de la regla pendiente",
+    "confirmar": true
+  }
+}
+
+Para "cancelar_regla_pendiente":
+{
+  "accion": "cancelar_regla_pendiente",
+  "entidades": {
+    "pendingRuleId": "ID de la regla pendiente"
+  }
+}
+
 REGLAS IMPORTANTES:
 - Responde SOLO con el JSON, sin texto adicional
 - Si el usuario no especifica cantidad, asume 1
@@ -217,6 +363,18 @@ REGLAS IMPORTANTES:
   * Si menciona proveedor, agregar al final: "Proveedor sugerido: [nombre]"
   * Si no hay contexto claro, genera una justificación profesional basada en el tipo de item
 - Si el mensaje es ambiguo o falta información crítica, usa accion "unknown"
+
+REGLAS PARA GESTIÓN DE REGLAS DE AUTORIZACIÓN:
+- SOLO usuarios con rol CLIENT_ADMIN o PURCHASE_ADMIN pueden gestionar reglas
+- Siempre usa requiresUserAction: "confirm_rule" para crear, modificar o eliminar reglas
+- Los roles válidos para aprobadores son: "PURCHASE_ADMIN", "PURCHASE_APPROVER", "CLIENT_ADMIN"
+- Los tipos de documento son: "PURCHASE_REQUEST" (requerimientos), "PURCHASE_ORDER" (órdenes de compra), "INVOICE" (facturas)
+- Si el usuario dice "gerente", "jefe" o "director", usa rol "PURCHASE_ADMIN"
+- Si el usuario dice "compras", "comprador" o "encargado", usa rol "PURCHASE_APPROVER"
+- Si no especifica tipo de documento, asume "PURCHASE_REQUEST"
+- Si menciona "montos altos" sin especificar, usa minAmount: 500000
+- Si menciona "montos bajos" sin especificar, usa maxAmount: 50000
+- Para rangos de monto: interpreta "mayor a $X" como minAmount, "menor a $X" como maxAmount
 
 EJEMPLOS:
 Usuario: "Necesito una notebook para diseño, presupuesto $2000, urgente"
@@ -331,6 +489,123 @@ Respuesta:
   "requiresUserAction": "file_upload"
 }
 
+Usuario: "Quiero crear una regla para que las compras de más de 500 mil pesos las apruebe el gerente"
+Respuesta:
+{
+  "accion": "crear_regla_aprobacion",
+  "entidades": {
+    "regla": {
+      "nombre": "Aprobación Gerencial +$500K",
+      "descripcion": "Compras mayores a $500,000 requieren aprobación gerencial",
+      "documentType": "PURCHASE_REQUEST",
+      "condiciones": {
+        "minAmount": 500000,
+        "maxAmount": null,
+        "purchaseType": null,
+        "category": null
+      },
+      "niveles": [
+        {
+          "nombre": "Aprobación Gerencial",
+          "orden": 1,
+          "modo": "ANY",
+          "tipo": "GENERAL",
+          "aprobadores": [
+            { "tipo": "rol", "nombre": "PURCHASE_ADMIN" }
+          ]
+        }
+      ],
+      "prioridad": 10,
+      "activa": true
+    }
+  },
+  "requiresUserAction": "confirm_rule"
+}
+
+Usuario: "Crea una regla para órdenes de compra donde cualquier compra de tecnología necesite aprobación del jefe de IT y del gerente de compras"
+Respuesta:
+{
+  "accion": "crear_regla_aprobacion",
+  "entidades": {
+    "regla": {
+      "nombre": "Aprobación OC Tecnología",
+      "descripcion": "Órdenes de compra de categoría Tecnología requieren doble aprobación",
+      "documentType": "PURCHASE_ORDER",
+      "condiciones": {
+        "minAmount": null,
+        "maxAmount": null,
+        "purchaseType": null,
+        "category": "Tecnología"
+      },
+      "niveles": [
+        {
+          "nombre": "Aprobación Doble",
+          "orden": 1,
+          "modo": "ALL",
+          "tipo": "GENERAL",
+          "aprobadores": [
+            { "tipo": "rol", "nombre": "PURCHASE_ADMIN" },
+            { "tipo": "rol", "nombre": "PURCHASE_APPROVER" }
+          ]
+        }
+      ],
+      "prioridad": 5,
+      "activa": true
+    }
+  },
+  "requiresUserAction": "confirm_rule"
+}
+
+Usuario: "Mostrame las reglas de aprobación que tenemos"
+Respuesta:
+{
+  "accion": "listar_reglas_aprobacion",
+  "entidades": {
+    "documentType": null
+  }
+}
+
+Usuario: "Qué reglas tenemos para facturas?"
+Respuesta:
+{
+  "accion": "listar_reglas_aprobacion",
+  "entidades": {
+    "documentType": "INVOICE"
+  }
+}
+
+Usuario: "Sugerí reglas basadas en el historial"
+Respuesta:
+{
+  "accion": "sugerir_reglas",
+  "entidades": {}
+}
+
+Usuario: "Explícame la regla de montos altos"
+Respuesta:
+{
+  "accion": "explicar_regla",
+  "entidades": {
+    "reglaId": "buscar_por_nombre:montos altos"
+  }
+}
+
+Usuario: "Sí, creá la regla" (después de una confirmación pendiente)
+Respuesta:
+{
+  "accion": "confirmar_regla_pendiente",
+  "entidades": {
+    "confirmar": true
+  }
+}
+
+Usuario: "No, cancelá" (después de una confirmación pendiente)
+Respuesta:
+{
+  "accion": "cancelar_regla_pendiente",
+  "entidades": {}
+}
+
 AHORA PROCESA EL MENSAJE DEL USUARIO Y RESPONDE SOLO CON EL JSON.`;
   }
 
@@ -390,6 +665,62 @@ AHORA PROCESA EL MENSAJE DEL USUARIO Y RESPONDE SOLO CON EL JSON.`;
 
       if (!action.entidades?.categoria) {
         errors.push('Categoría requerida');
+      }
+    }
+
+    // Validación para crear regla de aprobación
+    if (action.accion === 'crear_regla_aprobacion') {
+      if (!action.entidades?.regla) {
+        errors.push('Se requiere información de la regla');
+      } else {
+        const regla = action.entidades.regla;
+
+        if (!regla.nombre || regla.nombre.trim() === '') {
+          errors.push('Nombre de regla requerido');
+        }
+
+        if (!regla.documentType) {
+          errors.push('Tipo de documento requerido');
+        } else if (!['PURCHASE_REQUEST', 'PURCHASE_ORDER', 'INVOICE'].includes(regla.documentType)) {
+          errors.push('Tipo de documento inválido');
+        }
+
+        if (!regla.niveles || regla.niveles.length === 0) {
+          errors.push('Se requiere al menos un nivel de aprobación');
+        } else {
+          regla.niveles.forEach((nivel, index) => {
+            if (!nivel.nombre || nivel.nombre.trim() === '') {
+              errors.push(`Nivel ${index + 1}: nombre requerido`);
+            }
+            if (!nivel.aprobadores || nivel.aprobadores.length === 0) {
+              errors.push(`Nivel ${index + 1}: se requiere al menos un aprobador`);
+            }
+            if (!['ANY', 'ALL'].includes(nivel.modo)) {
+              errors.push(`Nivel ${index + 1}: modo debe ser ANY o ALL`);
+            }
+          });
+        }
+      }
+    }
+
+    // Validación para modificar regla
+    if (action.accion === 'modificar_regla_aprobacion') {
+      if (!action.entidades?.reglaId) {
+        errors.push('Se requiere ID de la regla a modificar');
+      }
+    }
+
+    // Validación para eliminar regla
+    if (action.accion === 'eliminar_regla_aprobacion') {
+      if (!action.entidades?.reglaId) {
+        errors.push('Se requiere ID de la regla a eliminar');
+      }
+    }
+
+    // Validación para explicar regla
+    if (action.accion === 'explicar_regla') {
+      if (!action.entidades?.reglaId) {
+        errors.push('Se requiere ID de la regla a explicar');
       }
     }
 

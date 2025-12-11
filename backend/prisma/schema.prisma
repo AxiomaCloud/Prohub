@@ -288,7 +288,8 @@ model MenuItem {
   description        String?      @db.VarChar(500)
   orderIndex         Int          @default(0)
   isActive           Boolean      @default(true)
-  requiresPermission String?      @db.VarChar(100)
+  requiresPermission String?      @db.VarChar(100)  // Deprecated - usar allowedRoles
+  allowedRoles       Role[]       @default([])      // Roles que pueden ver este item (vacío = todos)
   superuserOnly      Boolean      @default(false)
   tenantId           String?
   createdAt          DateTime     @default(now())
@@ -801,11 +802,23 @@ model Conversation {
   channel         CommunicationChannel
 
   // Participantes
-  providerTenantId String
+  providerTenantId String?
   clientTenantId   String
 
   createdById     String
   closedById      String?
+
+  // Vinculación polimórfica con documentos
+  documentType            DocumentChatType?
+  linkedDocumentId        String?
+  linkedPurchaseOrderId   String?
+  linkedPurchaseRequestId String?
+  linkedQuotationId       String?
+  linkedPaymentId         String?
+
+  // Contadores de mensajes no leídos
+  unreadCountProvider     Int @default(0)
+  unreadCountClient       Int @default(0)
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -815,6 +828,11 @@ model Conversation {
 
   @@index([providerTenantId, clientTenantId])
   @@index([status])
+  @@index([linkedDocumentId])
+  @@index([linkedPurchaseOrderId])
+  @@index([linkedPurchaseRequestId])
+  @@index([linkedQuotationId])
+  @@index([linkedPaymentId])
 }
 
 enum ConversationStatus {
@@ -830,19 +848,32 @@ enum CommunicationChannel {
   SMS
 }
 
+// Tipo de documento para chat bidireccional
+enum DocumentChatType {
+  DOCUMENT          // Facturas, NC, ND, Recibos
+  PURCHASE_ORDER    // Órdenes de Compra
+  PURCHASE_REQUEST  // Requerimientos
+  QUOTATION         // Cotizaciones
+  PAYMENT           // Pagos
+}
+
 model Message {
   id             String       @id @default(cuid())
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   senderId       String
+  senderName     String?
+  senderTenantId String?
   text           String       @db.Text
   channel        CommunicationChannel
+  attachments    Json?        // [{fileName, fileUrl, fileType, fileSize}]
 
   readAt         DateTime?
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
+  @@index([senderId])
 }
 
 // ============================================
@@ -1095,6 +1126,9 @@ enum NotificationEventType {
 
   // Ordenes de Compra
   OC_SUPPLIER_NOTIFIED
+
+  // Chat de documentos
+  DOC_MESSAGE_RECEIVED
 }
 
 enum DocumentNotificationType {
@@ -1182,6 +1216,9 @@ model ApprovalRule {
   name        String
   description String?
 
+  // Tipo de documento al que aplica
+  documentType    ApprovalDocumentType @default(PURCHASE_REQUEST)
+
   // Condiciones para aplicar esta regla
   purchaseType    PurchaseType?
   minAmount       Decimal?          @db.Decimal(18,2)
@@ -1195,10 +1232,16 @@ model ApprovalRule {
   // Niveles de aprobación
   levels      ApprovalLevel[]
 
+  // Auditoría IA
+  creadoPorIA     Boolean   @default(false)
+  promptOriginal  String?   @db.Text
+  creadoPorId     String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId, isActive, priority])
+  @@index([tenantId, documentType])
   @@map("approval_rules")
 }
 
@@ -1303,6 +1346,7 @@ model ApprovalWorkflow {
 enum ApprovalDocumentType {
   PURCHASE_REQUEST
   PURCHASE_ORDER
+  INVOICE
 }
 
 enum ApprovalWorkflowStatus {

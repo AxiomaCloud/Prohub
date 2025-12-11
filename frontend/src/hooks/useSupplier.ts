@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 
+interface SupplierBankAccount {
+  id?: string;
+  banco: string;
+  tipoCuenta: string;
+  numeroCuenta?: string;
+  cbu: string;
+  alias?: string;
+  titularCuenta: string;
+  moneda: string;
+  esPrincipal: boolean;
+}
+
 interface Supplier {
   id: string;
   tenantId: string;
@@ -24,13 +36,15 @@ interface Supplier {
   emailFacturacion?: string;
   contactoNombre?: string;
   contactoCargo?: string;
-  // Datos bancarios
+  // Datos bancarios (legacy - campos individuales)
   banco?: string;
   tipoCuenta?: string;
   numeroCuenta?: string;
   cbu?: string;
   alias?: string;
   titularCuenta?: string;
+  // Cuentas bancarias (nuevo modelo - array de cuentas)
+  cuentasBancarias?: SupplierBankAccount[];
   // Notificaciones
   notifEmail?: boolean;
   notifWhatsapp?: boolean;

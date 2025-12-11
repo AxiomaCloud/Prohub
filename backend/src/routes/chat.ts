@@ -4,6 +4,8 @@ import { authenticate } from '../middleware/auth';
 import AIAssistantService from '../services/aiAssistant';
 import ActionExecutorService from '../services/actionExecutor';
 import { ParseService } from '../services/parseService';
+import { RuleAnalyzerService } from '../services/ruleAnalyzerService';
+import { RuleActionExecutor } from '../services/ruleActionExecutor';
 import { prisma } from '../lib/prisma';
 import multer from 'multer';
 import path from 'path';
@@ -50,6 +52,8 @@ const upload = multer({
 // Inicializar servicios
 let aiAssistant: AIAssistantService | null = null;
 const actionExecutor = new ActionExecutorService();
+const ruleAnalyzer = new RuleAnalyzerService();
+const ruleExecutor = new RuleActionExecutor();
 
 // Inicializar AI Assistant (puede fallar si no hay API key)
 try {
@@ -439,6 +443,222 @@ router.post(
     }
   }
 );
+
+/**
+ * GET /api/v1/chat/rule-suggestions
+ * Obtiene sugerencias de reglas basadas en análisis de patrones
+ */
+router.get('/rule-suggestions', authenticate, async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.query.tenantId as string;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'TenantId es requerido' });
+    }
+
+    // Verificar permisos (solo PURCHASE_ADMIN o CLIENT_ADMIN)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        superuser: true,
+        tenantMemberships: {
+          where: { tenantId },
+          select: { roles: true }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const roles = user.tenantMemberships[0]?.roles || [];
+    const hasPermission = user.superuser ||
+      roles.includes('PURCHASE_ADMIN') ||
+      roles.includes('CLIENT_ADMIN');
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        error: 'No tienes permisos para ver sugerencias de reglas'
+      });
+    }
+
+    console.log(`\n💡 ===== OBTENIENDO SUGERENCIAS DE REGLAS =====`);
+    console.log(`Tenant: ${tenantId}`);
+
+    const suggestions = await ruleAnalyzer.generateRuleSuggestions(tenantId);
+
+    return res.json({
+      success: true,
+      suggestions,
+      count: suggestions.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo sugerencias:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      message: (error as Error).message
+    });
+  }
+});
+
+/**
+ * GET /api/v1/chat/approval-patterns
+ * Obtiene análisis de patrones de aprobación
+ */
+router.get('/approval-patterns', authenticate, async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.query.tenantId as string;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'TenantId es requerido' });
+    }
+
+    console.log(`\n📊 ===== ANALIZANDO PATRONES DE APROBACIÓN =====`);
+    console.log(`Tenant: ${tenantId}`);
+
+    const patterns = await ruleAnalyzer.analyzeApprovalPatterns(tenantId);
+
+    return res.json({
+      success: true,
+      patterns
+    });
+
+  } catch (error) {
+    console.error('❌ Error analizando patrones:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      message: (error as Error).message
+    });
+  }
+});
+
+/**
+ * GET /api/v1/chat/coverage-gaps
+ * Detecta gaps en la cobertura de reglas
+ */
+router.get('/coverage-gaps', authenticate, async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.query.tenantId as string;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'TenantId es requerido' });
+    }
+
+    console.log(`\n🔍 ===== DETECTANDO GAPS DE COBERTURA =====`);
+    console.log(`Tenant: ${tenantId}`);
+
+    const gaps = await ruleAnalyzer.detectCoverageGaps(tenantId);
+
+    return res.json({
+      success: true,
+      gaps,
+      count: gaps.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error detectando gaps:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      message: (error as Error).message
+    });
+  }
+});
+
+/**
+ * POST /api/v1/chat/confirm-rule
+ * Confirma la creación/modificación/eliminación de una regla pendiente
+ */
+router.post('/confirm-rule', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { pendingRuleId, confirm, tenantId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'TenantId es requerido' });
+    }
+
+    console.log(`\n✅ ===== CONFIRMANDO REGLA PENDIENTE =====`);
+    console.log(`PendingRuleId: ${pendingRuleId}`);
+    console.log(`Confirmar: ${confirm}`);
+
+    let result;
+
+    if (confirm) {
+      // Confirmar la regla
+      result = await ruleExecutor.confirmarReglaAprobacion(
+        { accion: 'confirmar_regla_pendiente', entidades: { pendingRuleId, confirmar: true } },
+        userId,
+        tenantId
+      );
+    } else {
+      // Cancelar la regla pendiente
+      result = ruleExecutor.cancelarReglaPendiente(
+        { accion: 'cancelar_regla_pendiente', entidades: { pendingRuleId } },
+        userId,
+        tenantId
+      );
+    }
+
+    return res.status(result.success ? 200 : 400).json(result);
+
+  } catch (error) {
+    console.error('❌ Error confirmando regla:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      message: (error as Error).message
+    });
+  }
+});
+
+/**
+ * GET /api/v1/chat/pending-rules
+ * Obtiene las reglas pendientes de confirmación del usuario
+ */
+router.get('/pending-rules', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const pendingRules = ruleExecutor.getPendingRulesForUser(userId);
+
+    return res.json({
+      success: true,
+      pendingRules,
+      count: pendingRules.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo reglas pendientes:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      message: (error as Error).message
+    });
+  }
+});
 
 /**
  * GET /api/v1/chat/health

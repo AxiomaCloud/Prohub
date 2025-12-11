@@ -55,6 +55,7 @@ import { Button } from '@/components/ui/Button';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { TenantSelector } from '@/components/TenantSelector';
 import { useMenu } from '@/hooks/useMenu';
+import { AlertTriangle, Mail } from 'lucide-react';
 
 interface SidebarProps {
   children: React.ReactNode;
@@ -104,7 +105,9 @@ const IconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Network,
   FileSearch,
   ClipboardCheck,
-  Bell
+  Bell,
+  AlertTriangle,
+  Mail
 };
 
 // Helper para obtener el componente de ícono desde el nombre
@@ -138,8 +141,11 @@ export function Sidebar({ children }: SidebarProps) {
   const [coreReturnUrl, setCoreReturnUrl] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isProvider } = useAuth();
+  const { user, isProvider, logout } = useAuth();
   const { menuItems, loading: menuLoading } = useMenu();
+
+  // Verificar si el usuario tiene membresías a algún tenant
+  const hasNoMemberships = user && (!user.tenantMemberships || user.tenantMemberships.length === 0);
 
   // Detectar si viene desde Core
   useEffect(() => {
@@ -320,7 +326,34 @@ export function Sidebar({ children }: SidebarProps) {
         "flex-1 py-2 space-y-1 overflow-y-auto scrollbar-thin min-h-0",
         isCollapsed ? "px-2" : "px-4"
       )}>
-        {menuLoading ? (
+        {hasNoMemberships ? (
+          <div className={clsx(
+            "flex flex-col items-center justify-center py-8 px-4 text-center",
+            isCollapsed && "px-2"
+          )}>
+            <AlertTriangle className="w-12 h-12 text-yellow-400 mb-4" />
+            {!isCollapsed && (
+              <>
+                <h3 className="text-text-white font-semibold text-base mb-2">
+                  Sin acceso configurado
+                </h3>
+                <p className="text-text-white/70 text-sm mb-4">
+                  Tu cuenta aún no tiene acceso a ninguna organización.
+                </p>
+                <p className="text-text-white/70 text-sm mb-6">
+                  Por favor, contacta al administrador del sistema para solicitar acceso.
+                </p>
+                <a
+                  href="mailto:soporte@axioma.com?subject=Solicitud de acceso a Hub&body=Hola, solicito acceso al sistema Hub. Mi email es: "
+                  className="flex items-center space-x-2 bg-palette-yellow text-palette-dark px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-400 transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Contactar soporte</span>
+                </a>
+              </>
+            )}
+          </div>
+        ) : menuLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="text-text-white text-sm">Cargando menú...</div>
           </div>
@@ -558,7 +591,42 @@ export function Sidebar({ children }: SidebarProps) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background">
-          {children}
+          {hasNoMemberships ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
+              <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                  Cuenta sin acceso configurado
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  Tu cuenta <span className="font-medium">{user?.email}</span> aún no tiene acceso a ninguna organización en el sistema.
+                </p>
+                <p className="text-gray-500 text-sm mb-6">
+                  Por favor, contacta al administrador del sistema para que te asigne acceso a una organización.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <a
+                    href={`mailto:soporte@axioma.com?subject=Solicitud de acceso a Hub&body=Hola, solicito acceso al sistema Hub.%0D%0A%0D%0AMi email es: ${user?.email}%0D%0ANombre: ${user?.name}`}
+                    className="inline-flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Contactar soporte</span>
+                  </a>
+                  <button
+                    onClick={logout}
+                    className="inline-flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Cerrar sesión</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

@@ -445,3 +445,69 @@ Antes de iniciar la Semana 1:
 **Documento creado**: 30 Noviembre 2025
 **Estrategia**: FULL - 17 semanas
 **Estado**: ✅ Listo para iniciar desarrollo
+
+---
+
+## 🔐 SISTEMA DE PERMISOS GRANULARES (Nueva Feature)
+
+**Fecha agregado**: 11 Diciembre 2025
+**Estado**: 📋 Planificado
+
+### Contexto
+
+El sistema actual de menú basado en roles (`allowedRoles` en `MenuItem`) controla el **acceso** a las páginas.
+Ahora se necesita controlar **qué puede hacer** el usuario dentro de cada página (ver vs editar vs eliminar).
+
+### Estrategia: Switch "Solo Lectura" por Rol/Opción de Menú
+
+En lugar de crear permisos individuales (view, edit, delete) por cada recurso, se propone:
+
+1. **Agregar campo `readOnly: boolean` a la relación rol-menú**
+   - Si `readOnly = true`: El usuario puede ver pero NO puede crear/editar/eliminar
+   - Si `readOnly = false`: El usuario tiene acceso completo
+
+2. **Nuevo modelo en Prisma**:
+   ```prisma
+   model MenuItemRolePermission {
+     id          String   @id @default(cuid())
+     menuItemId  String
+     menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
+     role        Role
+     readOnly    Boolean  @default(false)
+
+     @@unique([menuItemId, role])
+   }
+   ```
+
+3. **Componentes Wrapper en Frontend**:
+   - `ProtectedButton`: Oculta botones de acción si el usuario tiene `readOnly`
+   - `ProtectedModal`: Deshabilita formularios de edición
+   - `ProtectedDeleteAction`: Oculta opciones de eliminar
+
+4. **API Backend**:
+   - Nuevo endpoint: `GET /api/menu/permissions/:menuItemId`
+   - Modificar endpoint de menú para incluir `readOnly` por item
+   - Middleware que valida `readOnly` antes de operaciones de escritura
+
+### UI de Configuración
+
+En el panel de administración de permisos por rol (ya existente), agregar:
+- Switch adicional "Solo Lectura" junto al switch de acceso
+- Cuando acceso está activo, mostrar el switch de Solo Lectura
+- Tooltip explicativo: "Si está activado, el usuario solo puede ver pero no modificar"
+
+### Implementación Estimada
+
+| Tarea | Horas |
+|-------|-------|
+| Modelo Prisma y migración | 2h |
+| API Backend (endpoints + middleware) | 4h |
+| Componentes ProtectedButton/Modal/Delete | 4h |
+| UI de configuración en admin | 3h |
+| Integración en páginas existentes | 6h |
+| Testing | 3h |
+| **Total** | **22h** |
+
+### Prioridad
+
+Media - Implementar después de estabilizar el sistema de menú actual.

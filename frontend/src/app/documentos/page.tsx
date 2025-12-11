@@ -20,8 +20,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Bot,
-  Loader2
+  Loader2,
+  MessageSquare
 } from 'lucide-react';
+import { DocumentChatDrawer } from '@/components/chat/DocumentChatDrawer';
 
 interface Document {
   id: string;
@@ -107,6 +109,7 @@ export default function DocumentsPage() {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [extractingAI, setExtractingAI] = useState<Set<string>>(new Set()); // IDs de docs siendo procesados con IA
+  const [chatDocument, setChatDocument] = useState<Document | null>(null); // Documento para chat
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -536,6 +539,13 @@ export default function DocumentsPage() {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => setChatDocument(doc)}
+                          className="text-text-secondary hover:text-purple-600 p-1.5 hover:bg-purple-50 rounded transition-colors"
+                          title="Chat con proveedor"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => window.open(`http://localhost:4000${doc.fileUrl}`, '_blank')}
                           className="text-text-secondary hover:text-palette-purple p-1.5 hover:bg-gray-100 rounded transition-colors"
                           title="Descargar"
@@ -578,6 +588,17 @@ export default function DocumentsPage() {
           fetchDocuments();
         }}
       />
+
+      {/* Chat Drawer */}
+      {chatDocument && (
+        <DocumentChatDrawer
+          documentType="document"
+          documentId={chatDocument.id}
+          documentNumber={`${documentTypeFull[chatDocument.type]} ${chatDocument.number}`}
+          isOpen={!!chatDocument}
+          onClose={() => setChatDocument(null)}
+        />
+      )}
     </div>
   );
 }

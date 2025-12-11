@@ -40,7 +40,7 @@ router.post(
       // Hash password
       const passwordHash = await hashPassword(password);
 
-      // Create user
+      // Create user (without tenant membership - admin must assign access)
       const user = await prisma.user.create({
         data: {
           email,
