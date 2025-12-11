@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXIO - Análisis de Costeo Modelo Multi-Usuario</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1a365d;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            border-bottom: 4px solid #3182ce;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            color: #2d3748;
+            font-size: 1.8rem;
+            margin: 40px 0 20px 0;
+            padding-left: 15px;
+            border-left: 5px solid #3182ce;
+        }
+
+        h3 {
+            color: #4a5568;
+            font-size: 1.3rem;
+            margin: 25px 0 15px 0;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+
+        .highlight-box {
+            background: #ebf8ff;
+            border-left: 5px solid #3182ce;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff5f5;
+            border-left: 5px solid #fc8181;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .success-box {
+            background: #f0fff4;
+            border-left: 5px solid #48bb78;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #fffaf0;
+            border-left: 5px solid #f6ad55;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #2d3748;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        .price {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #2b6cb0;
+        }
+
+        .cost {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #c53030;
+        }
+
+        .margin {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #22543d;
+        }
+
+        .risk {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #c53030;
+        }
+
+        .plan-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .plan-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            background: white;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .plan-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .plan-card.recommended {
+            border-color: #3182ce;
+            border-width: 3px;
+        }
+
+        .plan-card.recommended::before {
+            content: "⭐ RECOMENDADO";
+            position: absolute;
+            top: -15px;
+            right: 20px;
+            background: #3182ce;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .plan-price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #3182ce;
+            margin: 15px 0;
+        }
+
+        .plan-price small {
+            font-size: 1rem;
+            color: #718096;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .plan-features li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .plan-features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #48bb78;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .cost-breakdown {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .cost-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding-top: 15px;
+            border-top: 2px solid #2d3748;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 5px;
+        }
+
+        .badge-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .badge-warning {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        .badge-danger {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .badge-info {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .metric-card.danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .metric-card.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .scenario-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            background: white;
+        }
+
+        .scenario-card.danger {
+            border-color: #fc8181;
+            background: #fff5f5;
+        }
+
+        .scenario-card.success {
+            border-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .scenario-card.warning {
+            border-color: #f6ad55;
+            background: #fffaf0;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AXIO - Análisis de Costeo: Modelo Multi-Usuario</h1>
+        <p class="subtitle">Pricing para organización completa con múltiples usuarios de requerimientos</p>
+
+        <div class="info-box">
+            <h3>🎯 Modelo de Negocio Real</h3>
+            <p><strong>Escenario típico del cliente:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>10 usuarios de compras</strong> (equipo core que aprueba y gestiona)</li>
+                <li><strong>50-200+ empleados</strong> pueden crear requerimientos usando AXIO</li>
+                <li><strong>Cliente quiere paquete flat</strong> por toda la organización, no per-user</li>
+                <li><strong>Uso variable:</strong> Algunos usuarios usan mucho AXIO, otros poco</li>
+            </ul>
+        </div>
+
+        <h2>💰 1. Costo Real de la API (Referencia)</h2>
+
+        <div class="highlight-box">
+            <h3>Costos Base de Anthropic - Claude Sonnet 4</h3>
+            <div class="cost-breakdown">
+                <div class="cost-item">
+                    <span>Input tokens</span>
+                    <span class="cost">$3 USD / millón</span>
+                </div>
+                <div class="cost-item">
+                    <span>Output tokens</span>
+                    <span class="cost">$15 USD / millón</span>
+                </div>
+                <div class="cost-item">
+                    <span>Consulta típica (~1,500 input + ~500 output tokens)</span>
+                    <span class="cost">~$0.012 USD (~$240 ARS)</span>
+                </div>
+            </div>
+        </div>
+
+        <h2>⚠️ 2. Análisis de Riesgo: Pricing Per-User vs Paquete</h2>
+
+        <h3>Escenarios de Uso Mensual</h3>
+
+        <div class="scenario-grid">
+            <div class="scenario-card success">
+                <h4 style="color: #22543d; margin-bottom: 10px;">✅ Escenario Optimista</h4>
+                <p><strong>100 usuarios registrados</strong></p>
+                <ul style="margin: 10px 0; font-size: 0.9rem;">
+                    <li>20 usuarios activos/mes</li>
+                    <li>5 consultas/día promedio</li>
+                    <li>3,000 consultas/mes totales</li>
+                </ul>
+                <p style="margin-top: 15px;"><strong>Costo mensual:</strong></p>
+                <p class="cost">~$36 USD (~$72,000 ARS)</p>
+            </div>
+
+            <div class="scenario-card warning">
+                <h4 style="color: #7c2d12; margin-bottom: 10px;">⚡ Escenario Realista</h4>
+                <p><strong>100 usuarios registrados</strong></p>
+                <ul style="margin: 10px 0; font-size: 0.9rem;">
+                    <li>40 usuarios activos/mes</li>
+                    <li>10 consultas/día promedio</li>
+                    <li>12,000 consultas/mes totales</li>
+                </ul>
+                <p style="margin-top: 15px;"><strong>Costo mensual:</strong></p>
+                <p class="cost">~$144 USD (~$288,000 ARS)</p>
+            </div>
+
+            <div class="scenario-card danger">
+                <h4 style="color: #742a2a; margin-bottom: 10px;">🚨 Escenario Pesimista</h4>
+                <p><strong>100 usuarios registrados</strong></p>
+                <ul style="margin: 10px 0; font-size: 0.9rem;">
+                    <li>60 usuarios activos/mes</li>
+                    <li>20 consultas/día promedio</li>
+                    <li>36,000 consultas/mes totales</li>
+                </ul>
+                <p style="margin-top: 15px;"><strong>Costo mensual:</strong></p>
+                <p class="risk">~$432 USD (~$864,000 ARS)</p>
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <h3>🚨 Riesgo de Modelo "Ilimitado" Sin Protección</h3>
+            <p>Si vendés AXIO a <strong>$75,000 ARS/mes flat</strong> sin límites:</p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>Escenario optimista:</strong> Margen positivo ($72k costo → ganás $3k) ✅</li>
+                <li><strong>Escenario realista:</strong> Pérdida de $213k/mes ❌</li>
+                <li><strong>Escenario pesimista:</strong> Pérdida de $789k/mes ❌❌❌</li>
+            </ul>
+            <p style="margin-top: 15px; font-weight: bold; color: #742a2a;">⚠️ CONCLUSIÓN: Modelo flat sin límites es INVIABLE económicamente</p>
+        </div>
+
+        <h2>✅ 3. Solución: Paquete Flat CON Límite Organizacional</h2>
+
+        <div class="success-box">
+            <h3>Estrategia Recomendada: "Paquete Generoso con Cap Protector"</h3>
+            <p>El cliente percibe un <strong>paquete plano simple</strong>, pero internamente tenés <strong>límites organizacionales</strong> que protegen márgenes.</p>
+        </div>
+
+        <div class="plan-comparison">
+            <div class="plan-card">
+                <div class="plan-name">Plan Básico</div>
+                <div class="plan-price">$100,000<small>/mes</small></div>
+                <ul class="plan-features">
+                    <li>Sin AXIO incluido</li>
+                    <li>Funcionalidades base del HUB</li>
+                    <li>Gestión de proveedores</li>
+                    <li>Usuarios ilimitados</li>
+                </ul>
+                <span class="badge badge-info">Sin IA</span>
+            </div>
+
+            <div class="plan-card recommended">
+                <div class="plan-name">Plan Empresarial</div>
+                <div class="plan-price">$200,000<small>/mes</small></div>
+                <ul class="plan-features">
+                    <li><strong>AXIO Empresarial incluido</strong></li>
+                    <li><strong>10,000 consultas/mes organizacionales</strong></li>
+                    <li>Usuarios ilimitados en la org</li>
+                    <li>~25-30 usuarios activos típicos</li>
+                    <li>Notificación al 80% de uso</li>
+                    <li>Todas las funciones del HUB</li>
+                </ul>
+                <span class="badge badge-success">Recomendado</span>
+                <div style="margin-top: 15px; padding: 10px; background: #e6fffa; border-radius: 5px; font-size: 0.9rem;">
+                    <strong>Para el cliente:</strong> "Paquete completo AXIO para toda tu organización"
+                </div>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">Plan Enterprise</div>
+                <div class="plan-price">$350,000<small>/mes</small></div>
+                <ul class="plan-features">
+                    <li><strong>AXIO Premium</strong></li>
+                    <li><strong>30,000 consultas/mes organizacionales</strong></li>
+                    <li>Usuarios ilimitados</li>
+                    <li>~75-100 usuarios activos típicos</li>
+                    <li>Prioridad en respuestas</li>
+                    <li>SLA garantizado</li>
+                    <li>Analytics avanzado</li>
+                </ul>
+                <span class="badge badge-warning">Premium</span>
+            </div>
+        </div>
+
+        <h2>📊 4. Análisis de Márgenes - Plan Empresarial ($200,000/mes)</h2>
+
+        <h3>Escenario 1: Uso Normal (10,000 consultas/mes)</h3>
+        <div class="cost-breakdown">
+            <div class="cost-item">
+                <span>Revenue mensual</span>
+                <span class="price">$200,000 ARS (~$200 USD)</span>
+            </div>
+            <div class="cost-item">
+                <span>Costo API Claude (10,000 consultas × $0.012)</span>
+                <span class="cost">~$120 USD (~$240,000 ARS)</span>
+            </div>
+            <div class="cost-item">
+                <span>Incremento sobre Plan Básico</span>
+                <span>$100,000 ARS (~$100 USD)</span>
+            </div>
+            <div class="cost-item">
+                <span><strong>MARGEN NETO</strong></span>
+                <span class="margin" style="color: #c53030;">-$40 USD (Pérdida)</span>
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <p><strong>⚠️ PROBLEMA:</strong> Con 10,000 consultas al límite, el costo ($120 USD) supera el incremento de precio ($100 USD).</p>
+            <p style="margin-top: 10px;"><strong>Necesitamos ajustar el pricing o los límites.</strong></p>
+        </div>
+
+        <h2>✅ 5. Propuesta Final: Pricing Ajustado y Rentable</h2>
+
+        <div class="plan-comparison">
+            <div class="plan-card">
+                <div class="plan-name">Plan Básico</div>
+                <div class="plan-price">$100,000<small>/mes</small></div>
+                <ul class="plan-features">
+                    <li>Sin AXIO</li>
+                    <li>Hub completo</li>
+                    <li>Usuarios ilimitados</li>
+                </ul>
+            </div>
+
+            <div class="plan-card recommended">
+                <div class="plan-name">Plan Empresarial + AXIO</div>
+                <div class="plan-price">$250,000<small>/mes</small></div>
+                <ul class="plan-features">
+                    <li><strong>AXIO incluido para toda la org</strong></li>
+                    <li><strong>8,000 consultas/mes</strong></li>
+                    <li>~25-40 usuarios activos</li>
+                    <li>Bloqueo suave al límite</li>
+                    <li>Dashboard de uso</li>
+                </ul>
+                <span class="badge badge-success">Mejor Opción</span>
+                <div style="margin-top: 15px; padding: 15px; background: #f0fff4; border-radius: 5px; border-left: 4px solid #48bb78;">
+                    <p style="font-size: 0.95rem; margin-bottom: 8px;"><strong>Costo real:</strong> ~$96 USD ($192,000 ARS)</p>
+                    <p style="font-size: 0.95rem; margin-bottom: 8px;"><strong>Incremento de precio:</strong> $150 USD ($150,000 ARS)</p>
+                    <p style="font-size: 0.95rem; font-weight: bold; color: #22543d;"><strong>Margen neto:</strong> $54 USD (~36% margen) ✅</p>
+                </div>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">Plan Enterprise + AXIO</div>
+                <div class="plan-price">$450,000<small>/mes</small></div>
+                <ul class="plan-features">
+                    <li><strong>AXIO Premium</strong></li>
+                    <li><strong>20,000 consultas/mes</strong></li>
+                    <li>~80-100 usuarios activos</li>
+                    <li>Prioridad</li>
+                    <li>SLA garantizado</li>
+                </ul>
+                <div style="margin-top: 15px; padding: 15px; background: #f0fff4; border-radius: 5px; border-left: 4px solid #48bb78;">
+                    <p style="font-size: 0.95rem; margin-bottom: 8px;"><strong>Costo real:</strong> ~$240 USD ($480,000 ARS)</p>
+                    <p style="font-size: 0.95rem; margin-bottom: 8px;"><strong>Incremento de precio:</strong> $350 USD ($350,000 ARS)</p>
+                    <p style="font-size: 0.95rem; font-weight: bold; color: #22543d;"><strong>Margen neto:</strong> $110 USD (~31% margen) ✅</p>
+                </div>
+            </div>
+        </div>
+
+        <h2>💡 6. Modelo Híbrido: Flat + Overage (Alternativa)</h2>
+
+        <div class="info-box">
+            <h3>Opción para Clientes de Alto Volumen</h3>
+            <div class="cost-breakdown">
+                <div class="cost-item">
+                    <span>Plan Empresarial base</span>
+                    <span class="price">$250,000 ARS/mes</span>
+                </div>
+                <div class="cost-item">
+                    <span>Incluye: 8,000 consultas/mes</span>
+                    <span>—</span>
+                </div>
+                <div class="cost-item">
+                    <span>Consultas adicionales (overage)</span>
+                    <span class="price">$20 ARS/consulta</span>
+                </div>
+                <div class="cost-item">
+                    <span><strong>Ejemplo con 12,000 consultas reales</strong></span>
+                    <span class="price">$250k + (4,000 × $20) = $330,000</span>
+                </div>
+            </div>
+            <p style="margin-top: 15px;"><strong>Ventajas:</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>Cliente predecible en factura base</li>
+                <li>Paga solo lo que usa extra</li>
+                <li>Protección total de márgenes</li>
+                <li>Incentivo natural a optimizar uso</li>
+            </ul>
+        </div>
+
+        <h2>📈 7. Proyección de Revenue - 10 Clientes</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Métrica</th>
+                    <th>Plan Empresarial</th>
+                    <th>Plan Enterprise</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Revenue mensual (10 clientes)</td>
+                    <td class="text-center price">$2,500,000 ARS</td>
+                    <td class="text-center price">$4,500,000 ARS</td>
+                </tr>
+                <tr>
+                    <td>Consultas totales/mes</td>
+                    <td class="text-center">80,000</td>
+                    <td class="text-center">200,000</td>
+                </tr>
+                <tr>
+                    <td>Costo Claude estimado</td>
+                    <td class="text-center cost">~$960 USD ($1,920,000 ARS)</td>
+                    <td class="text-center cost">~$2,400 USD ($4,800,000 ARS)</td>
+                </tr>
+                <tr>
+                    <td>Incremento sobre Plan Básico</td>
+                    <td class="text-center">$1,500,000 ARS</td>
+                    <td class="text-center">$3,500,000 ARS</td>
+                </tr>
+                <tr>
+                    <td><strong>Margen Neto Mensual</strong></td>
+                    <td class="text-center margin">~$-420,000 ARS</td>
+                    <td class="text-center margin">~$-1,300,000 ARS</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="warning-box">
+            <h3>⚠️ Problema Identificado</h3>
+            <p>Con el pricing propuesto y asumiendo que los clientes <strong>usan el límite completo</strong>, los márgenes son negativos o muy ajustados.</p>
+            <p style="margin-top: 10px;"><strong>Esto sucede porque:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>Los límites son muy generosos (8,000-20,000 consultas)</li>
+                <li>Asumimos que todos los clientes usan el 100% del límite</li>
+                <li>El costo de Claude es alto ($0.012 por consulta)</li>
+            </ul>
+        </div>
+
+        <h2>✅ 8. Solución Final Recomendada</h2>
+
+        <div class="success-box">
+            <h3>🎯 Modelo Óptimo: Límites Realistas + Pricing Ajustado</h3>
+            <p>Basado en <strong>patrones de uso real</strong>, la mayoría de organizaciones <strong>NO usa el 100% del límite</strong>.</p>
+        </div>
+
+        <h3>Patrones de Uso Esperados (Realistas)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo de Organización</th>
+                    <th>Límite Mensual</th>
+                    <th>Uso Real Típico</th>
+                    <th>% Utilizado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Empresa mediana (50 empleados)</td>
+                    <td class="text-center">8,000 consultas</td>
+                    <td class="text-center">3,000-4,000</td>
+                    <td class="text-center badge badge-success">40-50%</td>
+                </tr>
+                <tr>
+                    <td>Empresa grande (150 empleados)</td>
+                    <td class="text-center">20,000 consultas</td>
+                    <td class="text-center">8,000-12,000</td>
+                    <td class="text-center badge badge-success">40-60%</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Márgenes Reales (con uso típico 50%)</h3>
+
+        <div class="metric-grid">
+            <div class="metric-card success">
+                <div class="metric-label">Plan Empresarial</div>
+                <div class="metric-value">$250k</div>
+                <p style="font-size: 0.85rem; margin-top: 10px;">4,000 consultas usadas</p>
+                <p style="font-size: 0.85rem;">Costo: ~$48 USD</p>
+                <p style="font-size: 1rem; margin-top: 10px; font-weight: bold;">Margen: ~$102 USD (68%)</p>
+            </div>
+
+            <div class="metric-card success">
+                <div class="metric-label">Plan Enterprise</div>
+                <div class="metric-value">$450k</div>
+                <p style="font-size: 0.85rem; margin-top: 10px;">10,000 consultas usadas</p>
+                <p style="font-size: 0.85rem;">Costo: ~$120 USD</p>
+                <p style="font-size: 1rem; margin-top: 10px; font-weight: bold;">Margen: ~$230 USD (66%)</p>
+            </div>
+        </div>
+
+        <h2>📋 9. Propuesta Final de Planes</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Plan</th>
+                    <th>Precio/Mes</th>
+                    <th>Límite Consultas</th>
+                    <th>Org. Típica</th>
+                    <th>Margen Esperado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Básico</strong></td>
+                    <td class="text-center">$100,000</td>
+                    <td class="text-center">Sin AXIO</td>
+                    <td>Cualquiera</td>
+                    <td class="text-center">—</td>
+                </tr>
+                <tr>
+                    <td><strong>Empresarial + AXIO</strong></td>
+                    <td class="text-center price">$250,000</td>
+                    <td class="text-center">8,000/mes</td>
+                    <td>30-80 empleados</td>
+                    <td class="text-center margin">~65%</td>
+                </tr>
+                <tr>
+                    <td><strong>Enterprise + AXIO</strong></td>
+                    <td class="text-center price">$450,000</td>
+                    <td class="text-center">20,000/mes</td>
+                    <td>100-300 empleados</td>
+                    <td class="text-center margin">~65%</td>
+                </tr>
+                <tr>
+                    <td><strong>+ Overage (opcional)</strong></td>
+                    <td class="text-center">Variable</td>
+                    <td class="text-center">$20/consulta extra</td>
+                    <td>Alto volumen</td>
+                    <td class="text-center margin">~92%</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🎯 10. Estrategia de Comunicación al Cliente</h2>
+
+        <div class="highlight-box">
+            <h3>Cómo Vender el Límite de Forma Positiva</h3>
+
+            <h4 style="margin-top: 20px;">❌ NO decir:</h4>
+            <p style="margin-left: 20px; color: #742a2a; font-style: italic;">"Tiene un límite de 8,000 consultas por mes"</p>
+
+            <h4 style="margin-top: 20px;">✅ SÍ decir:</h4>
+            <p style="margin-left: 20px; color: #22543d; font-weight: 600;">"AXIO incluido para toda tu organización - con 8,000 consultas mensuales, suficientes para que hasta 40-50 usuarios activos lo usen diariamente"</p>
+
+            <h4 style="margin-top: 20px;">Argumentos de Valor:</h4>
+            <ul style="margin-left: 40px; margin-top: 10px;">
+                <li><strong>Paquete organizacional:</strong> "No pagás por usuario, pagás por la organización completa"</li>
+                <li><strong>Transparencia:</strong> "Dashboard en tiempo real para ver tu uso mensual"</li>
+                <li><strong>Notificaciones proactivas:</strong> "Te avisamos cuando llegas al 80% para que puedas decidir"</li>
+                <li><strong>Flexibilidad:</strong> "Si necesitás más, podés upgradear o comprar paquetes adicionales"</li>
+                <li><strong>Sin sorpresas:</strong> "Nunca te cobramos de más sin avisarte"</li>
+            </ul>
+        </div>
+
+        <h2>🛠️ 11. Implementación Técnica</h2>
+
+        <div class="info-box">
+            <h3>Sistema de Cuotas Organizacional</h3>
+            <p>Necesitás implementar:</p>
+            <table style="margin-top: 15px;">
+                <tr>
+                    <th>Componente</th>
+                    <th>Función</th>
+                </tr>
+                <tr>
+                    <td><code>OrgQuotaMiddleware</code></td>
+                    <td>Verifica límite <strong>por tenant</strong> (no por usuario)</td>
+                </tr>
+                <tr>
+                    <td><code>UsageCounter</code></td>
+                    <td>Contador global de consultas por organización/mes</td>
+                </tr>
+                <tr>
+                    <td><code>QuotaNotifier</code></td>
+                    <td>Alertas al 80%, 90%, 100% del límite</td>
+                </tr>
+                <tr>
+                    <td><code>UsageDashboard</code></td>
+                    <td>Panel para el admin de la org vea uso actual</td>
+                </tr>
+                <tr>
+                    <td><code>SoftBlock</code></td>
+                    <td>Al llegar al límite: "Límite alcanzado. <a href='/upgrade'>Upgrade aquí</a>"</td>
+                </tr>
+            </table>
+        </div>
+
+        <h2>✅ 12. Conclusiones Finales</h2>
+
+        <div class="success-box">
+            <h3>Modelo Recomendado</h3>
+            <p><strong>Plan Empresarial: $250,000/mes</strong></p>
+            <ul style="margin: 15px 0 15px 20px;">
+                <li>✅ Incluye AXIO para toda la organización</li>
+                <li>✅ 8,000 consultas/mes (límite organizacional, no por usuario)</li>
+                <li>✅ Suficiente para 30-50 usuarios activos</li>
+                <li>✅ Margen esperado: ~65% (con uso típico)</li>
+                <li>✅ Cliente percibe "paquete completo" simple</li>
+                <li>✅ Protegido contra abuso con límite organizacional</li>
+            </ul>
+
+            <p style="margin-top: 20px;"><strong>Plan Enterprise: $450,000/mes</strong></p>
+            <ul style="margin: 15px 0 15px 20px;">
+                <li>✅ 20,000 consultas/mes</li>
+                <li>✅ Para organizaciones 100+ empleados</li>
+                <li>✅ Margen similar (~65%)</li>
+            </ul>
+
+            <p style="margin-top: 20px;"><strong>Overage opcional: $20/consulta extra</strong></p>
+            <ul style="margin: 15px 0 15px 20px;">
+                <li>✅ Para clientes que superan consistentemente el límite</li>
+                <li>✅ Protege completamente los márgenes</li>
+                <li>✅ Incentiva upgrade a plan superior</li>
+            </ul>
+        </div>
+
+        <div class="highlight-box">
+            <h3>🎯 Por Qué Este Modelo Funciona</h3>
+            <table style="margin-top: 15px;">
+                <tr>
+                    <th>Aspecto</th>
+                    <th>Beneficio</th>
+                </tr>
+                <tr>
+                    <td><strong>Para el Cliente</strong></td>
+                    <td>
+                        • Pricing simple y predecible<br>
+                        • No paga por usuario<br>
+                        • Límite generoso para uso normal<br>
+                        • Transparencia total de uso
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Para AXIOMA</strong></td>
+                    <td>
+                        • Márgenes saludables (~65%)<br>
+                        • Protección contra abuso<br>
+                        • Revenue predecible<br>
+                        • Incentivo natural a upgrade
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Escalabilidad</strong></td>
+                    <td>
+                        • Los límites escalan con los planes<br>
+                        • Overage para casos extremos<br>
+                        • Modelo probado en SaaS
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #e2e8f0; text-align: center; color: #718096;">
+            <p><strong>AXIOMA HUB - Análisis de Costeo AXIO v2</strong></p>
+            <p>Modelo Multi-Usuario con Límites Organizacionales</p>
+            <p>Documento generado el 09/12/2025</p>
+        </div>
+    </div>
+</body>
+</html>

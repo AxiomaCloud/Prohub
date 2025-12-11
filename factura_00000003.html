@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura C - Maria Clara Joselevich</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.2;
+            background: white;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 10mm;
+            margin: 0 auto;
+            background: white;
+            page-break-after: always;
+        }
+
+        .header-label {
+            border: 2px solid black;
+            padding: 5px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 3mm;
+        }
+
+        .main-box {
+            border: 2px solid black;
+            margin-bottom: 2mm;
+        }
+
+        .top-section {
+            display: table;
+            width: 100%;
+            border-bottom: 2px solid black;
+        }
+
+        .proveedor-info {
+            display: table-cell;
+            width: 60%;
+            padding: 8px;
+            vertical-align: top;
+            border-right: 2px solid black;
+        }
+
+        .tipo-factura {
+            display: table-cell;
+            width: 40%;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .letra-factura {
+            border: 2px solid black;
+            width: 60px;
+            height: 60px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48pt;
+            font-weight: bold;
+            margin: 5px auto;
+        }
+
+        .cod-factura {
+            font-size: 9pt;
+            margin-top: 5px;
+        }
+
+        .factura-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .factura-details {
+            font-size: 9pt;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .proveedor-name {
+            font-weight: bold;
+            font-size: 12pt;
+            margin-bottom: 5px;
+        }
+
+        .info-row {
+            margin: 3px 0;
+        }
+
+        .info-label {
+            font-weight: bold;
+        }
+
+        .periodo-section {
+            padding: 8px;
+            border-bottom: 2px solid black;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .cliente-section {
+            padding: 8px;
+            border-bottom: 2px solid black;
+        }
+
+        .cliente-row {
+            display: flex;
+            margin: 3px 0;
+        }
+
+        .cliente-row > div {
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2mm;
+        }
+
+        table th {
+            background: #f0f0f0;
+            border: 1px solid black;
+            padding: 6px 4px;
+            text-align: center;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        table td {
+            border: 1px solid black;
+            padding: 6px 4px;
+            font-size: 9pt;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .totales-box {
+            border: 2px solid black;
+            margin-top: 2mm;
+            padding: 15px;
+            text-align: right;
+        }
+
+        .total-row {
+            margin: 8px 0;
+            font-size: 11pt;
+        }
+
+        .total-row.final {
+            font-weight: bold;
+            font-size: 13pt;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid black;
+        }
+
+        .footer-section {
+            margin-top: 3mm;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .qr-placeholder {
+            width: 100px;
+            height: 100px;
+            border: 1px solid black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8pt;
+            text-align: center;
+            background: #f9f9f9;
+        }
+
+        .arca-info {
+            flex: 1;
+            padding-left: 15px;
+        }
+
+        .arca-logo {
+            font-weight: bold;
+            font-size: 18pt;
+            margin-bottom: 5px;
+        }
+
+        .arca-subtitle {
+            font-size: 7pt;
+            margin-bottom: 8px;
+        }
+
+        .comprobante-autorizado {
+            font-style: italic;
+            font-size: 9pt;
+            margin-top: 5px;
+        }
+
+        .disclaimer {
+            font-size: 7pt;
+            font-style: italic;
+            margin-top: 3px;
+        }
+
+        .cae-info {
+            text-align: right;
+        }
+
+        .cae-row {
+            margin: 3px 0;
+            font-size: 9pt;
+        }
+
+        .espaciador {
+            height: 40mm;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+            }
+            .page {
+                margin: 0;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ORIGINAL -->
+    <div class="page">
+        <div class="header-label">ORIGINAL</div>
+
+        <div class="main-box">
+            <div class="top-section">
+                <div class="proveedor-info">
+                    <div class="proveedor-name">MARIA CLARA JOSELEVICH</div>
+                    <div class="info-row">
+                        <span class="info-label">Razón Social:</span> MARIA CLARA JOSELEVICH
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Domicilio Comercial:</span> Rivera Indarte 383 3/A - CABA, Ciudad de Buenos Aires
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Condición frente al IVA:</span> Responsable Monotributo
+                    </div>
+                </div>
+
+                <div class="tipo-factura">
+                    <div class="letra-factura">C</div>
+                    <div class="cod-factura">COD. 011</div>
+                    <div class="factura-title">FACTURA</div>
+                    <div class="factura-details">
+                        <div><strong>Punto de Venta:</strong> 00001 <strong>Comp. Nro:</strong> 00000003</div>
+                        <div><strong>Fecha de Emisión:</strong> 09/12/2025</div>
+                        <div style="margin-top: 8px;">
+                            <strong>CUIT:</strong> 27-29654650-5<br>
+                            <strong>Ingresos Brutos:</strong> 27-29654650-5<br>
+                            <strong>Fecha de Inicio de Actividades:</strong> 01/01/2020
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="periodo-section">
+                <div>
+                    <strong>Período Facturado Desde:</strong> 01/12/2025
+                    <strong>Hasta:</strong> 09/12/2025
+                </div>
+                <div>
+                    <strong>Fecha de Vto. para el pago:</strong> 29/12/2025
+                </div>
+            </div>
+
+            <div class="cliente-section">
+                <div class="cliente-row">
+                    <div><strong>CUIT:</strong> __________________</div>
+                    <div><strong>Apellido y Nombre / Razón Social:</strong> ________________________________</div>
+                </div>
+                <div class="cliente-row">
+                    <div><strong>Condición frente al IVA:</strong> __________________</div>
+                    <div><strong>Domicilio:</strong> ________________________________________________</div>
+                </div>
+                <div class="cliente-row">
+                    <div><strong>Condición de venta:</strong> Contado</div>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Código</th>
+                    <th style="width: 35%;">Producto / Servicio</th>
+                    <th style="width: 10%;">Cantidad</th>
+                    <th style="width: 10%;">U. Medida</th>
+                    <th style="width: 12%;">Precio Unit.</th>
+                    <th style="width: 8%;">% Bonif</th>
+                    <th style="width: 15%;">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center"></td>
+                    <td>Batería Varta</td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-center">unidades</td>
+                    <td class="text-right">75.000,00</td>
+                    <td class="text-center">0,00</td>
+                    <td class="text-right">75.000,00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="espaciador"></div>
+
+        <div class="totales-box">
+            <div class="total-row">
+                Subtotal: <strong>$ 75.000,00</strong>
+            </div>
+            <div class="total-row">
+                Importe Otros Tributos: <strong>$ 0,00</strong>
+            </div>
+            <div class="total-row final">
+                Importe Total: <strong>$ 75.000,00</strong>
+            </div>
+        </div>
+
+        <div class="footer-section">
+            <div class="qr-placeholder">
+                [QR Code]
+            </div>
+
+            <div class="arca-info">
+                <div class="arca-logo">ARCA</div>
+                <div class="arca-subtitle">AGENCIA DE RECAUDACIÓN<br>Y CONTROL ADUANERO</div>
+                <div class="comprobante-autorizado"><strong>Comprobante Autorizado</strong></div>
+                <div class="disclaimer">Esta Agencia no se responsabiliza por los datos ingresados en el detalle de la operación</div>
+            </div>
+
+            <div class="cae-info">
+                <div class="cae-row">Pág. 1/1</div>
+                <div class="cae-row"><strong>CAE N°:</strong> 75479451197542</div>
+                <div class="cae-row"><strong>Fecha de Vto. de CAE:</strong> 19/12/2025</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DUPLICADO -->
+    <div class="page">
+        <div class="header-label">DUPLICADO</div>
+
+        <div class="main-box">
+            <div class="top-section">
+                <div class="proveedor-info">
+                    <div class="proveedor-name">MARIA CLARA JOSELEVICH</div>
+                    <div class="info-row">
+                        <span class="info-label">Razón Social:</span> MARIA CLARA JOSELEVICH
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Domicilio Comercial:</span> Rivera Indarte 383 3/A - CABA, Ciudad de Buenos Aires
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Condición frente al IVA:</span> Responsable Monotributo
+                    </div>
+                </div>
+
+                <div class="tipo-factura">
+                    <div class="letra-factura">C</div>
+                    <div class="cod-factura">COD. 011</div>
+                    <div class="factura-title">FACTURA</div>
+                    <div class="factura-details">
+                        <div><strong>Punto de Venta:</strong> 00001 <strong>Comp. Nro:</strong> 00000003</div>
+                        <div><strong>Fecha de Emisión:</strong> 09/12/2025</div>
+                        <div style="margin-top: 8px;">
+                            <strong>CUIT:</strong> 27-29654650-5<br>
+                            <strong>Ingresos Brutos:</strong> 27-29654650-5<br>
+                            <strong>Fecha de Inicio de Actividades:</strong> 01/01/2020
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="periodo-section">
+                <div>
+                    <strong>Período Facturado Desde:</strong> 01/12/2025
+                    <strong>Hasta:</strong> 09/12/2025
+                </div>
+                <div>
+                    <strong>Fecha de Vto. para el pago:</strong> 29/12/2025
+                </div>
+            </div>
+
+            <div class="cliente-section">
+                <div class="cliente-row">
+                    <div><strong>CUIT:</strong> __________________</div>
+                    <div><strong>Apellido y Nombre / Razón Social:</strong> ________________________________</div>
+                </div>
+                <div class="cliente-row">
+                    <div><strong>Condición frente al IVA:</strong> __________________</div>
+                    <div><strong>Domicilio:</strong> ________________________________________________</div>
+                </div>
+                <div class="cliente-row">
+                    <div><strong>Condición de venta:</strong> Contado</div>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Código</th>
+                    <th style="width: 35%;">Producto / Servicio</th>
+                    <th style="width: 10%;">Cantidad</th>
+                    <th style="width: 10%;">U. Medida</th>
+                    <th style="width: 12%;">Precio Unit.</th>
+                    <th style="width: 8%;">% Bonif</th>
+                    <th style="width: 15%;">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center"></td>
+                    <td>Batería Varta</td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-center">unidades</td>
+                    <td class="text-right">75.000,00</td>
+                    <td class="text-center">0,00</td>
+                    <td class="text-right">75.000,00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="espaciador"></div>
+
+        <div class="totales-box">
+            <div class="total-row">
+                Subtotal: <strong>$ 75.000,00</strong>
+            </div>
+            <div class="total-row">
+                Importe Otros Tributos: <strong>$ 0,00</strong>
+            </div>
+            <div class="total-row final">
+                Importe Total: <strong>$ 75.000,00</strong>
+            </div>
+        </div>
+
+        <div class="footer-section">
+            <div class="qr-placeholder">
+                [QR Code]
+            </div>
+
+            <div class="arca-info">
+                <div class="arca-logo">ARCA</div>
+                <div class="arca-subtitle">AGENCIA DE RECAUDACIÓN<br>Y CONTROL ADUANERO</div>
+                <div class="comprobante-autorizado"><strong>Comprobante Autorizado</strong></div>
+                <div class="disclaimer">Esta Agencia no se responsabiliza por los datos ingresados en el detalle de la operación</div>
+            </div>
+
+            <div class="cae-info">
+                <div class="cae-row">Pág. 1/1</div>
+                <div class="cae-row"><strong>CAE N°:</strong> 75479451197542</div>
+                <div class="cae-row"><strong>Fecha de Vto. de CAE:</strong> 19/12/2025</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRIPLICADO -->
+    <div class="page">
+        <div class="header-label">TRIPLICADO</div>
+
+        <div class="main-box">
+            <div class="top-section">
+                <div class="proveedor-info">
+                    <div class="proveedor-name">MARIA CLARA JOSELEVICH</div>
+                    <div class="info-row">
+                        <span class="info-label">Razón Social:</span> MARIA CLARA JOSELEVICH
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Domicilio Comercial:</span> Rivera Indarte 383 3/A - CABA, Ciudad de Buenos Aires
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Condición frente al IVA:</span> Responsable Monotributo
+                    </div>
+                </div>
+
+                <div class="tipo-factura">
+                    <div class="letra-factura">C</div>
+                    <div class="cod-factura">COD. 011</div>
+                    <div class="factura-title">FACTURA</div>
+                    <div class="factura-details">
+                        <div><strong>Punto de Venta:</strong> 00001 <strong>Comp. Nro:</strong> 00000003</div>
+                        <div><strong>Fecha de Emisión:</strong> 09/12/2025</div>
+                        <div style="margin-top: 8px;">
+                            <strong>CUIT:</strong> 27-29654650-5<br>
+                            <strong>Ingresos Brutos:</strong> 27-29654650-5<br>
+                            <strong>Fecha de Inicio de Actividades:</strong> 01/01/2020
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="periodo-section">
+                <div>
+                    <strong>Período Facturado Desde:</strong> 01/12/2025
+                    <strong>Hasta:</strong> 09/12/2025
+                </div>
+                <div>
+                    <strong>Fecha de Vto. para el pago:</strong> 29/12/2025
+                </div>
+            </div>
+
+            <div class="cliente-section">
+                <div class="cliente-row">
+                    <div><strong>CUIT:</strong> __________________</div>
+                    <div><strong>Apellido y Nombre / Razón Social:</strong> ________________________________</div>
+                </div>
+                <div class="cliente-row">
+                    <div><strong>Condición frente al IVA:</strong> __________________</div>
+                    <div><strong>Domicilio:</strong> ________________________________________________</div>
+                </div>
+                <div class="cliente-row">
+                    <div><strong>Condición de venta:</strong> Contado</div>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Código</th>
+                    <th style="width: 35%;">Producto / Servicio</th>
+                    <th style="width: 10%;">Cantidad</th>
+                    <th style="width: 10%;">U. Medida</th>
+                    <th style="width: 12%;">Precio Unit.</th>
+                    <th style="width: 8%;">% Bonif</th>
+                    <th style="width: 15%;">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center"></td>
+                    <td>Batería Varta</td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-center">unidades</td>
+                    <td class="text-right">75.000,00</td>
+                    <td class="text-center">0,00</td>
+                    <td class="text-right">75.000,00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="espaciador"></div>
+
+        <div class="totales-box">
+            <div class="total-row">
+                Subtotal: <strong>$ 75.000,00</strong>
+            </div>
+            <div class="total-row">
+                Importe Otros Tributos: <strong>$ 0,00</strong>
+            </div>
+            <div class="total-row final">
+                Importe Total: <strong>$ 75.000,00</strong>
+            </div>
+        </div>
+
+        <div class="footer-section">
+            <div class="qr-placeholder">
+                [QR Code]
+            </div>
+
+            <div class="arca-info">
+                <div class="arca-logo">ARCA</div>
+                <div class="arca-subtitle">AGENCIA DE RECAUDACIÓN<br>Y CONTROL ADUANERO</div>
+                <div class="comprobante-autorizado"><strong>Comprobante Autorizado</strong></div>
+                <div class="disclaimer">Esta Agencia no se responsabiliza por los datos ingresados en el detalle de la operación</div>
+            </div>
+
+            <div class="cae-info">
+                <div class="cae-row">Pág. 1/1</div>
+                <div class="cae-row"><strong>CAE N°:</strong> 75479451197542</div>
+                <div class="cae-row"><strong>Fecha de Vto. de CAE:</strong> 19/12/2025</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-print cuando se carga la página (opcional)
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>
