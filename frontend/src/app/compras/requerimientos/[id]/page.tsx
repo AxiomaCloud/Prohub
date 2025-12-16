@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useMemo, useState, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCompras } from '@/lib/compras-context';
 import { EstadoBadge } from '@/components/compras/EstadoBadge';
@@ -9,6 +9,8 @@ import { PrioridadBadge } from '@/components/compras/PrioridadBadge';
 import { ItemsTable } from '@/components/compras/ItemsTable';
 import { AprobacionModal } from '@/components/compras/AprobacionModal';
 import { RecepcionModal } from '@/components/compras/RecepcionModal';
+import { PurchaseRequestChatButton, PurchaseRequestChatDrawer } from '@/components/chat';
+import { usePurchaseRequestChat } from '@/hooks/usePurchaseRequestChat';
 
 const ChevronLeftIcon = () => (
   <svg
@@ -71,15 +73,32 @@ function formatFileSize(bytes: number): string {
 export default function DetalleRequerimientoPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { requerimientos, usuarioActual, actualizarRequerimiento } = useCompras();
 
   const [showAprobacionModal, setShowAprobacionModal] = useState(false);
   const [showRechazoModal, setShowRechazoModal] = useState(false);
   const [showRecepcionModal, setShowRecepcionModal] = useState(false);
 
+  // Estado para el chat
+  const [chatOpen, setChatOpen] = useState(false);
+
+  // Detectar ?chat=open en URL
+  useEffect(() => {
+    if (searchParams.get('chat') === 'open') {
+      setChatOpen(true);
+    }
+  }, [searchParams]);
+
   const requerimiento = useMemo(() => {
     return requerimientos.find((r) => r.id === params.id);
   }, [requerimientos, params.id]);
+
+  // Hook para obtener unreadCount del chat (solo si hay requerimiento)
+  const { unreadCount } = usePurchaseRequestChat({
+    purchaseRequestId: params.id as string,
+    enabled: !!params.id,
+  });
 
   if (!requerimiento) {
     return (
@@ -206,6 +225,12 @@ export default function DetalleRequerimientoPage() {
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-500">{requerimiento.numero}</span>
               <EstadoBadge estado={requerimiento.estado} />
+              <PurchaseRequestChatButton
+                purchaseRequestId={requerimiento.id}
+                purchaseRequestNumber={requerimiento.numero}
+                unreadCount={unreadCount}
+                onClick={() => setChatOpen(true)}
+              />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mt-1">
               {requerimiento.titulo}
@@ -429,6 +454,14 @@ export default function DetalleRequerimientoPage() {
           ordenCompra={requerimiento.ordenCompra}
         />
       )}
+
+      {/* Chat drawer */}
+      <PurchaseRequestChatDrawer
+        purchaseRequestId={requerimiento.id}
+        purchaseRequestNumber={requerimiento.numero}
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+      />
     </div>
   );
 }

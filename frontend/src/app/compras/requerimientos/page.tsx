@@ -28,8 +28,11 @@ import {
   PackageCheck,
   Sparkles,
   GitBranch,
+  MessageCircle,
 } from 'lucide-react';
 import CircuitoCompraModal, { useCircuitoCompraModal } from '@/components/compras/CircuitoCompraModal';
+import { PurchaseRequestChatButton, PurchaseRequestChatDrawer } from '@/components/chat';
+import { usePurchaseRequestChatUnreadCounts } from '@/hooks/usePurchaseRequestChat';
 
 // Configuracion de estados
 const estadosConfig: { id: EstadoRequerimiento; label: string; color: string; bgColor: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -146,6 +149,10 @@ export default function RequerimientosPage() {
 
   // Hook para el modal de circuito de compra
   const circuitoModal = useCircuitoCompraModal();
+
+  // Estados para el chat
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [selectedChatReq, setSelectedChatReq] = useState<Requerimiento | null>(null);
 
   // Validar requerimiento antes de enviar
   const validarRequerimiento = (req: Requerimiento): { valid: boolean; camposFaltantes: string[] } => {
@@ -270,12 +277,18 @@ export default function RequerimientosPage() {
     });
   };
 
-  // Filtrar solo los requerimientos del usuario actual
+  // Determinar si el usuario es administrador de compras
+  const esAdminCompras = usuarioActual.rol === 'ADMIN';
+
+  // Filtrar requerimientos: Admin ve todos, otros usuarios solo los propios
   const misRequerimientos = useMemo(() => {
-    console.log('🔍 [RequerimientosPage] usuarioActual.id:', usuarioActual.id);
-    console.log('🔍 [RequerimientosPage] requerimientos:', requerimientos.map(r => ({ id: r.id, solicitanteId: r.solicitanteId, titulo: r.titulo })));
+    if (esAdminCompras) {
+      // Admin de compras ve todos los requerimientos
+      return requerimientos;
+    }
+    // Usuarios normales solo ven sus propios requerimientos
     return requerimientos.filter((r) => r.solicitanteId === usuarioActual.id);
-  }, [requerimientos, usuarioActual.id]);
+  }, [requerimientos, usuarioActual.id, esAdminCompras]);
 
   // Aplicar filtros
   const requerimientosFiltrados = useMemo(() => {
@@ -299,6 +312,16 @@ export default function RequerimientosPage() {
       return true;
     });
   }, [misRequerimientos, searchQuery, filtroEstados]);
+
+  // IDs de requerimientos que no están en borrador (pueden tener chat)
+  const reqIdsForChat = useMemo(() => {
+    return requerimientosFiltrados
+      .filter(r => r.estado !== 'BORRADOR')
+      .map(r => r.id);
+  }, [requerimientosFiltrados]);
+
+  // Hook para contadores de mensajes no leídos
+  const { counts: unreadCounts } = usePurchaseRequestChatUnreadCounts(reqIdsForChat);
 
   // Helpers para mostrar estado y prioridad
   const getEstadoBadge = (estado: EstadoRequerimiento) => {
@@ -346,7 +369,10 @@ export default function RequerimientosPage() {
     <div className="p-6 space-y-6">
       <PageHeader
         title="Requerimientos"
-        subtitle={`${misRequerimientos.length} requerimiento${misRequerimientos.length !== 1 ? 's' : ''} en total`}
+        subtitle={esAdminCompras
+          ? `${misRequerimientos.length} requerimiento${misRequerimientos.length !== 1 ? 's' : ''} de todos los usuarios`
+          : `${misRequerimientos.length} requerimiento${misRequerimientos.length !== 1 ? 's' : ''} en total`
+        }
         icon={ClipboardList}
         action={
           <Button onClick={handleNuevoRequerimiento}>
@@ -457,6 +483,11 @@ export default function RequerimientosPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Título
                   </th>
+                  {esAdminCompras && (
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Solicitante
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Estado
                   </th>
@@ -474,6 +505,9 @@ export default function RequerimientosPage() {
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Fecha
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                    Chat
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Acciones
@@ -506,6 +540,11 @@ export default function RequerimientosPage() {
                       <td className="px-4 py-3 text-sm text-text-primary max-w-xs truncate">
                         {req.titulo}
                       </td>
+                      {esAdminCompras && (
+                        <td className="px-4 py-3 text-sm text-text-secondary">
+                          {req.solicitante?.nombre || 'N/A'}
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${estadoBadge.className}`}>
                           {estadoBadge.label}
@@ -578,6 +617,23 @@ export default function RequerimientosPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-text-secondary">
                         {formatDate(req.fechaCreacion)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          {req.estado !== 'BORRADOR' ? (
+                            <PurchaseRequestChatButton
+                              purchaseRequestId={req.id}
+                              purchaseRequestNumber={req.numero}
+                              unreadCount={unreadCounts[req.id] || 0}
+                              onClick={() => {
+                                setSelectedChatReq(req);
+                                setChatDrawerOpen(true);
+                              }}
+                            />
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center space-x-2">
@@ -677,6 +733,19 @@ export default function RequerimientosPage() {
         ordenCompraId={circuitoModal.modalState.ordenCompraId}
         recepcionId={circuitoModal.modalState.recepcionId}
       />
+
+      {/* Drawer de chat */}
+      {selectedChatReq && (
+        <PurchaseRequestChatDrawer
+          purchaseRequestId={selectedChatReq.id}
+          purchaseRequestNumber={selectedChatReq.numero}
+          isOpen={chatDrawerOpen}
+          onClose={() => {
+            setChatDrawerOpen(false);
+            setSelectedChatReq(null);
+          }}
+        />
+      )}
     </div>
   );
 }

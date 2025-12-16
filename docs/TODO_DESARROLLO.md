@@ -58,6 +58,9 @@
   - Cascada automática: activar padre activa hijos, activar hijo activa padre
   - Preview dinámico del menú filtrado por rol
   - Eliminadas validaciones de rol en páginas individuales (acceso controlado por menú)
+- [x] **Ocultamiento de Superusers en lista de usuarios (Sesión 11-Dic-2025)**:
+  - Endpoint `GET /api/users/with-roles` filtra superusers si el usuario actual no es superuser
+  - Solo superusers pueden ver otros superusers en la lista
 
 #### Pendiente:
 - [ ] Selector de empresa en UI (multi-tenant)
@@ -484,6 +487,37 @@ En lugar de duplicar código, las siguientes páginas detectan si el usuario es 
 - [ ] Upload de documentos propios (constancias, certificados)
 - [ ] Historial de transacciones
 - [ ] Comunicación bidireccional (chat con comprador)
+
+---
+
+### 10. CHAT INTERNO DE REQUERIMIENTOS (NUEVO)
+
+**Descripción:** Sistema de chat grupal entre solicitante y aprobadores de un requerimiento.
+
+#### 10.1 Backend (COMPLETADO)
+- [x] Modelos Prisma: `PurchaseRequestChat`, `PurchaseRequestChatMessage`, `PurchaseRequestChatReadStatus`
+- [x] API `/api/pr-chat/:purchaseRequestId` - Obtiene/crea chat + mensajes + participantes
+- [x] API `/api/pr-chat/:purchaseRequestId/participants` - Lista participantes
+- [x] API `/api/pr-chat/:purchaseRequestId/messages` - Crear mensaje
+- [x] API `/api/pr-chat/:purchaseRequestId/read` - Marcar como leído
+- [x] API `/api/pr-chat/unread-counts` - Contadores de no leídos para múltiples requerimientos
+- [x] Notificación por email con link directo al chat (`?chat=open`)
+
+#### 10.2 Frontend (COMPLETADO)
+- [x] Hook `usePurchaseRequestChat` - Maneja estado del chat
+- [x] Hook `usePurchaseRequestChatUnreadCounts` - Contadores para lista
+- [x] Componente `PurchaseRequestChatDrawer` - Drawer lateral con chat
+- [x] Componente `PurchaseRequestChatButton` - Botón con badge de no leídos
+- [x] Integración en `/compras/aprobaciones` - Columna de chat con icono y contador
+- [x] Integración en `/compras/requerimientos/[id]` - Botón en header, auto-abre con `?chat=open`
+
+#### 10.3 Características
+- Chat grupal entre solicitante y todos los aprobadores del workflow
+- Muestra "Enviando a: [nombres]" al escribir mensaje
+- Badge con contador numérico de mensajes no leídos
+- Notificación por email a todos los participantes (excepto remitente)
+- Link directo al chat desde email
+- Drawer lateral que se desliza desde la derecha
 
 ---
 

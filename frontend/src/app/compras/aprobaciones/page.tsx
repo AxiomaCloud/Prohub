@@ -31,8 +31,11 @@ import {
   ThumbsUp,
   ThumbsDown,
   GitBranch,
+  MessageCircle,
 } from 'lucide-react';
 import CircuitoCompraModal, { useCircuitoCompraModal } from '@/components/compras/CircuitoCompraModal';
+import { PurchaseRequestChatButton, PurchaseRequestChatDrawer } from '@/components/chat';
+import { usePurchaseRequestChatUnreadCounts } from '@/hooks/usePurchaseRequestChat';
 
 // Configuracion de estados para el filtro
 const estadosConfig: { id: EstadoRequerimiento; label: string; color: string; bgColor: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -123,6 +126,10 @@ export default function AprobacionesPage() {
   // Hook para el modal de circuito de compra
   const circuitoModal = useCircuitoCompraModal();
 
+  // Estados para el chat
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [selectedChatReq, setSelectedChatReq] = useState<Requerimiento | null>(null);
+
   // Verificar que el usuario es aprobador o admin
   const puedeAprobar = usuarioActual.rol === 'APROBADOR' || usuarioActual.rol === 'ADMIN';
 
@@ -156,6 +163,10 @@ export default function AprobacionesPage() {
       return true;
     });
   }, [requerimientosAprobables, searchQuery, filtroEstados]);
+
+  // Obtener IDs de requerimientos para contadores de chat
+  const reqIds = useMemo(() => requerimientosFiltrados.map(r => r.id), [requerimientosFiltrados]);
+  const { counts: chatUnreadCounts } = usePurchaseRequestChatUnreadCounts(reqIds);
 
   // Toggle estado en filtro
   const toggleEstadoFiltro = (estado: EstadoRequerimiento) => {
@@ -516,6 +527,9 @@ export default function AprobacionesPage() {
                     Fecha
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                    Chat
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
@@ -572,6 +586,17 @@ export default function AprobacionesPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-text-secondary">
                         {formatDate(req.fechaCreacion)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <PurchaseRequestChatButton
+                          purchaseRequestId={req.id}
+                          purchaseRequestNumber={req.numero}
+                          unreadCount={chatUnreadCounts[req.id] || 0}
+                          onClick={() => {
+                            setSelectedChatReq(req);
+                            setChatDrawerOpen(true);
+                          }}
+                        />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center space-x-2">
@@ -710,6 +735,19 @@ export default function AprobacionesPage() {
           onConfirm={handleConfirmEspecificaciones}
           requerimiento={selectedRequerimiento}
           tipo={especificacionesTipo}
+        />
+      )}
+
+      {/* Chat drawer */}
+      {selectedChatReq && (
+        <PurchaseRequestChatDrawer
+          purchaseRequestId={selectedChatReq.id}
+          purchaseRequestNumber={selectedChatReq.numero}
+          isOpen={chatDrawerOpen}
+          onClose={() => {
+            setChatDrawerOpen(false);
+            setSelectedChatReq(null);
+          }}
         />
       )}
     </div>

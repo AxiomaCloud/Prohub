@@ -44,7 +44,18 @@ Implementación del sistema de permisos de menú basado en roles y planificació
 
 **Principio aplicado**: Si el usuario puede acceder a la página desde el menú, puede hacer todo dentro de ella. El control de acceso está centralizado en el menú.
 
-#### 3. Correcciones Anteriores (misma sesión)
+#### 3. Ocultamiento de Superusers en Lista de Usuarios
+
+**Archivo modificado**: `backend/src/routes/users.ts`
+
+**Cambio**: En el endpoint `GET /api/users/with-roles`, si el usuario que consulta NO es superuser, los usuarios con `superuser: true` no aparecen en la lista.
+
+```typescript
+// Filtrar superusers si el usuario actual no es superuser
+...(isSuperuser ? {} : { superuser: false }),
+```
+
+#### 4. Correcciones Anteriores (misma sesión)
 
 - **Fix usuario sin membresía**: Sidebar muestra mensaje "Sin acceso configurado" con botón de contacto
 - **Fix edición de email**: Endpoint PUT `/api/users/:id` ahora actualiza el campo email
