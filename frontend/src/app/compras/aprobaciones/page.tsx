@@ -166,7 +166,7 @@ export default function AprobacionesPage() {
 
   // Obtener IDs de requerimientos para contadores de chat
   const reqIds = useMemo(() => requerimientosFiltrados.map(r => r.id), [requerimientosFiltrados]);
-  const { counts: chatUnreadCounts } = usePurchaseRequestChatUnreadCounts(reqIds);
+  const { counts: chatUnreadCounts, refresh: refreshChatUnreadCounts } = usePurchaseRequestChatUnreadCounts(reqIds);
 
   // Toggle estado en filtro
   const toggleEstadoFiltro = (estado: EstadoRequerimiento) => {
@@ -527,9 +527,6 @@ export default function AprobacionesPage() {
                     Fecha
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Chat
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
@@ -587,17 +584,6 @@ export default function AprobacionesPage() {
                       <td className="px-4 py-3 text-sm text-text-secondary">
                         {formatDate(req.fechaCreacion)}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <PurchaseRequestChatButton
-                          purchaseRequestId={req.id}
-                          purchaseRequestNumber={req.numero}
-                          unreadCount={chatUnreadCounts[req.id] || 0}
-                          onClick={() => {
-                            setSelectedChatReq(req);
-                            setChatDrawerOpen(true);
-                          }}
-                        />
-                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center space-x-2">
                           {/* Ver detalle */}
@@ -617,6 +603,17 @@ export default function AprobacionesPage() {
                           >
                             <GitBranch className="w-4 h-4" />
                           </button>
+
+                          {/* Chat */}
+                          <PurchaseRequestChatButton
+                            purchaseRequestId={req.id}
+                            purchaseRequestNumber={req.numero}
+                            unreadCount={chatUnreadCounts[req.id] || 0}
+                            onClick={() => {
+                              setSelectedChatReq(req);
+                              setChatDrawerOpen(true);
+                            }}
+                          />
 
                           {/* Aprobar especificaciones */}
                           {canApprove && tieneEspecificaciones && !req.especificacionesAprobadas && (
@@ -747,6 +744,8 @@ export default function AprobacionesPage() {
           onClose={() => {
             setChatDrawerOpen(false);
             setSelectedChatReq(null);
+            // Refrescar contadores para actualizar el badge en la grilla
+            refreshChatUnreadCounts();
           }}
         />
       )}

@@ -321,7 +321,7 @@ export default function RequerimientosPage() {
   }, [requerimientosFiltrados]);
 
   // Hook para contadores de mensajes no leídos
-  const { counts: unreadCounts } = usePurchaseRequestChatUnreadCounts(reqIdsForChat);
+  const { counts: unreadCounts, refresh: refreshUnreadCounts } = usePurchaseRequestChatUnreadCounts(reqIdsForChat);
 
   // Helpers para mostrar estado y prioridad
   const getEstadoBadge = (estado: EstadoRequerimiento) => {
@@ -507,9 +507,6 @@ export default function RequerimientosPage() {
                     Fecha
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Chat
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
@@ -619,23 +616,6 @@ export default function RequerimientosPage() {
                         {formatDate(req.fechaCreacion)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-center">
-                          {req.estado !== 'BORRADOR' ? (
-                            <PurchaseRequestChatButton
-                              purchaseRequestId={req.id}
-                              purchaseRequestNumber={req.numero}
-                              unreadCount={unreadCounts[req.id] || 0}
-                              onClick={() => {
-                                setSelectedChatReq(req);
-                                setChatDrawerOpen(true);
-                              }}
-                            />
-                          ) : (
-                            <span className="text-xs text-gray-400">-</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
                         <div className="flex items-center justify-center space-x-2">
                           {/* Ver detalle */}
                           <button
@@ -654,6 +634,19 @@ export default function RequerimientosPage() {
                           >
                             <GitBranch className="w-4 h-4" />
                           </button>
+
+                          {/* Chat - solo si no es borrador */}
+                          {req.estado !== 'BORRADOR' && (
+                            <PurchaseRequestChatButton
+                              purchaseRequestId={req.id}
+                              purchaseRequestNumber={req.numero}
+                              unreadCount={unreadCounts[req.id] || 0}
+                              onClick={() => {
+                                setSelectedChatReq(req);
+                                setChatDrawerOpen(true);
+                              }}
+                            />
+                          )}
 
                           {/* Editar */}
                           {canEdit && (
@@ -743,6 +736,8 @@ export default function RequerimientosPage() {
           onClose={() => {
             setChatDrawerOpen(false);
             setSelectedChatReq(null);
+            // Refrescar contadores para actualizar el badge en la grilla
+            refreshUnreadCounts();
           }}
         />
       )}
