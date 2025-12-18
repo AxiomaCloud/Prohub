@@ -1475,4 +1475,87 @@ export class NotificationService {
 
     console.log(`📧 [NOTIFICATION] Mensaje de documento enviado a ${recipientEmail} por ${senderName}`);
   }
+
+  /**
+   * Notifica a participantes del chat de requerimiento
+   */
+  static async notifyPurchaseRequestChatMessage(params: {
+    purchaseRequestId: string;
+    purchaseRequestNumber: string;
+    senderName: string;
+    senderId: string;
+    messageText: string;
+    recipientIds: string[];
+    tenantId: string;
+  }): Promise<void> {
+    const {
+      purchaseRequestId,
+      purchaseRequestNumber,
+      senderName,
+      senderId,
+      messageText,
+      recipientIds,
+      tenantId,
+    } = params;
+
+    // Obtener emails de los destinatarios
+    const recipients = await prisma.user.findMany({
+      where: { id: { in: recipientIds } },
+      select: { id: true, email: true, name: true },
+    });
+
+    const actionUrl = `${FRONTEND_URL}/compras/requerimientos/${purchaseRequestId}?chat=open`;
+
+    for (const recipient of recipients) {
+      if (recipient.id === senderId) continue;
+
+      const subject = `💬 Nuevo mensaje en ${purchaseRequestNumber} de ${senderName}`;
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">💬 Nuevo mensaje en Requerimiento</h1>
+          </div>
+          <div style="padding: 30px; background: #f9fafb;">
+            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+              Hola <strong>${recipient.name}</strong>,
+            </p>
+            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+              <strong>${senderName}</strong> te ha enviado un mensaje sobre el requerimiento:
+            </p>
+            <div style="background: white; border: 1px solid #e5e7eb; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">Requerimiento</p>
+              <p style="margin: 5px 0 0 0; color: #111827; font-weight: 600; font-size: 18px;">${purchaseRequestNumber}</p>
+            </div>
+
+            <div style="background: #f3f4f6; border-left: 4px solid #8b5cf6; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="font-size: 15px; color: #374151; white-space: pre-wrap; margin: 0; line-height: 1.6;">
+                ${messageText}
+              </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${actionUrl}" style="display: inline-block; background: #8b5cf6; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                Ver conversación
+              </a>
+            </div>
+          </div>
+          <div style="padding: 20px; background: #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+            Este mensaje fue enviado desde el sistema Hub. No responder a este email.
+          </div>
+        </div>
+      `;
+
+      try {
+        await EmailService.sendEmail({
+          to: recipient.email,
+          subject,
+          html,
+        });
+        console.log(`📧 [PR-CHAT] Notificación enviada a ${recipient.email}`);
+      } catch (error) {
+        console.error(`❌ [PR-CHAT] Error enviando a ${recipient.email}:`, error);
+      }
+    }
+  }
 }

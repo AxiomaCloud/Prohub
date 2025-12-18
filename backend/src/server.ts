@@ -25,6 +25,7 @@ import attachmentsRoutes from './routes/attachments'
 import paymentsRoutes from './routes/payments'
 import rfqRoutes from './routes/rfq'
 import documentChatRoutes from './routes/documentChat'
+import purchaseRequestChatRoutes from './routes/purchaseRequestChat'
 
 // Cargar variables de entorno
 dotenv.config()
@@ -115,6 +116,7 @@ app.use('/api/attachments', attachmentsRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/rfq', rfqRoutes)
 app.use('/api/document-chat', documentChatRoutes)
+app.use('/api/pr-chat', purchaseRequestChatRoutes)
 
 // Ruta de prueba
 app.get('/api/test', (req: Request, res: Response) => {

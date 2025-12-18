@@ -961,6 +961,9 @@ model PurchaseRequest {
   // Solicitudes de cotización generadas
   quotationRequests QuotationRequest[]
 
+  // Chat interno (solicitante <-> aprobadores)
+  chat              PurchaseRequestChat?
+
   // Metadata del chatbot (si fue creado por IA)
   creadoPorIA Boolean               @default(false)
   promptOriginal String?            @db.Text // Comando original del usuario
@@ -1686,3 +1689,53 @@ model SupplierQuotationItem {
   @@map("supplier_quotation_items")
 }
 
+// ============================================
+// CHAT INTERNO DE REQUERIMIENTOS
+// ============================================
+
+model PurchaseRequestChat {
+  id                    String   @id @default(cuid())
+  purchaseRequestId     String   @unique
+  purchaseRequest       PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  messages              PurchaseRequestChatMessage[]
+  userReadStatus        PurchaseRequestChatReadStatus[]
+
+  @@index([purchaseRequestId])
+  @@map("purchase_request_chats")
+}
+
+model PurchaseRequestChatMessage {
+  id                    String   @id @default(cuid())
+  chatId                String
+  chat                  PurchaseRequestChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  senderId              String
+  senderName            String
+  senderRole            String   // 'SOLICITANTE' | 'APROBADOR'
+
+  text                  String   @db.Text
+  attachments           Json?    // [{fileName, fileUrl, fileType, fileSize}]
+
+  createdAt             DateTime @default(now())
+
+  @@index([chatId, createdAt])
+  @@map("purchase_request_chat_messages")
+}
+
+model PurchaseRequestChatReadStatus {
+  id                    String   @id @default(cuid())
+  chatId                String
+  chat                  PurchaseRequestChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  userId                String
+  lastReadAt            DateTime @default(now())
+  lastReadMessageId     String?
+
+  @@unique([chatId, userId])
+  @@index([userId])
+  @@map("purchase_request_chat_read_status")
+}

@@ -31,8 +31,11 @@ import {
   ThumbsUp,
   ThumbsDown,
   GitBranch,
+  MessageCircle,
 } from 'lucide-react';
 import CircuitoCompraModal, { useCircuitoCompraModal } from '@/components/compras/CircuitoCompraModal';
+import { PurchaseRequestChatButton, PurchaseRequestChatDrawer } from '@/components/chat';
+import { usePurchaseRequestChatUnreadCounts } from '@/hooks/usePurchaseRequestChat';
 
 // Configuracion de estados para el filtro
 const estadosConfig: { id: EstadoRequerimiento; label: string; color: string; bgColor: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -123,6 +126,10 @@ export default function AprobacionesPage() {
   // Hook para el modal de circuito de compra
   const circuitoModal = useCircuitoCompraModal();
 
+  // Estados para el chat
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [selectedChatReq, setSelectedChatReq] = useState<Requerimiento | null>(null);
+
   // Verificar que el usuario es aprobador o admin
   const puedeAprobar = usuarioActual.rol === 'APROBADOR' || usuarioActual.rol === 'ADMIN';
 
@@ -156,6 +163,10 @@ export default function AprobacionesPage() {
       return true;
     });
   }, [requerimientosAprobables, searchQuery, filtroEstados]);
+
+  // Obtener IDs de requerimientos para contadores de chat
+  const reqIds = useMemo(() => requerimientosFiltrados.map(r => r.id), [requerimientosFiltrados]);
+  const { counts: chatUnreadCounts, refresh: refreshChatUnreadCounts } = usePurchaseRequestChatUnreadCounts(reqIds);
 
   // Toggle estado en filtro
   const toggleEstadoFiltro = (estado: EstadoRequerimiento) => {
@@ -593,6 +604,17 @@ export default function AprobacionesPage() {
                             <GitBranch className="w-4 h-4" />
                           </button>
 
+                          {/* Chat */}
+                          <PurchaseRequestChatButton
+                            purchaseRequestId={req.id}
+                            purchaseRequestNumber={req.numero}
+                            unreadCount={chatUnreadCounts[req.id] || 0}
+                            onClick={() => {
+                              setSelectedChatReq(req);
+                              setChatDrawerOpen(true);
+                            }}
+                          />
+
                           {/* Aprobar especificaciones */}
                           {canApprove && tieneEspecificaciones && !req.especificacionesAprobadas && (
                             <>
@@ -710,6 +732,21 @@ export default function AprobacionesPage() {
           onConfirm={handleConfirmEspecificaciones}
           requerimiento={selectedRequerimiento}
           tipo={especificacionesTipo}
+        />
+      )}
+
+      {/* Chat drawer */}
+      {selectedChatReq && (
+        <PurchaseRequestChatDrawer
+          purchaseRequestId={selectedChatReq.id}
+          purchaseRequestNumber={selectedChatReq.numero}
+          isOpen={chatDrawerOpen}
+          onClose={() => {
+            setChatDrawerOpen(false);
+            setSelectedChatReq(null);
+            // Refrescar contadores para actualizar el badge en la grilla
+            refreshChatUnreadCounts();
+          }}
         />
       )}
     </div>
