@@ -314,22 +314,34 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>Paquete Base</strong></td>
-                        <td style="text-align: center;">74h</td>
-                        <td style="text-align: center;">30h</td>
-                        <td>Implementación completa funcional</td>
+                        <td><strong>Paquete Base Completo (Fases 1-5)</strong></td>
+                        <td style="text-align: center;"><strong>54h</strong></td>
+                        <td style="text-align: center;">29h</td>
+                        <td>Implementación funcional core</td>
                     </tr>
                     <tr>
-                        <td><strong>Adicionales Opcionales</strong></td>
+                        <td>Fase 6: Soporte Post Go-Live</td>
+                        <td style="text-align: center;">7h</td>
+                        <td style="text-align: center;">48h</td>
+                        <td>Soporte inicial y estabilización</td>
+                    </tr>
+                    <tr>
+                        <td>Fase 7: Integración ERP Softland</td>
                         <td style="text-align: center;">-</td>
-                        <td style="text-align: center;">Variable</td>
-                        <td>Funcionalidades extra según necesidad</td>
+                        <td style="text-align: center;">42h</td>
+                        <td>Sincronización bidireccional</td>
+                    </tr>
+                    <tr>
+                        <td>Opcionales Adicionales (5 opciones)</td>
+                        <td style="text-align: center;">-</td>
+                        <td style="text-align: center;">146h</td>
+                        <td>WhatsApp, Chatbot, Capacitación, Configs, Branding</td>
                     </tr>
                     <tr class="total-row">
-                        <td><strong>TOTAL PAQUETE BASE</strong></td>
-                        <td style="text-align: center;"><strong>74h</strong></td>
-                        <td style="text-align: center;"><strong>30h</strong></td>
-                        <td><strong>104 horas (sin opcionales)</strong></td>
+                        <td><strong>TOTAL (con todos los opcionales)</strong></td>
+                        <td style="text-align: center;"><strong>61h</strong></td>
+                        <td style="text-align: center;"><strong>265h</strong></td>
+                        <td><strong>326 horas totales</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -371,22 +383,6 @@
                 <tbody>
                     <tr>
                         <td>1.1</td>
-                        <td>Kickoff meeting con stakeholders</td>
-                        <td>Axioma + Cliente</td>
-                        <td class="hours-client">-</td>
-                        <td>-</td>
-                        <td>Acta de reunión</td>
-                    </tr>
-                    <tr>
-                        <td>1.2</td>
-                        <td>Relevamiento de usuarios (tipos, cantidades)</td>
-                        <td>Axioma + Cliente</td>
-                        <td class="hours-client">-</td>
-                        <td>-</td>
-                        <td>Lista de usuarios</td>
-                    </tr>
-                    <tr>
-                        <td>1.3</td>
                         <td>Crear tenant en Hub (configuración inicial)</td>
                         <td>Axioma</td>
                         <td class="hours-included">1h</td>
@@ -394,28 +390,20 @@
                         <td>Tenant configurado</td>
                     </tr>
                     <tr>
-                        <td>1.4</td>
-                        <td>Generar API Keys (Parse, S3)</td>
+                        <td>1.2</td>
+                        <td>Generar API Keys</td>
                         <td>Axioma</td>
                         <td class="hours-included">1h</td>
                         <td>-</td>
                         <td>Keys generadas</td>
                     </tr>
                     <tr>
-                        <td>1.5</td>
-                        <td>Definir flujos de aprobación de requerimientos</td>
-                        <td>Axioma + Cliente</td>
-                        <td class="hours-client">-</td>
-                        <td>-</td>
-                        <td>Matriz de aprobaciones</td>
-                    </tr>
-                    <tr>
-                        <td>1.6</td>
-                        <td>Mapeo de centros de costo (si aplica)</td>
+                        <td>1.3</td>
+                        <td>Mapeo de maestros y definiciones funcionales</td>
                         <td>Axioma + Cliente</td>
                         <td class="hours-included">2h</td>
                         <td>-</td>
-                        <td>Tabla de centros</td>
+                        <td>Documento de configuración</td>
                     </tr>
                     <tr>
                         <td colspan="3" class="subtotal">Subtotal Fase 1:</td>
@@ -425,72 +413,15 @@
                     </tr>
                 </tbody>
             </table>
-            <p style="font-size: 7.5pt; color: #dc2626; margin-top: 5px;"><strong>Nota:</strong> Las reuniones con el cliente (1.1, 1.2, 1.5) se facturan a costo.</p>
         </section>
 
         <!-- FASE 2 -->
         <section class="no-break">
             <h3>FASE 2: INFRAESTRUCTURA (Semana 2)</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 40px;">#</th>
-                        <th>Tarea</th>
-                        <th style="width: 100px;">Responsable</th>
-                        <th style="width: 60px;">Horas Incluidas</th>
-                        <th style="width: 60px;">Horas Opcionales</th>
-                        <th style="width: 120px;">Entregable</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>2.1</td>
-                        <td>Configurar PostgreSQL (schemas: hub, sync, parse)</td>
-                        <td>Axioma</td>
-                        <td class="hours-included">2h</td>
-                        <td>-</td>
-                        <td>Base de datos lista</td>
-                    </tr>
-                    <tr>
-                        <td>2.2</td>
-                        <td>Configurar Digital Ocean Spaces para documentos</td>
-                        <td>Axioma</td>
-                        <td class="hours-included">1h</td>
-                        <td>-</td>
-                        <td>Storage configurado</td>
-                    </tr>
-                    <tr>
-                        <td>2.3</td>
-                        <td>Configurar Redis Cloud para cache/colas</td>
-                        <td>Axioma</td>
-                        <td class="hours-included">1h</td>
-                        <td>-</td>
-                        <td>Redis configurado</td>
-                    </tr>
-                    <tr>
-                        <td>2.4</td>
-                        <td>Configurar backup automático PostgreSQL</td>
-                        <td>Axioma</td>
-                        <td class="hours-included">2h</td>
-                        <td>-</td>
-                        <td>Backups programados</td>
-                    </tr>
-                    <tr>
-                        <td>2.5</td>
-                        <td>Configurar monitoreo de logs y alertas</td>
-                        <td>Axioma</td>
-                        <td class="hours-included">2h</td>
-                        <td>-</td>
-                        <td>Monitoreo activo</td>
-                    </tr>
-                    <tr>
-                        <td colspan="3" class="subtotal">Subtotal Fase 2:</td>
-                        <td class="subtotal">8h</td>
-                        <td class="subtotal">-</td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="info-box">
+                <p><strong>Parse es una aplicación web completamente gestionada por Axioma. No requiere configuración de infraestructura por parte del cliente.</strong></p>
+            </div>
+            <p style="margin-top: 10px;">El Hub funciona como una aplicación SaaS donde toda la infraestructura (base de datos, almacenamiento, cache, backups y monitoreo) es gestionada por Axioma. El cliente solo necesita acceso web para comenzar a utilizar el sistema.</p>
         </section>
 
         <div class="page-break"></div>
@@ -560,18 +491,18 @@
                     </tr>
                     <tr>
                         <td>3.7</td>
-                        <td>Configurar integración con Parse (upload documentos)</td>
+                        <td>Configurar integración con Parse (upload documentos) *</td>
                         <td>Axioma</td>
-                        <td class="hours-included">2h</td>
                         <td>-</td>
+                        <td class="hours-optional">2h</td>
                         <td>Parse funcionando</td>
                     </tr>
                     <tr>
                         <td>3.8</td>
-                        <td>Test: Carga de factura con Parse OCR</td>
+                        <td>Test: Carga de factura con Parse OCR *</td>
                         <td>Axioma</td>
-                        <td class="hours-included">1h</td>
                         <td>-</td>
+                        <td class="hours-optional">1h</td>
                         <td>Factura procesada</td>
                     </tr>
                     <tr>
@@ -616,12 +547,13 @@
                     </tr>
                     <tr>
                         <td colspan="3" class="subtotal">Subtotal Fase 3:</td>
-                        <td class="subtotal">30h</td>
-                        <td class="subtotal">-</td>
+                        <td class="subtotal">27h</td>
+                        <td class="subtotal">3h</td>
                         <td></td>
                     </tr>
                 </tbody>
             </table>
+            <p style="font-size: 7.5pt; color: #92400e; margin-top: 5px;"><strong>* Nota:</strong> Las tareas marcadas con (*) dependen de la contratación de Parse, que es un producto aparte del Hub.</p>
         </section>
 
         <!-- FASE 4 -->
@@ -675,8 +607,8 @@
                         <td>4.5</td>
                         <td>Capacitación proveedores (sesión grupal)</td>
                         <td>Axioma</td>
-                        <td class="hours-included">2h</td>
                         <td>-</td>
+                        <td class="hours-optional">2h</td>
                         <td>Grabación sesión</td>
                     </tr>
                     <tr>
@@ -713,8 +645,8 @@
                     </tr>
                     <tr>
                         <td colspan="3" class="subtotal">Subtotal Fase 4:</td>
-                        <td class="subtotal">14h</td>
                         <td class="subtotal">12h</td>
+                        <td class="subtotal">14h</td>
                         <td></td>
                     </tr>
                 </tbody>
@@ -821,7 +753,7 @@
                 <tbody>
                     <tr>
                         <td>6.1</td>
-                        <td>Resolución de tickets de soporte</td>
+                        <td>Resolución de tickets de soporte prioritarios</td>
                         <td>Axioma</td>
                         <td class="hours-included">7h</td>
                         <td>-</td>
@@ -900,7 +832,7 @@
                         <td>Instalar Sync-Client.exe en servidor del cliente</td>
                         <td>Cliente + Axioma</td>
                         <td>-</td>
-                        <td class="hours-optional">2h</td>
+                        <td class="hours-optional">4h</td>
                         <td>Sync-Client instalado</td>
                     </tr>
                     <tr>
@@ -908,7 +840,7 @@
                         <td>Configurar conexión Sync-Client → Softland SQL</td>
                         <td>Cliente + Axioma</td>
                         <td>-</td>
-                        <td class="hours-optional">2h</td>
+                        <td class="hours-optional">4h</td>
                         <td>Conexión probada</td>
                     </tr>
                     <tr>
@@ -916,7 +848,7 @@
                         <td>Crear tablas de sincronización en PostgreSQL</td>
                         <td>Axioma</td>
                         <td>-</td>
-                        <td class="hours-optional">1h</td>
+                        <td class="hours-optional">2h</td>
                         <td>Tablas creadas</td>
                     </tr>
                     <tr>
@@ -924,7 +856,7 @@
                         <td>Configurar Task Scheduler Windows (cada 5 min)</td>
                         <td>Cliente + Axioma</td>
                         <td>-</td>
-                        <td class="hours-optional">1h</td>
+                        <td class="hours-optional">2h</td>
                         <td>Job programado</td>
                     </tr>
                     <tr>
@@ -932,7 +864,7 @@
                         <td>Configurar mapeo de campos: Hub → Softland (Requerimientos)</td>
                         <td>Axioma + Cliente</td>
                         <td>-</td>
-                        <td class="hours-optional">4h</td>
+                        <td class="hours-optional">8h</td>
                         <td>Config guardada</td>
                     </tr>
                     <tr>
@@ -940,7 +872,7 @@
                         <td>Configurar mapeo de campos: Softland → Hub (Órdenes Compra)</td>
                         <td>Axioma + Cliente</td>
                         <td>-</td>
-                        <td class="hours-optional">4h</td>
+                        <td class="hours-optional">8h</td>
                         <td>Config guardada</td>
                     </tr>
                     <tr>
@@ -948,7 +880,7 @@
                         <td>Configurar sincronización de recepciones/remitos</td>
                         <td>Axioma + Cliente</td>
                         <td>-</td>
-                        <td class="hours-optional">2h</td>
+                        <td class="hours-optional">4h</td>
                         <td>Recepciones sync</td>
                     </tr>
                     <tr>
@@ -956,7 +888,7 @@
                         <td>Test sincronización: Crear requerimiento en Hub</td>
                         <td>Axioma</td>
                         <td>-</td>
-                        <td class="hours-optional">1h</td>
+                        <td class="hours-optional">2h</td>
                         <td>Requerimiento en Softland</td>
                     </tr>
                     <tr>
@@ -964,7 +896,7 @@
                         <td>Test sincronización: Crear OC en Softland</td>
                         <td>Cliente + Axioma</td>
                         <td>-</td>
-                        <td class="hours-optional">1h</td>
+                        <td class="hours-optional">2h</td>
                         <td>OC visible en Hub</td>
                     </tr>
                     <tr>
@@ -972,7 +904,7 @@
                         <td>Validar numeración automática de documentos</td>
                         <td>Axioma</td>
                         <td>-</td>
-                        <td class="hours-optional">1h</td>
+                        <td class="hours-optional">2h</td>
                         <td>Numeración OK</td>
                     </tr>
                     <tr>
@@ -980,13 +912,13 @@
                         <td>Definir manejo de excepciones en sync</td>
                         <td>Axioma + Cliente</td>
                         <td>-</td>
-                        <td class="hours-optional">2h</td>
+                        <td class="hours-optional">4h</td>
                         <td>Flujo de errores</td>
                     </tr>
                     <tr>
                         <td colspan="3" class="subtotal">Subtotal Fase 7:</td>
                         <td class="subtotal">-</td>
-                        <td class="subtotal">21h</td>
+                        <td class="subtotal">42h</td>
                         <td></td>
                     </tr>
                 </tbody>
@@ -998,8 +930,8 @@
 
         <div class="success-box" style="margin: 20px 0;">
             <strong>TOTAL PAQUETE BASE:</strong><br>
-            Horas Incluidas: <strong>74h</strong> | Horas Opcionales: <strong>93h</strong><br>
-            (Fase 1: 4h | Fase 2: 8h | Fase 3: 30h | Fase 4: 14h+12h | Fase 5: 11h+12h | Fase 6: 7h+48h | Fase 7: 21h)
+            Horas Incluidas: <strong>61h</strong> | Horas Opcionales: <strong>119h</strong><br>
+            (Fase 1: 4h | Fase 2: 0h | Fase 3: 27h+3h | Fase 4: 12h+14h | Fase 5: 11h+12h | Fase 6: 7h+48h | Fase 7: 42h)
         </div>
 
         <div class="page-break"></div>
@@ -1051,7 +983,7 @@
 
         <!-- OPCIÓN 2 -->
         <div class="optional-section">
-            <h4>OPCIÓN 2: Creación Automática de Usuarios desde Softland (14h)</h4>
+            <h4>OPCIÓN 2: Chatbot IA (AXIO) - (18h)</h4>
             <table>
                 <thead>
                     <tr>
@@ -1064,36 +996,44 @@
                 <tbody>
                     <tr>
                         <td>A2.1</td>
-                        <td>Desarrollar sincronización automática de proveedores</td>
-                        <td>6h</td>
-                        <td>Sync-Client detecta nuevos proveedores en Softland</td>
+                        <td>Configurar servicio de IA conversacional</td>
+                        <td>2h</td>
+                        <td>Setup inicial y API keys</td>
                     </tr>
                     <tr>
                         <td>A2.2</td>
-                        <td>Crear flujo de activación automática en Hub</td>
-                        <td>4h</td>
-                        <td>Usuario creado + email de invitación</td>
+                        <td>Activar widget de chatbot en Hub</td>
+                        <td>2h</td>
+                        <td>Integración frontend</td>
                     </tr>
                     <tr>
                         <td>A2.3</td>
-                        <td>Configurar reglas de mapping de datos (email, contacto)</td>
-                        <td>2h</td>
-                        <td>Validaciones y reglas de negocio</td>
+                        <td>Entrenar chatbot con documentación del cliente</td>
+                        <td>4h</td>
+                        <td>Contexto específico del cliente</td>
                     </tr>
                     <tr>
                         <td>A2.4</td>
-                        <td>Testing sincronización de alta de proveedores</td>
-                        <td>2h</td>
-                        <td>Pruebas con casos reales</td>
+                        <td>Configurar flujos de acciones (crear requerimiento, consultar estado)</td>
+                        <td>6h</td>
+                        <td>Integración con backend</td>
+                    </tr>
+                    <tr>
+                        <td>A2.5</td>
+                        <td>Testing y ajuste de prompts</td>
+                        <td>4h</td>
+                        <td>Validar respuestas</td>
                     </tr>
                 </tbody>
             </table>
-            <p><strong>Consideraciones:</strong> Requiere integración con ERP Softland (Fase 7). Softland debe tener campos de email/contacto en maestro de proveedores. Se requiere definir trigger (ej: proveedor con flag "activo en portal"). Primera carga manual, luego automático para nuevos.</p>
+            <p><strong>Consideraciones:</strong> Requiere servicio de IA conversacional (costo mensual según uso). Se configura para: consultas de estado, creación de requerimientos, ayuda general. Entrenable con documentación específica del cliente.</p>
         </div>
+
+        <div class="page-break"></div>
 
         <!-- OPCIÓN 3 -->
         <div class="optional-section">
-            <h4>OPCIÓN 3: Chatbot IA (AXIO) - (18h)</h4>
+            <h4>OPCIÓN 3: Capacitación Extendida Presencial (20h + viáticos)</h4>
             <table>
                 <thead>
                     <tr>
@@ -1106,44 +1046,36 @@
                 <tbody>
                     <tr>
                         <td>A3.1</td>
-                        <td>Configurar servicio de IA conversacional</td>
-                        <td>2h</td>
-                        <td>Setup inicial y API keys</td>
+                        <td>Capacitación presencial en sede del cliente</td>
+                        <td>8h</td>
+                        <td>Sesión de día completo</td>
                     </tr>
                     <tr>
                         <td>A3.2</td>
-                        <td>Activar widget de chatbot en Hub</td>
-                        <td>2h</td>
-                        <td>Integración frontend</td>
+                        <td>Capacitación específica por departamento (Compras, Finanzas, IT)</td>
+                        <td>6h</td>
+                        <td>2h por departamento</td>
                     </tr>
                     <tr>
                         <td>A3.3</td>
-                        <td>Entrenar chatbot con documentación del cliente</td>
-                        <td>4h</td>
-                        <td>Contexto específico del cliente</td>
+                        <td>Webinar masivo para todos los proveedores</td>
+                        <td>2h</td>
+                        <td>Sesión online grupal</td>
                     </tr>
                     <tr>
                         <td>A3.4</td>
-                        <td>Configurar flujos de acciones (crear requerimiento, consultar estado)</td>
-                        <td>6h</td>
-                        <td>Integración con backend</td>
-                    </tr>
-                    <tr>
-                        <td>A3.5</td>
-                        <td>Testing y ajuste de prompts</td>
+                        <td>Capacitación de refuerzo (usuarios rezagados)</td>
                         <td>4h</td>
-                        <td>Validar respuestas</td>
+                        <td>Post go-live</td>
                     </tr>
                 </tbody>
             </table>
-            <p><strong>Consideraciones:</strong> Requiere servicio de IA conversacional (costo mensual según uso). Se configura para: consultas de estado, creación de requerimientos, ayuda general. Entrenable con documentación específica del cliente.</p>
+            <p><strong>Consideraciones:</strong> Capacitación presencial no incluye gastos de viaje (se cotiza aparte). Webinar masivo requiere coordinación con el cliente para convocar proveedores.</p>
         </div>
-
-        <div class="page-break"></div>
 
         <!-- OPCIÓN 4 -->
         <div class="optional-section">
-            <h4>OPCIÓN 4: Capacitación Extendida Presencial (20h + viáticos)</h4>
+            <h4>OPCIÓN 4: Configuraciones Avanzadas (18h + variable)</h4>
             <table>
                 <thead>
                     <tr>
@@ -1156,36 +1088,36 @@
                 <tbody>
                     <tr>
                         <td>A4.1</td>
-                        <td>Capacitación presencial en sede del cliente</td>
-                        <td>8h</td>
-                        <td>Sesión de día completo</td>
+                        <td>Configurar campos custom en documentos</td>
+                        <td>4h</td>
+                        <td>Campos adicionales específicos de la industria</td>
                     </tr>
                     <tr>
                         <td>A4.2</td>
-                        <td>Capacitación específica por departamento (Compras, Finanzas, IT)</td>
-                        <td>6h</td>
-                        <td>2h por departamento</td>
+                        <td>Desarrollar reportes personalizados</td>
+                        <td>8h</td>
+                        <td>Dashboards y reportes específicos</td>
                     </tr>
                     <tr>
                         <td>A4.3</td>
-                        <td>Webinar masivo para todos los proveedores</td>
-                        <td>2h</td>
-                        <td>Sesión online grupal</td>
+                        <td>Configurar flujos de aprobación complejos (matriz multidimensional)</td>
+                        <td>6h</td>
+                        <td>Aprobaciones por monto, tipo, centro de costo, etc</td>
                     </tr>
                     <tr>
                         <td>A4.4</td>
-                        <td>Capacitación de refuerzo (usuarios rezagados)</td>
-                        <td>4h</td>
-                        <td>Post go-live</td>
+                        <td>Integración con otros sistemas (ej: contabilidad, BI)</td>
+                        <td>Variable</td>
+                        <td>A cotizar según sistema</td>
                     </tr>
                 </tbody>
             </table>
-            <p><strong>Consideraciones:</strong> Capacitación presencial no incluye gastos de viaje (se cotiza aparte). Webinar masivo requiere coordinación con el cliente para convocar proveedores.</p>
+            <p><strong>Consideraciones:</strong> Integraciones con sistemas adicionales se cotizan por separado según complejidad.</p>
         </div>
 
         <!-- OPCIÓN 5 -->
         <div class="optional-section">
-            <h4>OPCIÓN 5: Configuraciones Avanzadas (18h + variable)</h4>
+            <h4>OPCIÓN 5: Branding Marca Blanca (80h)</h4>
             <table>
                 <thead>
                     <tr>
@@ -1198,31 +1130,43 @@
                 <tbody>
                     <tr>
                         <td>A5.1</td>
-                        <td>Configurar campos custom en documentos</td>
-                        <td>4h</td>
-                        <td>Campos adicionales específicos de la industria</td>
+                        <td>Diseño de identidad visual personalizada</td>
+                        <td>20h</td>
+                        <td>Logo, paleta de colores, tipografías, guía de estilo</td>
                     </tr>
                     <tr>
                         <td>A5.2</td>
-                        <td>Desarrollar reportes personalizados</td>
-                        <td>8h</td>
-                        <td>Dashboards y reportes específicos</td>
+                        <td>Personalización de interfaces del Hub</td>
+                        <td>25h</td>
+                        <td>Aplicación de branding en todas las pantallas</td>
                     </tr>
                     <tr>
                         <td>A5.3</td>
-                        <td>Configurar flujos de aprobación complejos (matriz multidimensional)</td>
-                        <td>6h</td>
-                        <td>Aprobaciones por monto, tipo, centro de costo, etc</td>
+                        <td>Customización de templates de emails</td>
+                        <td>15h</td>
+                        <td>Emails transaccionales con identidad corporativa</td>
                     </tr>
                     <tr>
                         <td>A5.4</td>
-                        <td>Integración con otros sistemas (ej: contabilidad, BI)</td>
-                        <td>Variable</td>
-                        <td>A cotizar según sistema</td>
+                        <td>Personalización de reportes y documentos generados</td>
+                        <td>10h</td>
+                        <td>PDFs, exports, dashboards con marca del cliente</td>
+                    </tr>
+                    <tr>
+                        <td>A5.5</td>
+                        <td>Configuración de dominio personalizado</td>
+                        <td>5h</td>
+                        <td>URL propia del cliente (ej: portal.cliente.com)</td>
+                    </tr>
+                    <tr>
+                        <td>A5.6</td>
+                        <td>Testing y ajustes finales de branding</td>
+                        <td>5h</td>
+                        <td>Validación y refinamiento en todos los puntos de contacto</td>
                     </tr>
                 </tbody>
             </table>
-            <p><strong>Consideraciones:</strong> Integraciones con sistemas adicionales se cotizan por separado según complejidad.</p>
+            <p><strong>Consideraciones:</strong> El cliente debe proporcionar los activos de marca (logo en formatos vectoriales, manual de identidad si existe). El dominio personalizado requiere acceso a configuración DNS. Este paquete convierte el Hub en una solución totalmente white-label con la identidad visual del cliente.</p>
         </div>
 
         <!-- RESUMEN DE COSTOS -->
@@ -1239,8 +1183,8 @@
                 <tbody>
                     <tr>
                         <td><strong>Paquete Base Completo (Fases 1-5)</strong></td>
-                        <td style="text-align: center;"><strong>74h</strong></td>
-                        <td style="text-align: center;">36h</td>
+                        <td style="text-align: center;"><strong>54h</strong></td>
+                        <td style="text-align: center;">29h</td>
                     </tr>
                     <tr>
                         <td>Fase 6: Soporte Post Go-Live</td>
@@ -1250,37 +1194,37 @@
                     <tr>
                         <td>Fase 7: Integración ERP Softland</td>
                         <td style="text-align: center;">-</td>
-                        <td style="text-align: center;">21h</td>
+                        <td style="text-align: center;">42h</td>
                     </tr>
                     <tr>
-                        <td>WhatsApp Business</td>
+                        <td>Opción 1: WhatsApp Business</td>
                         <td style="text-align: center;">-</td>
                         <td style="text-align: center;">10h</td>
                     </tr>
                     <tr>
-                        <td>Creación Automática de Usuarios</td>
-                        <td style="text-align: center;">-</td>
-                        <td style="text-align: center;">14h</td>
-                    </tr>
-                    <tr>
-                        <td>Chatbot IA (AXIO)</td>
+                        <td>Opción 2: Chatbot IA (AXIO)</td>
                         <td style="text-align: center;">-</td>
                         <td style="text-align: center;">18h</td>
                     </tr>
                     <tr>
-                        <td>Capacitación Extendida Presencial</td>
+                        <td>Opción 3: Capacitación Extendida Presencial</td>
                         <td style="text-align: center;">-</td>
                         <td style="text-align: center;">20h</td>
                     </tr>
                     <tr>
-                        <td>Configuraciones Avanzadas</td>
+                        <td>Opción 4: Configuraciones Avanzadas</td>
                         <td style="text-align: center;">-</td>
                         <td style="text-align: center;">18h</td>
                     </tr>
+                    <tr>
+                        <td>Opción 5: Branding Marca Blanca</td>
+                        <td style="text-align: center;">-</td>
+                        <td style="text-align: center;">80h</td>
+                    </tr>
                     <tr class="total-row">
                         <td><strong>TOTAL (con todos los opcionales)</strong></td>
-                        <td style="text-align: center;"><strong>81h</strong></td>
-                        <td style="text-align: center;"><strong>185h</strong></td>
+                        <td style="text-align: center;"><strong>61h</strong></td>
+                        <td style="text-align: center;"><strong>265h</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -1424,11 +1368,11 @@
                 <tbody>
                     <tr>
                         <td><strong>Fase 1</strong></td>
-                        <td>Acta kickoff, Lista usuarios, Tenant configurado, Matriz de aprobaciones</td>
+                        <td>Tenant configurado, API Keys generadas, Documento de configuración funcional</td>
                     </tr>
                     <tr>
                         <td><strong>Fase 2</strong></td>
-                        <td>Infraestructura montada (PostgreSQL, Digital Ocean Spaces, Redis, Backups)</td>
+                        <td>Infraestructura SaaS gestionada por Axioma (sin entregables del cliente)</td>
                     </tr>
                     <tr>
                         <td><strong>Fase 3</strong></td>
@@ -1527,14 +1471,14 @@
             <h2>Cronograma Resumido</h2>
             <div class="info-box">
                 <strong>Semana 1:</strong> Preparación y análisis (4h)<br>
-                <strong>Semana 2:</strong> Infraestructura (8h)<br>
-                <strong>Semana 3:</strong> Configuración funcional + Importación maestro proveedores (30h)<br>
-                <strong>Semana 4:</strong> Testing y capacitación (14h + 12h opcionales)<br>
+                <strong>Semana 2:</strong> Infraestructura - SaaS gestionado por Axioma (0h)<br>
+                <strong>Semana 3:</strong> Configuración funcional + Importación maestro proveedores (27h + 3h opcionales Parse)<br>
+                <strong>Semana 4:</strong> Testing y capacitación (12h + 14h opcionales)<br>
                 <strong>Semana 5:</strong> Go-Live (11h + 12h opcionales)<br>
                 <strong>Semanas 6-7:</strong> Soporte post go-live (7h + 48h opcionales)<br>
-                <strong>Semanas 2-4 (paralelo):</strong> Integración ERP - OPCIONAL (21h)
+                <strong>Semanas 2-4 (paralelo):</strong> Integración ERP - OPCIONAL (42h)
             </div>
-            <p style="text-align: center; margin-top: 15px;"><strong>Total: 3-5 semanas | 74h incluidas + 93h opcionales</strong></p>
+            <p style="text-align: center; margin-top: 15px;"><strong>Total: 3-5 semanas | 61h incluidas + 119h opcionales</strong></p>
         </section>
 
         <!-- PRÓXIMOS PASOS -->
