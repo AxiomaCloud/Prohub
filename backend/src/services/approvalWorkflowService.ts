@@ -20,7 +20,8 @@ export class ApprovalWorkflowService {
     tenantId: string,
     documentType: ApprovalDocumentType,
     amount: number | Decimal,
-    purchaseType: PurchaseType
+    purchaseType: PurchaseType,
+    sector?: string | null
   ) {
     const amountNum = typeof amount === 'object' ? parseFloat(amount.toString()) : amount;
 
@@ -28,6 +29,7 @@ export class ApprovalWorkflowService {
     const rules = await prisma.approvalRule.findMany({
       where: {
         tenantId,
+        documentType,
         isActive: true,
       },
       include: {
@@ -45,6 +47,11 @@ export class ApprovalWorkflowService {
     for (const rule of rules) {
       // Verificar tipo de compra si está especificado
       if (rule.purchaseType && rule.purchaseType !== purchaseType) {
+        continue;
+      }
+
+      // Verificar sector si está especificado en la regla
+      if (rule.sector && rule.sector !== sector) {
         continue;
       }
 
@@ -72,14 +79,38 @@ export class ApprovalWorkflowService {
     amount: number | Decimal,
     purchaseType: PurchaseType,
     requiresSpecApproval: boolean = false,
-    initiatedBy: string
+    initiatedBy: string,
+    sector?: string | null
   ) {
     // Buscar regla aplicable
-    const rule = await this.findApplicableRule(tenantId, documentType, amount, purchaseType);
+    const rule = await this.findApplicableRule(tenantId, documentType, amount, purchaseType, sector);
 
     if (!rule) {
       console.log(`⚠️ [APPROVAL] No applicable rule found for ${documentType} ${documentId}`);
       return null;
+    }
+
+    // Si la regla tiene autoApprove, aprobar directamente sin crear workflow
+    if (rule.autoApprove) {
+      console.log(`✅ [APPROVAL] Auto-approving ${documentType} ${documentId} (rule: ${rule.name})`);
+
+      // Actualizar estado del documento directamente
+      if (documentType === 'PURCHASE_REQUEST') {
+        await prisma.purchaseRequest.update({
+          where: { id: documentId },
+          data: { estado: 'APROBADO' },
+        });
+      } else if (documentType === 'PURCHASE_ORDER') {
+        await prisma.purchaseOrderCircuit.update({
+          where: { id: documentId },
+          data: {
+            estado: 'APROBADA',
+            fechaAprobacionOC: new Date()
+          },
+        });
+      }
+
+      return { autoApproved: true, ruleId: rule.id, ruleName: rule.name };
     }
 
     // Filtrar niveles según si requiere aprobación de especificaciones
@@ -365,6 +396,16 @@ export class ApprovalWorkflowService {
         where: { id: workflow.documentId },
         data: { estado: newStatus },
       });
+    } else if (workflow.documentType === 'PURCHASE_ORDER') {
+      const newStatus = status === 'APPROVED' ? 'APROBADA' : 'RECHAZADA';
+      await prisma.purchaseOrderCircuit.update({
+        where: { id: workflow.documentId },
+        data: {
+          estado: newStatus,
+          fechaAprobacionOC: new Date(),
+          comentarioAprobacionOC: finalComment || undefined,
+        },
+      });
     }
   }
 
@@ -433,7 +474,23 @@ export class ApprovalWorkflowService {
             document = await prisma.purchaseRequest.findUnique({
               where: { id: workflow.documentId },
               include: {
-                solicitante: { select: { name: true, email: true } },
+                solicitante: { select: { id: true, name: true, email: true } },
+              },
+            });
+          } else if (workflow.documentType === 'PURCHASE_ORDER') {
+            document = await prisma.purchaseOrderCircuit.findUnique({
+              where: { id: workflow.documentId },
+              include: {
+                proveedor: { select: { id: true, nombre: true, cuit: true } },
+                purchaseRequest: {
+                  select: {
+                    numero: true,
+                    titulo: true,
+                    categoria: true,
+                    prioridad: true,
+                    solicitante: { select: { id: true, name: true, email: true } }
+                  }
+                },
               },
             });
           }

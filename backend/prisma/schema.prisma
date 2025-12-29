@@ -1226,11 +1226,14 @@ model ApprovalRule {
   purchaseType    PurchaseType?
   minAmount       Decimal?          @db.Decimal(18,2)
   maxAmount       Decimal?          @db.Decimal(18,2)
-  category        String?
+  sector          String?           // Sector que compra (matchea con centroCostos del PR)
 
   // Prioridad (mayor = se evalúa primero)
   priority    Int      @default(0)
   isActive    Boolean  @default(true)
+
+  // Aprobación automática (sin intervención humana)
+  autoApprove Boolean  @default(false)
 
   // Niveles de aprobación
   levels      ApprovalLevel[]

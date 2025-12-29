@@ -483,11 +483,6 @@ export default function RequerimientosPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Título
                   </th>
-                  {esAdminCompras && (
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                      Solicitante
-                    </th>
-                  )}
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Estado
                   </th>
@@ -534,14 +529,12 @@ export default function RequerimientosPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-text-primary max-w-xs truncate">
-                        {req.titulo}
+                      <td className="px-4 py-3">
+                        <div className="text-sm text-text-primary max-w-xs truncate">{req.titulo}</div>
+                        {esAdminCompras && (
+                          <div className="text-xs text-text-secondary mt-0.5">{req.solicitante?.nombre || 'N/A'}</div>
+                        )}
                       </td>
-                      {esAdminCompras && (
-                        <td className="px-4 py-3 text-sm text-text-secondary">
-                          {req.solicitante?.nombre || 'N/A'}
-                        </td>
-                      )}
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${estadoBadge.className}`}>
                           {estadoBadge.label}

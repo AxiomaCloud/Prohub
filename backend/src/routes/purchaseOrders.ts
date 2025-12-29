@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient, PurchaseOrderCircuitStatus, PurchaseRequestStatus } from '@prisma/client';
+import { PrismaClient, PurchaseOrderCircuitStatus, PurchaseRequestStatus, PurchaseType } from '@prisma/client';
 import { authenticate } from '../middleware/auth';
+import { ApprovalWorkflowService } from '../services/approvalWorkflowService';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -359,6 +360,43 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     });
 
     console.log(`✅ OC ${numero} creada para requerimiento ${purchaseRequest.numero}`);
+
+    // Iniciar workflow de aprobación para la OC
+    try {
+      const workflowResult = await ApprovalWorkflowService.startWorkflow(
+        tenantId,
+        'PURCHASE_ORDER',
+        ordenCompra.id,
+        Number(total),
+        (purchaseRequest.purchaseType as PurchaseType) || 'DIRECT',
+        false, // OCs no requieren aprobación de especificaciones
+        userId,
+        purchaseRequest.centroCostos // Sector que compra
+      );
+
+      if (workflowResult) {
+        if ('autoApproved' in workflowResult && workflowResult.autoApproved) {
+          console.log(`✅ OC ${numero} auto-aprobada por regla: ${workflowResult.ruleName}`);
+          // Recargar la OC con el estado actualizado
+          const ocActualizada = await prisma.purchaseOrderCircuit.findUnique({
+            where: { id: ordenCompra.id },
+            include: {
+              purchaseRequest: true,
+              proveedor: true,
+              items: true,
+            },
+          });
+          return res.status(201).json({ ordenCompra: ocActualizada, autoApproved: true });
+        } else {
+          console.log(`✅ Workflow de aprobación iniciado para OC ${numero}`);
+        }
+      } else {
+        console.log(`⚠️ No se encontró regla de aprobación para OC ${numero}, queda en PENDIENTE_APROBACION`);
+      }
+    } catch (workflowError) {
+      console.error('Error iniciando workflow de aprobación:', workflowError);
+      // La OC ya fue creada, solo log el error del workflow
+    }
 
     res.status(201).json({ ordenCompra: ocCompleta });
   } catch (error) {

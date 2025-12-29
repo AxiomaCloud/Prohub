@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Shield, Plus, Edit, Trash2, X, ChevronDown, ChevronUp,
-  Users, DollarSign, CheckCircle, XCircle, AlertTriangle
+  Users, DollarSign, CheckCircle, XCircle, AlertTriangle, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -11,6 +11,7 @@ import { useConfirmDialog } from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { useSectores } from '@/hooks/compras/useParametros';
 
 interface Approver {
   userId: string;
@@ -34,11 +35,13 @@ interface ApprovalRule {
   id: string;
   name: string;
   documentType?: 'PURCHASE_REQUEST' | 'PURCHASE_ORDER';
+  sector?: string | null;
   minAmount: number | null;
   maxAmount: number | null;
   purchaseType: string | null;
   priority: number;
   isActive: boolean;
+  autoApprove: boolean;
   levels: ApprovalLevel[];
 }
 
@@ -70,10 +73,20 @@ const LEVEL_TYPE_LABELS: Record<string, string> = {
   SPECIFICATIONS: 'Especificaciones',
 };
 
+// Roles que pueden aprobar
+const APPROVER_ROLES: { id: string; label: string; description: string }[] = [
+  { id: 'CLIENT_APPROVER', label: 'Aprobador Cliente', description: 'Usuarios con rol de aprobador de documentos' },
+  { id: 'CLIENT_ADMIN', label: 'Admin Cliente', description: 'Administradores del cliente' },
+  { id: 'PURCHASE_APPROVER', label: 'Aprobador Compras', description: 'Usuarios con rol de aprobador de compras' },
+  { id: 'PURCHASE_ADMIN', label: 'Admin Compras', description: 'Administradores del módulo de compras' },
+];
+
+
 export default function ApprovalRulesPage() {
   const { tenant: currentTenant } = useAuth();
   const { get, post, put, delete: del } = useApiClient();
   const { confirm } = useConfirmDialog();
+  const { sectores: sectoresFromParse, loading: loadingSectores } = useSectores();
 
   const [rules, setRules] = useState<ApprovalRule[]>([]);
   const [availableApprovers, setAvailableApprovers] = useState<AvailableApprover[]>([]);
@@ -86,15 +99,18 @@ export default function ApprovalRulesPage() {
   const [formData, setFormData] = useState({
     name: '',
     documentType: 'PURCHASE_REQUEST' as 'PURCHASE_REQUEST' | 'PURCHASE_ORDER',
+    sector: '' as string,
     minAmount: '',
     maxAmount: '',
     purchaseType: '' as string,
     priority: 1,
+    autoApprove: false,
     levels: [] as Array<{
       name: string;
       mode: 'ANY' | 'ALL';
       levelType: 'GENERAL' | 'SPECIFICATIONS';
       approverIds: string[];
+      approverRoles: string[];
     }>,
   });
 
@@ -133,13 +149,32 @@ export default function ApprovalRulesPage() {
     setFormData({
       name: '',
       documentType: 'PURCHASE_REQUEST',
+      sector: '',
       minAmount: '',
       maxAmount: '',
       purchaseType: '',
       priority: 1,
+      autoApprove: false,
       levels: [],
     });
     setEditingRule(null);
+  };
+
+  // Toggle rol en nivel
+  const toggleRole = (levelIndex: number, roleId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      levels: prev.levels.map((level, i) =>
+        i === levelIndex
+          ? {
+              ...level,
+              approverRoles: level.approverRoles.includes(roleId)
+                ? level.approverRoles.filter(r => r !== roleId)
+                : [...level.approverRoles, roleId],
+            }
+          : level
+      ),
+    }));
   };
 
   const openCreateModal = () => {
@@ -152,15 +187,18 @@ export default function ApprovalRulesPage() {
     setFormData({
       name: rule.name,
       documentType: rule.documentType || 'PURCHASE_REQUEST',
+      sector: rule.sector || '',
       minAmount: rule.minAmount?.toString() || '',
       maxAmount: rule.maxAmount?.toString() || '',
       purchaseType: rule.purchaseType || '',
       priority: rule.priority,
+      autoApprove: rule.autoApprove || false,
       levels: rule.levels?.map(l => ({
         name: l.name,
         mode: l.approvalMode || 'ANY',
         levelType: l.levelType || 'GENERAL',
-        approverIds: l.approvers?.map(a => a.userId) || [],
+        approverIds: l.approvers?.filter(a => a.userId).map(a => a.userId) || [],
+        approverRoles: l.approvers?.filter((a: any) => a.role).map((a: any) => a.role) || [],
       })) || [],
     });
     setShowRuleModal(true);
@@ -176,6 +214,7 @@ export default function ApprovalRulesPage() {
           mode: 'ANY',
           levelType: 'GENERAL',
           approverIds: [],
+          approverRoles: [],
         },
       ],
     }));
@@ -237,17 +276,20 @@ export default function ApprovalRulesPage() {
       return;
     }
 
-    if (formData.levels.length === 0) {
-      console.log('❌ No hay niveles');
-      toast.error('Debe agregar al menos un nivel de aprobación');
-      return;
-    }
-
-    for (const level of formData.levels) {
-      if (level.approverIds.length === 0) {
-        console.log('❌ Nivel sin aprobadores:', level.name);
-        toast.error(`El nivel "${level.name}" debe tener al menos un aprobador`);
+    // Solo validar niveles si no es auto-aprobación
+    if (!formData.autoApprove) {
+      if (formData.levels.length === 0) {
+        console.log('❌ No hay niveles');
+        toast.error('Debe agregar al menos un nivel de aprobación');
         return;
+      }
+
+      for (const level of formData.levels) {
+        if (level.approverIds.length === 0) {
+          console.log('❌ Nivel sin aprobadores:', level.name);
+          toast.error(`El nivel "${level.name}" debe tener al menos un aprobador`);
+          return;
+        }
       }
     }
 
@@ -257,11 +299,13 @@ export default function ApprovalRulesPage() {
       const payload = {
         name: formData.name,
         documentType: formData.documentType,
+        sector: formData.sector || null,
         minAmount: formData.minAmount ? parseFloat(formData.minAmount) : null,
         maxAmount: formData.maxAmount ? parseFloat(formData.maxAmount) : null,
         purchaseType: formData.purchaseType || null,
         priority: formData.priority,
-        levels: formData.levels,
+        autoApprove: formData.autoApprove,
+        levels: formData.autoApprove ? [] : formData.levels,
       };
 
       if (editingRule) {
@@ -378,12 +422,22 @@ export default function ApprovalRulesPage() {
                   <div className="flex items-center gap-4">
                     <div className={`w-3 h-3 rounded-full ${rule.isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
                     <div>
-                      <h3 className="font-semibold text-gray-900">{rule.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">{rule.name}</h3>
+                        {rule.autoApprove && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                            <Zap className="h-3 w-3" />
+                            Auto
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500">
-                        {rule.documentType ? DOCUMENT_TYPE_LABELS[rule.documentType] : 'Todos'} |
-                        {rule.minAmount !== null && ` Desde ${formatAmount(rule.minAmount)}`}
+                        {rule.documentType ? DOCUMENT_TYPE_LABELS[rule.documentType] : 'Todos'}
+                        {rule.sector && ` | Sector: ${rule.sector}`}
+                        {' | '}
+                        {rule.minAmount !== null && `Desde ${formatAmount(rule.minAmount)}`}
                         {rule.maxAmount !== null && ` hasta ${formatAmount(rule.maxAmount)}`}
-                        {rule.minAmount === null && rule.maxAmount === null && ' Cualquier monto'}
+                        {rule.minAmount === null && rule.maxAmount === null && 'Cualquier monto'}
                         {rule.purchaseType && ` | ${PURCHASE_TYPE_LABELS[rule.purchaseType]}`}
                       </p>
                     </div>
@@ -541,8 +595,33 @@ export default function ApprovalRulesPage() {
                       onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) }))}
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Menor número = mayor prioridad</p>
+                    <p className="text-xs text-gray-500 mt-1">Mayor número = mayor prioridad</p>
                   </div>
+                </div>
+
+                {/* Sector Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sector (opcional)
+                  </label>
+                  <select
+                    value={formData.sector}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sector: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    disabled={loadingSectores}
+                  >
+                    <option value="">
+                      {loadingSectores ? 'Cargando sectores...' : 'Todos los sectores'}
+                    </option>
+                    {sectoresFromParse.map((sec) => (
+                      <option key={sec.id} value={sec.nombre}>
+                        {sec.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Si seleccionas un sector, esta regla solo aplica a documentos de ese sector
+                  </p>
                 </div>
 
                 {/* Amount Range */}
@@ -599,7 +678,44 @@ export default function ApprovalRulesPage() {
                   </p>
                 </div>
 
-                {/* Approval Levels */}
+                {/* Auto Approve Toggle */}
+                <div className={`p-4 rounded-lg border-2 ${formData.autoApprove ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${formData.autoApprove ? 'bg-green-100' : 'bg-gray-200'}`}>
+                        <Zap className={`h-5 w-5 ${formData.autoApprove ? 'text-green-600' : 'text-gray-500'}`} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Aprobación Automática</p>
+                        <p className="text-sm text-gray-500">
+                          Los documentos en este rango se aprueban sin intervención humana
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, autoApprove: !prev.autoApprove }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        formData.autoApprove ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.autoApprove ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {formData.autoApprove && (
+                    <div className="mt-3 flex items-center gap-2 text-green-700 text-sm">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>No se requieren niveles de aprobación para esta regla</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Approval Levels - Solo si no es auto-aprobación */}
+                {!formData.autoApprove && (
                 <div>
                   <div className="flex justify-between items-center mb-3">
                     <label className="block text-sm font-medium text-gray-700">
@@ -683,6 +799,7 @@ export default function ApprovalRulesPage() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
 
               <div className="px-6 py-4 border-t flex justify-end gap-3 sticky bottom-0 bg-white">

@@ -1,6 +1,6 @@
 # TODO - Plan de Desarrollo Hub
 
-**Última actualización:** 2025-12-08 (Sesión 8)
+**Última actualización:** 2025-12-16 (Sesión Chat Requerimientos)
 
 ---
 
@@ -13,10 +13,11 @@
 | Onboarding Proveedores | Completado | 90% |
 | Módulo de Pagos | Completado | 90% |
 | Sistema de Roles | Parcial | 75% |
-| MVP Compras | En progreso | 60% |
+| MVP Compras | En progreso | 70% |
 | Notificaciones | Completado | 90% |
 | **Cotizaciones y Licitaciones** | **Completado** | **95%** |
 | **Portal Proveedor** | **Completado** | **98%** |
+| **Chat Interno Requerimientos** | **Completado** | **100%** |
 
 ---
 
@@ -490,7 +491,7 @@ En lugar de duplicar código, las siguientes páginas detectan si el usuario es 
 
 ---
 
-### 10. CHAT INTERNO DE REQUERIMIENTOS (NUEVO)
+### 10. CHAT INTERNO DE REQUERIMIENTOS (COMPLETADO - Sesión 16-Dic-2025)
 
 **Descripción:** Sistema de chat grupal entre solicitante y aprobadores de un requerimiento.
 
@@ -498,26 +499,52 @@ En lugar de duplicar código, las siguientes páginas detectan si el usuario es 
 - [x] Modelos Prisma: `PurchaseRequestChat`, `PurchaseRequestChatMessage`, `PurchaseRequestChatReadStatus`
 - [x] API `/api/pr-chat/:purchaseRequestId` - Obtiene/crea chat + mensajes + participantes
 - [x] API `/api/pr-chat/:purchaseRequestId/participants` - Lista participantes
-- [x] API `/api/pr-chat/:purchaseRequestId/messages` - Crear mensaje
-- [x] API `/api/pr-chat/:purchaseRequestId/read` - Marcar como leído
+- [x] API `/api/pr-chat/:purchaseRequestId/messages` - Crear mensaje + enviar email
+- [x] API `/api/pr-chat/:purchaseRequestId/read` - Marcar como leído para usuario actual
 - [x] API `/api/pr-chat/unread-counts` - Contadores de no leídos para múltiples requerimientos
 - [x] Notificación por email con link directo al chat (`?chat=open`)
+- [x] Lógica de participantes: solicitante + aprobadores del workflow (o PURCHASE_APPROVER del tenant)
 
 #### 10.2 Frontend (COMPLETADO)
-- [x] Hook `usePurchaseRequestChat` - Maneja estado del chat
-- [x] Hook `usePurchaseRequestChatUnreadCounts` - Contadores para lista
+- [x] Hook `usePurchaseRequestChat` - Maneja estado del chat (messages, participants, sendMessage, markAsRead, refresh)
+- [x] Hook `usePurchaseRequestChatUnreadCounts` - Contadores para listas (counts, refresh)
 - [x] Componente `PurchaseRequestChatDrawer` - Drawer lateral con chat
+  - Header con número de requerimiento y botón refresh
+  - "Enviando a: [nombres de otros participantes]"
+  - Lista de mensajes con rol (Solicitante/Aprobador)
+  - Bordes redondeados, gradiente indigo→purple
+  - Altura fija 600px, deja espacio para botón de Axio
 - [x] Componente `PurchaseRequestChatButton` - Botón con badge de no leídos
-- [x] Integración en `/compras/aprobaciones` - Columna de chat con icono y contador
+- [x] Integración en `/compras/aprobaciones` - Botón chat en columna Acciones
+- [x] Integración en `/compras/requerimientos` - Botón chat en columna Acciones (solo si no es BORRADOR)
 - [x] Integración en `/compras/requerimientos/[id]` - Botón en header, auto-abre con `?chat=open`
 
-#### 10.3 Características
-- Chat grupal entre solicitante y todos los aprobadores del workflow
-- Muestra "Enviando a: [nombres]" al escribir mensaje
-- Badge con contador numérico de mensajes no leídos
-- Notificación por email a todos los participantes (excepto remitente)
-- Link directo al chat desde email
-- Drawer lateral que se desliza desde la derecha
+#### 10.3 Características Implementadas
+- [x] Chat grupal entre solicitante y todos los aprobadores del workflow
+- [x] Muestra "Enviando a: [nombres]" al escribir mensaje
+- [x] Badge con contador numérico de mensajes no leídos (rojo)
+- [x] Notificación por email a todos los participantes (excepto remitente)
+- [x] Link directo al chat desde email (`?chat=open`)
+- [x] Drawer lateral con bordes redondeados
+- [x] Botón refresh para actualizar mensajes manualmente
+- [x] Al cerrar chat se refrescan automáticamente los contadores en la grilla
+- [x] Admin de compras ve todos los requerimientos (columna Solicitante visible)
+- [x] Z-index ajustado para no tapar el botón de Axio
+
+#### 10.4 Archivos Creados/Modificados
+| Archivo | Descripción |
+|---------|-------------|
+| `backend/prisma/schema.prisma` | 3 modelos nuevos + relación en PurchaseRequest |
+| `backend/src/routes/purchaseRequestChat.ts` | **NUEVO** - API completa |
+| `backend/src/services/notificationService.ts` | Método `notifyPurchaseRequestChatMessage` |
+| `backend/src/server.ts` | Registrada ruta `/api/pr-chat` |
+| `frontend/src/hooks/usePurchaseRequestChat.ts` | **NUEVO** - Hooks del chat |
+| `frontend/src/components/chat/PurchaseRequestChatDrawer.tsx` | **NUEVO** - Drawer |
+| `frontend/src/components/chat/PurchaseRequestChatButton.tsx` | **NUEVO** - Botón |
+| `frontend/src/components/chat/index.ts` | Exports actualizados |
+| `frontend/src/app/compras/aprobaciones/page.tsx` | Chat integrado en Acciones |
+| `frontend/src/app/compras/requerimientos/page.tsx` | Chat integrado + vista admin |
+| `frontend/src/app/compras/requerimientos/[id]/page.tsx` | Chat en header |
 
 ---
 

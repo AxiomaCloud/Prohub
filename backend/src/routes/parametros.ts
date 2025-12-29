@@ -6,7 +6,7 @@ import {
   getProveedoresForHub,
   getTiposProducto,
   getCategorias,
-  getCentrosCosto,
+  getSectores,
   syncProveedoresToLocal,
   ParametroMaestro,
 } from '../services/parseIntegration';
@@ -75,16 +75,16 @@ router.get('/categorias', authenticate, async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/parametros/centros-costo
- * Obtiene centros de costo desde Parse
+ * GET /api/parametros/sectores
+ * Obtiene sectores desde Parse
  */
-router.get('/centros-costo', authenticate, async (req: Request, res: Response) => {
+router.get('/sectores', authenticate, async (req: Request, res: Response) => {
   try {
-    const data = await getCentrosCosto();
+    const data = await getSectores();
     res.json({ data, total: data.length });
   } catch (error) {
-    console.error('Error fetching centros de costo:', error);
-    res.status(500).json({ error: 'Error al obtener centros de costo' });
+    console.error('Error fetching sectores:', error);
+    res.status(500).json({ error: 'Error al obtener sectores' });
   }
 });
 

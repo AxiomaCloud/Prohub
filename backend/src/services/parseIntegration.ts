@@ -46,18 +46,18 @@ interface SyncDownloadResponse {
 }
 
 /**
- * Descarga datos de una tabla desde Parse usando el endpoint de sync
+ * Descarga parámetros maestros desde Parse usando el endpoint de parametros
  */
-async function downloadFromParse(tabla: string): Promise<ParametroMaestro[]> {
+async function downloadFromParse(tipoCampo: string): Promise<ParametroMaestro[]> {
   if (!PARSE_API_KEY) {
     console.warn('[PARSE] PARSE_API_KEY no configurada');
     return [];
   }
 
-  // El endpoint de sync en Parse es /api/v1/parse/sync/{tabla}
-  const url = `${PARSE_API_URL}/parse/sync/${tabla}?limit=1000`;
+  // El endpoint de parámetros en Parse es /api/v1/parse/parametros/{tipoCampo}
+  const url = `${PARSE_API_URL}/parse/parametros/${tipoCampo}`;
 
-  console.log(`[PARSE] Descargando ${tabla} desde ${url}`);
+  console.log(`[PARSE] Descargando ${tipoCampo} desde ${url}`);
 
   try {
     const response = await fetch(url, {
@@ -70,7 +70,7 @@ async function downloadFromParse(tabla: string): Promise<ParametroMaestro[]> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[PARSE] Error ${response.status}: ${errorText}`);
-      throw new Error(`Error fetching ${tabla}: ${response.status}`);
+      throw new Error(`Error fetching ${tipoCampo}: ${response.status}`);
     }
 
     const result = await response.json() as SyncDownloadResponse;
@@ -80,10 +80,10 @@ async function downloadFromParse(tabla: string): Promise<ParametroMaestro[]> {
       throw new Error(result.error || 'Error desconocido');
     }
 
-    console.log(`[PARSE] Obtenidos ${result.data?.length || 0} registros de ${tabla}`);
+    console.log(`[PARSE] Obtenidos ${result.data?.length || 0} registros de ${tipoCampo}`);
     return result.data || [];
   } catch (error) {
-    console.error(`[PARSE] Error descargando ${tabla}:`, error);
+    console.error(`[PARSE] Error descargando ${tipoCampo}:`, error);
     throw error;
   }
 }
@@ -110,10 +110,10 @@ export async function getCategorias(): Promise<ParametroMaestro[]> {
 }
 
 /**
- * Obtiene centros de costo desde Parse
+ * Obtiene sectores desde Parse
  */
-export async function getCentrosCosto(): Promise<ParametroMaestro[]> {
-  return downloadFromParse('centros_costo');
+export async function getSectores(): Promise<ParametroMaestro[]> {
+  return downloadFromParse('sector');
 }
 
 /**

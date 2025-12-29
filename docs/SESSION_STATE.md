@@ -1,105 +1,138 @@
 # SESSION STATE - Hub Development
 
-**Última actualización**: 11 Diciembre 2025
-**Sesión**: Sistema de Menú y Permisos por Rol
+**Última actualización**: 16 Diciembre 2025
+**Sesión**: Chat Interno de Requerimientos de Compra
 
 ---
 
 ## RESUMEN DE SESIÓN ACTUAL
 
 ### Tema Principal
-Implementación del sistema de permisos de menú basado en roles y planificación de permisos granulares (Solo Lectura).
+Implementación completa del sistema de chat interno para requerimientos de compra, permitiendo comunicación entre solicitante y aprobadores.
 
 ### Cambios Realizados
 
-#### 1. Sistema de Menú basado en Roles
+#### 1. Sistema de Chat para Requerimientos (Backend)
 
-**Archivos modificados**:
-
-| Archivo | Cambio |
-|---------|--------|
-| `backend/prisma/schema.prisma` | Agregado campo `allowedRoles: Role[]` a modelo MenuItem |
-| `backend/src/routes/menu.ts` | Nueva lógica de filtrado por roles, endpoints `/admin`, `/roles`, `/:id/roles` |
-| `frontend/src/components/admin/menu/MenuRolePermissions.tsx` | **NUEVO** - Componente de administración de permisos con switches |
-| `frontend/src/components/admin/menu/MenuPreview.tsx` | Agregado filtrado por rol en preview |
-| `frontend/src/app/admin/menu/page.tsx` | Agregadas tabs "Items de Menú" y "Permisos por Rol" |
-| `frontend/src/hooks/useMenu.ts` | Agregado `allowedRoles` a interface MenuItem |
-
-**Lógica implementada**:
-- `allowedRoles = []` (array vacío) = Solo superusers pueden ver el item
-- Los roles se asignan explícitamente por item de menú
-- Cascada: Activar padre → activa todos los hijos
-- Cascada: Activar hijo → activa el padre (no los hermanos)
-- Cascada: Desactivar padre → desactiva todos los hijos
-
-#### 2. Eliminación de Validaciones de Rol en Páginas
-
-**Archivos modificados**:
+**Archivos creados/modificados**:
 
 | Archivo | Cambio |
 |---------|--------|
-| `frontend/src/app/admin/users/page.tsx` | Eliminado check `isSuperuser` para cargar usuarios |
-| `frontend/src/app/admin/approval-rules/page.tsx` | Eliminado `requiredRoles` del ProtectedRoute |
-| `frontend/src/app/admin/settings/page.tsx` | Eliminado ProtectedRoute completamente |
+| `backend/prisma/schema.prisma` | Agregados 3 modelos: `PurchaseRequestChat`, `PurchaseRequestChatMessage`, `PurchaseRequestChatReadStatus` |
+| `backend/src/routes/purchaseRequestChat.ts` | **NUEVO** - API completa del chat |
+| `backend/src/services/notificationService.ts` | Agregado método `notifyPurchaseRequestChatMessage` |
+| `backend/src/server.ts` | Registrada ruta `/api/pr-chat` |
 
-**Principio aplicado**: Si el usuario puede acceder a la página desde el menú, puede hacer todo dentro de ella. El control de acceso está centralizado en el menú.
-
-#### 3. Ocultamiento de Superusers en Lista de Usuarios
-
-**Archivo modificado**: `backend/src/routes/users.ts`
-
-**Cambio**: En el endpoint `GET /api/users/with-roles`, si el usuario que consulta NO es superuser, los usuarios con `superuser: true` no aparecen en la lista.
-
-```typescript
-// Filtrar superusers si el usuario actual no es superuser
-...(isSuperuser ? {} : { superuser: false }),
-```
-
-#### 4. Correcciones Anteriores (misma sesión)
-
-- **Fix usuario sin membresía**: Sidebar muestra mensaje "Sin acceso configurado" con botón de contacto
-- **Fix edición de email**: Endpoint PUT `/api/users/:id` ahora actualiza el campo email
-- **Fix creación de usuario**: POST `/api/users` ahora incluye tenantId para crear membresía
-
----
-
-## PRÓXIMO PASO PENDIENTE
-
-### Permisos Granulares - Solo Lectura
-
-**Estado**: Planificado, documentado en ROADMAP y TODO
-
-**Concepto**:
-Agregar un switch "Solo Lectura" por cada combinación rol-menú que permite al usuario VER la página pero NO modificar/eliminar datos.
-
-**Implementación propuesta**:
-
-1. **Nuevo modelo Prisma**:
+**Modelos Prisma**:
 ```prisma
-model MenuItemRolePermission {
-  id          String   @id @default(cuid())
-  menuItemId  String
-  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
-  role        Role
-  readOnly    Boolean  @default(false)
+model PurchaseRequestChat {
+  id                    String   @id @default(cuid())
+  purchaseRequestId     String   @unique
+  purchaseRequest       PurchaseRequest @relation(...)
+  messages              PurchaseRequestChatMessage[]
+  userReadStatus        PurchaseRequestChatReadStatus[]
+}
 
-  @@unique([menuItemId, role])
+model PurchaseRequestChatMessage {
+  id         String   @id @default(cuid())
+  chatId     String
+  senderId   String
+  senderName String
+  senderRole String   // 'SOLICITANTE' | 'APROBADOR'
+  text       String   @db.Text
+  attachments Json?
+  createdAt  DateTime @default(now())
+}
+
+model PurchaseRequestChatReadStatus {
+  id                String   @id @default(cuid())
+  chatId            String
+  userId            String
+  lastReadAt        DateTime @default(now())
+  lastReadMessageId String?
+  @@unique([chatId, userId])
 }
 ```
 
-2. **Componentes Frontend**:
-- `ProtectedButton`: Oculta botones si `readOnly = true`
-- `ProtectedModal`: Deshabilita formularios si `readOnly = true`
-- `ProtectedDeleteAction`: Oculta opciones de eliminar
+**Endpoints API**:
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/pr-chat/:purchaseRequestId` | Obtiene/crea chat + mensajes + participantes |
+| GET | `/api/pr-chat/:purchaseRequestId/participants` | Lista participantes |
+| POST | `/api/pr-chat/:purchaseRequestId/messages` | Crea mensaje + notifica por email |
+| PATCH | `/api/pr-chat/:purchaseRequestId/read` | Marca como leído para usuario actual |
+| POST | `/api/pr-chat/unread-counts` | Contadores de no leídos (para listas) |
 
-3. **UI Admin**:
-- En `MenuRolePermissions.tsx`, agregar segundo switch "Solo Lectura" junto al de acceso
-- Solo visible cuando el acceso está activado
+#### 2. Sistema de Chat para Requerimientos (Frontend)
 
-4. **Hook**:
-- `usePagePermissions()`: Retorna `{ canAccess, readOnly }` para la página actual
+**Archivos creados/modificados**:
 
-**Estimación**: ~22 horas
+| Archivo | Cambio |
+|---------|--------|
+| `frontend/src/hooks/usePurchaseRequestChat.ts` | **NUEVO** - Hooks del chat |
+| `frontend/src/components/chat/PurchaseRequestChatDrawer.tsx` | **NUEVO** - Drawer lateral del chat |
+| `frontend/src/components/chat/PurchaseRequestChatButton.tsx` | **NUEVO** - Botón con badge |
+| `frontend/src/components/chat/index.ts` | Agregados exports |
+| `frontend/src/app/compras/aprobaciones/page.tsx` | Integrado chat en columna Acciones |
+| `frontend/src/app/compras/requerimientos/page.tsx` | Integrado chat en columna Acciones |
+| `frontend/src/app/compras/requerimientos/[id]/page.tsx` | Botón chat en header + auto-open via `?chat=open` |
+
+**Hooks**:
+- `usePurchaseRequestChat({ purchaseRequestId, enabled })` - Retorna: messages, participants, sendMessage, markAsRead, refresh, unreadCount
+- `usePurchaseRequestChatUnreadCounts(purchaseRequestIds)` - Retorna: counts (objeto id→count), refresh
+
+**Componentes**:
+- `PurchaseRequestChatDrawer` - Drawer lateral con:
+  - Header con número de requerimiento y botón refresh
+  - "Enviando a: [nombres de otros participantes]"
+  - Lista de mensajes con rol (Solicitante/Aprobador)
+  - Input de mensaje
+  - Bordes redondeados, colores invertidos vs Axio (indigo→purple)
+  - Altura fija 600px, deja espacio para botón de Axio
+- `PurchaseRequestChatButton` - Botón con icono MessageCircle y badge rojo con contador
+
+#### 3. Mejoras en Página de Requerimientos
+
+**Cambios**:
+- Admin de compras ve TODOS los requerimientos de todos los usuarios
+- Columna "Solicitante" visible solo para admins
+- Subtítulo indica "de todos los usuarios" para admins
+- Botón de chat en columna Acciones (no columna separada)
+- Al cerrar chat, se refrescan los contadores automáticamente
+
+#### 4. Mejoras en UI del Chat
+
+**Cambios**:
+- Drawer con bordes redondeados (`rounded-2xl`)
+- Gradiente invertido: `from-indigo-600 to-purple-600` (vs Axio que es purple→purple)
+- Altura fija 600px similar a Axio
+- Z-index ajustado para no tapar botón de Axio (drawer z-40, overlay z-30, Axio z-50)
+- Botón de refresh en header del chat
+
+---
+
+## FLUJO DEL CHAT
+
+1. **Participantes**:
+   - Solicitante (quien creó el requerimiento)
+   - Aprobadores (usuarios con PURCHASE_APPROVER en el tenant, o los del workflow activo)
+
+2. **Envío de mensaje**:
+   - Usuario escribe mensaje
+   - Se guarda en BD
+   - Se envía email a todos los participantes (excepto remitente)
+   - Email incluye link: `/compras/requerimientos/{id}?chat=open`
+
+3. **Contadores de no leídos**:
+   - Cada usuario tiene su propio estado de lectura
+   - Se muestra badge numérico en el botón de chat
+   - Al abrir el chat se marcan como leídos
+   - Al cerrar el chat se refrescan los contadores
+
+4. **Ubicación del botón**:
+   - En lista de aprobaciones: columna Acciones
+   - En lista de requerimientos: columna Acciones (solo si no es BORRADOR)
+   - En detalle de requerimiento: header junto al estado
 
 ---
 
@@ -108,55 +141,62 @@ model MenuItemRolePermission {
 ### Backend
 ```
 backend/
-├── prisma/schema.prisma          ← Agregar MenuItemRolePermission
-├── src/routes/menu.ts            ← Agregar endpoints de readOnly
-└── src/middleware/authorization.ts ← Agregar middleware checkReadOnly
+├── prisma/schema.prisma              ← Modelos de chat
+├── src/routes/purchaseRequestChat.ts ← API del chat
+└── src/services/notificationService.ts ← Notificación por email
 ```
 
 ### Frontend
 ```
 frontend/src/
-├── components/
-│   ├── admin/menu/
-│   │   └── MenuRolePermissions.tsx  ← Agregar switch Solo Lectura
-│   └── auth/
-│       ├── ProtectedButton.tsx      ← CREAR
-│       ├── ProtectedModal.tsx       ← CREAR
-│       └── ProtectedDeleteAction.tsx ← CREAR
 ├── hooks/
-│   └── usePagePermissions.ts        ← CREAR
-└── app/admin/*/page.tsx             ← Integrar wrappers
+│   └── usePurchaseRequestChat.ts     ← Hooks del chat
+├── components/chat/
+│   ├── PurchaseRequestChatDrawer.tsx ← Drawer del chat
+│   ├── PurchaseRequestChatButton.tsx ← Botón con badge
+│   └── index.ts                      ← Exports
+└── app/compras/
+    ├── aprobaciones/page.tsx         ← Lista aprobaciones con chat
+    ├── requerimientos/page.tsx       ← Lista requerimientos con chat
+    └── requerimientos/[id]/page.tsx  ← Detalle con chat
 ```
 
 ---
 
 ## ESTADO DE LA BASE DE DATOS
 
-**Cambios pendientes de migrar**: Ninguno (última migración aplicada)
+**Migración aplicada**: `npx prisma db push` (no se usó migrate dev por drift)
 
-**Datos de prueba**:
-- Usuarios de prueba: `compras@udesa.edu.ar`, `cuentasapagar@udesa.edu.ar`
-- Todos los items de menú actualmente tienen `allowedRoles = []` (solo superusers)
-- Se deben configurar los roles permitidos desde Admin > Menú > Permisos por Rol
+**Nuevas tablas**:
+- `purchase_request_chats`
+- `purchase_request_chat_messages`
+- `purchase_request_chat_read_status`
 
 ---
 
 ## NOTAS IMPORTANTES
 
-1. **El usuario `juan.perez@udesa.edu.ar` NO existe** en la base de datos (verificado con script)
+1. **Lógica de participantes**:
+   - Primero busca aprobadores del ApprovalWorkflow activo
+   - Si no hay workflow, usa usuarios con rol PURCHASE_APPROVER en el tenant
+   - Siempre incluye al solicitante
 
-2. **Lógica de roles en menú**:
-   - Superuser ve TODO siempre
-   - Usuario con múltiples roles ve el MERGE de todas las opciones de sus roles
-   - `allowedRoles = []` significa "solo superusers" (NO "todos")
+2. **Diferencias con chat de documentos (DocumentChat)**:
+   - DocumentChat: cliente/proveedor (2 lados)
+   - PurchaseRequestChat: grupo interno (múltiples usuarios)
+   - DocumentChat: contador por "lado" del tenant
+   - PurchaseRequestChat: contador por usuario individual
 
-3. **Switch de permisos**:
-   - Fondo gris claro
-   - Botón verde = acceso activo
-   - Botón rojo = sin acceso
-   - Borde fino gris oscuro
+3. **UI del drawer**:
+   - Posición: `fixed right-4 top-4`
+   - Altura: `600px` (max `calc(100vh-120px)`)
+   - Z-index: `40` (drawer), `30` (overlay)
+   - Deja espacio para botón de Axio (z-50, bottom-6 right-6)
 
-4. **Script de diagnóstico**: `check-user-menu.js` en raíz del proyecto para verificar usuarios y menús
+4. **Permisos de vista**:
+   - Admin de compras (rol ADMIN) ve todos los requerimientos
+   - Usuario normal solo ve sus propios requerimientos
+   - Columna "Solicitante" solo visible para admins
 
 ---
 
@@ -164,12 +204,11 @@ frontend/src/
 
 Al iniciar nueva sesión, leer:
 1. Este archivo (`docs/SESSION_STATE.md`)
-2. `docs/TODO_DESARROLLO.md` - Sección "PERMISOS GRANULARES - Solo Lectura"
-3. `docs/ROADMAP_FINAL.md` - Sección "SISTEMA DE PERMISOS GRANULARES"
-
-El usuario solicitó implementar permisos granulares después de verificar que el sistema de menú actual funciona correctamente.
+2. `docs/TODO_DESARROLLO.md` - Sección "10. CHAT INTERNO DE REQUERIMIENTOS"
+3. `frontend/src/hooks/usePurchaseRequestChat.ts` - Estructura del hook
+4. `backend/src/routes/purchaseRequestChat.ts` - API del chat
 
 ---
 
 **Documento actualizado por**: Claude Code
-**Fecha**: 11 Diciembre 2025
+**Fecha**: 16 Diciembre 2025

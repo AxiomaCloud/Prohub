@@ -119,17 +119,20 @@ router.post(
         return res.status(400).json({ error: 'Tenant ID required' });
       }
 
-      const { name, purchaseType, minAmount, maxAmount, priority, levels } = req.body;
+      const { name, purchaseType, minAmount, maxAmount, priority, levels, autoApprove, documentType, sector } = req.body;
 
       const rule = await prisma.approvalRule.create({
         data: {
           tenantId,
           name,
+          documentType: documentType || 'PURCHASE_REQUEST',
+          sector: sector || null,
           purchaseType: purchaseType || null,
           minAmount: minAmount || null,
           maxAmount: maxAmount || null,
           priority: priority || 0,
           isActive: true,
+          autoApprove: autoApprove || false,
           levels: {
             create: levels.map((level: any, index: number) => ({
               name: level.name,
@@ -179,7 +182,7 @@ router.put(
       }
 
       const { id } = req.params;
-      const { name, minAmount, maxAmount, purchaseType, priority, isActive } = req.body;
+      const { name, minAmount, maxAmount, purchaseType, priority, isActive, autoApprove, documentType, sector } = req.body;
 
       const rule = await prisma.approvalRule.update({
         where: { id },
@@ -188,8 +191,11 @@ router.put(
           ...(minAmount !== undefined && { minAmount }),
           ...(maxAmount !== undefined && { maxAmount }),
           ...(purchaseType !== undefined && { purchaseType }),
+          ...(sector !== undefined && { sector }),
           ...(priority !== undefined && { priority }),
           ...(isActive !== undefined && { isActive }),
+          ...(autoApprove !== undefined && { autoApprove }),
+          ...(documentType !== undefined && { documentType }),
         },
         include: {
           levels: {

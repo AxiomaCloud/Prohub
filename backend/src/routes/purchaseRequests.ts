@@ -561,11 +561,16 @@ router.put('/:id/submit', authenticate, async (req: Request, res: Response) => {
           requerimiento.montoEstimado || 0,
           (requerimiento.purchaseType as PurchaseType) || 'DIRECT',
           requerimiento.requiresSpecApproval || false,
-          req.user.id
+          req.user.id,
+          currentReq.centroCostos // Sector que compra
         );
 
         if (workflow) {
-          console.log(`✅ Workflow ${workflow.id} iniciado para requerimiento ${requerimiento.numero}`);
+          if ('autoApproved' in workflow && workflow.autoApproved) {
+            console.log(`✅ Requerimiento ${requerimiento.numero} auto-aprobado por regla: ${workflow.ruleName}`);
+          } else if ('id' in workflow) {
+            console.log(`✅ Workflow ${workflow.id} iniciado para requerimiento ${requerimiento.numero}`);
+          }
         } else {
           // Si no hay regla aplicable, notificar que requiere configuración
           console.log(`⚠️ No se encontró regla de aprobación aplicable para ${requerimiento.numero}`);

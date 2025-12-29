@@ -15,7 +15,7 @@ export interface RuleAction {
       minAmount?: number | null;
       maxAmount?: number | null;
       purchaseType?: string | null;
-      category?: string | null;
+      sector?: string | null;
     };
     niveles?: Array<{
       nombre: string;
@@ -128,7 +128,7 @@ export class RuleActionExecutor {
         purchaseType,
         minAmount: entidades.condiciones?.minAmount || null,
         maxAmount: entidades.condiciones?.maxAmount || null,
-        category: entidades.condiciones?.category || null,
+        sector: entidades.condiciones?.sector || null,
         priority: entidades.prioridad || 0,
         isActive: entidades.activa !== false,
         niveles: entidades.niveles.map((nivel, index) => ({
@@ -218,7 +218,7 @@ export class RuleActionExecutor {
           purchaseType: rule.purchaseType,
           minAmount: rule.minAmount,
           maxAmount: rule.maxAmount,
-          category: rule.category,
+          sector: rule.sector,
           priority: rule.priority,
           isActive: rule.isActive,
           creadoPorIA: true,
@@ -349,9 +349,9 @@ export class RuleActionExecutor {
         maxAmount: entidades.condiciones?.maxAmount !== undefined
           ? entidades.condiciones.maxAmount
           : existingRule.maxAmount,
-        category: entidades.condiciones?.category !== undefined
-          ? entidades.condiciones.category
-          : existingRule.category,
+        sector: entidades.condiciones?.sector !== undefined
+          ? entidades.condiciones.sector
+          : existingRule.sector,
         priority: entidades.prioridad !== undefined ? entidades.prioridad : existingRule.priority,
         isActive: entidades.activa !== undefined ? entidades.activa : existingRule.isActive,
         niveles: entidades.niveles || existingRule.levels.map(l => ({
@@ -432,7 +432,7 @@ export class RuleActionExecutor {
           purchaseType: rule.purchaseType,
           minAmount: rule.minAmount,
           maxAmount: rule.maxAmount,
-          category: rule.category,
+          sector: rule.sector,
           priority: rule.priority,
           isActive: rule.isActive
         },
@@ -811,7 +811,7 @@ export class RuleActionExecutor {
     if (rule.minAmount) condiciones.push(`Monto mínimo: $${Number(rule.minAmount).toLocaleString('es-AR')}`);
     if (rule.maxAmount) condiciones.push(`Monto máximo: $${Number(rule.maxAmount).toLocaleString('es-AR')}`);
     if (rule.purchaseType) condiciones.push(`Tipo de compra: ${rule.purchaseType}`);
-    if (rule.category) condiciones.push(`Categoría: ${rule.category}`);
+    if (rule.sector) condiciones.push(`Sector: ${rule.sector}`);
 
     const nivelesText = rule.niveles.map((n: any, idx: number) => {
       const aprobadores = n.aprobadores.map((a: any) =>
@@ -944,8 +944,8 @@ ${changes.length > 0 ? changes.join('\n') : '• Sin cambios detectados'}
       condiciones.push(`tipo ${tipoCompra}`);
     }
 
-    if (rule.category) {
-      condiciones.push(`categoría "${rule.category}"`);
+    if (rule.sector) {
+      condiciones.push(`sector "${rule.sector}"`);
     }
 
     if (condiciones.length > 0) {
