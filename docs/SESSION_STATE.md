@@ -1,214 +1,247 @@
 # SESSION STATE - Hub Development
 
-**Última actualización**: 16 Diciembre 2025
-**Sesión**: Chat Interno de Requerimientos de Compra
+**Última actualización**: 29 Diciembre 2025
+**Sesión**: Implementación Sync Hub-Parse-ERP
 
 ---
 
 ## RESUMEN DE SESIÓN ACTUAL
 
 ### Tema Principal
-Implementación completa del sistema de chat interno para requerimientos de compra, permitiendo comunicación entre solicitante y aprobadores.
+1. Implementación de infraestructura de sincronización genérica en Parse
+2. Tablas sync_entity_config y sync_data con payload JSONB
+3. API endpoints /api/sync-data para Hub
 
-### Cambios Realizados
+---
 
-#### 1. Sistema de Chat para Requerimientos (Backend)
+## CAMBIOS REALIZADOS
 
-**Archivos creados/modificados**:
+### 1. Integración Parse API para Parámetros Maestros
+
+**Decisión**: Usar Parse como fuente de datos para parámetros maestros (sectores, categorías, etc.) en lugar de tablas locales en Hub.
+
+**Endpoint Parse**: `GET /api/v1/parse/parametros/:tipoCampo`
+- Para sectores: `tipoCampo = "sector"`
+- Respuesta: `{ success: true, data: [{ id, codigo, nombre, ... }] }`
+
+**Archivos modificados**:
 
 | Archivo | Cambio |
 |---------|--------|
-| `backend/prisma/schema.prisma` | Agregados 3 modelos: `PurchaseRequestChat`, `PurchaseRequestChatMessage`, `PurchaseRequestChatReadStatus` |
-| `backend/src/routes/purchaseRequestChat.ts` | **NUEVO** - API completa del chat |
-| `backend/src/services/notificationService.ts` | Agregado método `notifyPurchaseRequestChatMessage` |
-| `backend/src/server.ts` | Registrada ruta `/api/pr-chat` |
+| `backend/src/services/parseIntegration.ts` | Actualizado endpoint y función `getSectores()` |
+| `backend/src/routes/parametros.ts` | Nuevo endpoint `GET /api/parametros/sectores` |
+| `frontend/src/hooks/compras/useParametros.ts` | Hook `useSectores()` para consumir API |
+| `backend/.env` | Actualizado `PARSE_API_KEY` |
 
-**Modelos Prisma**:
+**Configuración Parse**:
+```env
+PARSE_API_URL="https://parsedemo.axiomacloud.com/api/v1"
+PARSE_API_KEY="sk_9b19c89be84653ebbd679c705dc7c7b33ceabd2f23350f6d948e702812bc43fe"
+PARSE_TENANT_ID="grupolb"
+```
+
+**Datos de sectores en Parse**:
+- COM - Compras
+- PRO - Producción
+
+### 2. Cambio de Category a Sector en Reglas de Aprobación
+
+**Concepto**: El "sector" representa el departamento/área que solicita la compra. Matchea con el campo `centroCostos` del PurchaseRequest.
+
+**Archivos modificados**:
+
+| Archivo | Cambio |
+|---------|--------|
+| `backend/prisma/schema.prisma` | Campo `category` → `sector` en modelo `ApprovalRule` |
+| `backend/src/services/approvalWorkflowService.ts` | Lógica de matching usa `sector` |
+| `backend/src/routes/approvalRules.ts` | CRUD usa campo `sector` |
+| `backend/src/services/ruleActionExecutor.ts` | Referencias actualizadas a `sector` |
+| `frontend/src/app/admin/approval-rules/page.tsx` | UI usa `sector` con datos de Parse |
+
+**Schema Prisma actualizado**:
 ```prisma
-model PurchaseRequestChat {
-  id                    String   @id @default(cuid())
-  purchaseRequestId     String   @unique
-  purchaseRequest       PurchaseRequest @relation(...)
-  messages              PurchaseRequestChatMessage[]
-  userReadStatus        PurchaseRequestChatReadStatus[]
-}
-
-model PurchaseRequestChatMessage {
-  id         String   @id @default(cuid())
-  chatId     String
-  senderId   String
-  senderName String
-  senderRole String   // 'SOLICITANTE' | 'APROBADOR'
-  text       String   @db.Text
-  attachments Json?
-  createdAt  DateTime @default(now())
-}
-
-model PurchaseRequestChatReadStatus {
-  id                String   @id @default(cuid())
-  chatId            String
-  userId            String
-  lastReadAt        DateTime @default(now())
-  lastReadMessageId String?
-  @@unique([chatId, userId])
+model ApprovalRule {
+  // ...
+  sector          String?           // Sector que compra (matchea con centroCostos del PR)
+  // ...
 }
 ```
 
-**Endpoints API**:
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/api/pr-chat/:purchaseRequestId` | Obtiene/crea chat + mensajes + participantes |
-| GET | `/api/pr-chat/:purchaseRequestId/participants` | Lista participantes |
-| POST | `/api/pr-chat/:purchaseRequestId/messages` | Crea mensaje + notifica por email |
-| PATCH | `/api/pr-chat/:purchaseRequestId/read` | Marca como leído para usuario actual |
-| POST | `/api/pr-chat/unread-counts` | Contadores de no leídos (para listas) |
+**Lógica de matching** en `findApplicableRule()`:
+```typescript
+// Verificar sector si está especificado en la regla
+if (rule.sector && rule.sector !== sector) {
+  continue; // No aplica esta regla
+}
+```
 
-#### 2. Sistema de Chat para Requerimientos (Frontend)
+**Flujo**:
+1. Usuario crea requerimiento con `centroCostos = "COM"` (Compras)
+2. Al enviar a aprobación, se busca regla con `sector = "COM"` (o sin sector = aplica a todos)
+3. Si hay match de sector + monto + tipo compra → inicia workflow con esa regla
 
-**Archivos creados/modificados**:
+### 3. Ajuste UI Grilla de Requerimientos
 
-| Archivo | Cambio |
-|---------|--------|
-| `frontend/src/hooks/usePurchaseRequestChat.ts` | **NUEVO** - Hooks del chat |
-| `frontend/src/components/chat/PurchaseRequestChatDrawer.tsx` | **NUEVO** - Drawer lateral del chat |
-| `frontend/src/components/chat/PurchaseRequestChatButton.tsx` | **NUEVO** - Botón con badge |
-| `frontend/src/components/chat/index.ts` | Agregados exports |
-| `frontend/src/app/compras/aprobaciones/page.tsx` | Integrado chat en columna Acciones |
-| `frontend/src/app/compras/requerimientos/page.tsx` | Integrado chat en columna Acciones |
-| `frontend/src/app/compras/requerimientos/[id]/page.tsx` | Botón chat en header + auto-open via `?chat=open` |
+**Cambio**: El nombre del solicitante ahora aparece debajo del título en vez de columna separada.
 
-**Hooks**:
-- `usePurchaseRequestChat({ purchaseRequestId, enabled })` - Retorna: messages, participants, sendMessage, markAsRead, refresh, unreadCount
-- `usePurchaseRequestChatUnreadCounts(purchaseRequestIds)` - Retorna: counts (objeto id→count), refresh
+**Archivo**: `frontend/src/app/compras/requerimientos/page.tsx`
 
-**Componentes**:
-- `PurchaseRequestChatDrawer` - Drawer lateral con:
-  - Header con número de requerimiento y botón refresh
-  - "Enviando a: [nombres de otros participantes]"
-  - Lista de mensajes con rol (Solicitante/Aprobador)
-  - Input de mensaje
-  - Bordes redondeados, colores invertidos vs Axio (indigo→purple)
-  - Altura fija 600px, deja espacio para botón de Axio
-- `PurchaseRequestChatButton` - Botón con icono MessageCircle y badge rojo con contador
+**Antes**:
+```tsx
+<td>Título</td>
+<td>Solicitante</td>  <!-- Columna separada -->
+```
 
-#### 3. Mejoras en Página de Requerimientos
+**Después**:
+```tsx
+<td>
+  <div>Título del Requerimiento</div>
+  <div className="text-xs text-text-secondary">Nombre Solicitante</div>
+</td>
+```
 
-**Cambios**:
-- Admin de compras ve TODOS los requerimientos de todos los usuarios
-- Columna "Solicitante" visible solo para admins
-- Subtítulo indica "de todos los usuarios" para admins
-- Botón de chat en columna Acciones (no columna separada)
-- Al cerrar chat, se refrescan los contadores automáticamente
-
-#### 4. Mejoras en UI del Chat
-
-**Cambios**:
-- Drawer con bordes redondeados (`rounded-2xl`)
-- Gradiente invertido: `from-indigo-600 to-purple-600` (vs Axio que es purple→purple)
-- Altura fija 600px similar a Axio
-- Z-index ajustado para no tapar botón de Axio (drawer z-40, overlay z-30, Axio z-50)
-- Botón de refresh en header del chat
+**Beneficio**: Ahorra espacio horizontal en la tabla, especialmente útil en pantallas pequeñas.
 
 ---
 
-## FLUJO DEL CHAT
-
-1. **Participantes**:
-   - Solicitante (quien creó el requerimiento)
-   - Aprobadores (usuarios con PURCHASE_APPROVER en el tenant, o los del workflow activo)
-
-2. **Envío de mensaje**:
-   - Usuario escribe mensaje
-   - Se guarda en BD
-   - Se envía email a todos los participantes (excepto remitente)
-   - Email incluye link: `/compras/requerimientos/{id}?chat=open`
-
-3. **Contadores de no leídos**:
-   - Cada usuario tiene su propio estado de lectura
-   - Se muestra badge numérico en el botón de chat
-   - Al abrir el chat se marcan como leídos
-   - Al cerrar el chat se refrescan los contadores
-
-4. **Ubicación del botón**:
-   - En lista de aprobaciones: columna Acciones
-   - En lista de requerimientos: columna Acciones (solo si no es BORRADOR)
-   - En detalle de requerimiento: header junto al estado
-
----
-
-## ARCHIVOS CLAVE PARA CONTINUAR
+## ARCHIVOS CLAVE MODIFICADOS
 
 ### Backend
 ```
 backend/
-├── prisma/schema.prisma              ← Modelos de chat
-├── src/routes/purchaseRequestChat.ts ← API del chat
-└── src/services/notificationService.ts ← Notificación por email
+├── .env                                  ← PARSE_API_KEY actualizado
+├── prisma/schema.prisma                  ← sector en ApprovalRule
+├── src/
+│   ├── routes/
+│   │   ├── parametros.ts                 ← GET /api/parametros/sectores
+│   │   └── approvalRules.ts              ← CRUD con sector
+│   └── services/
+│       ├── parseIntegration.ts           ← getSectores()
+│       ├── approvalWorkflowService.ts    ← Matching por sector
+│       └── ruleActionExecutor.ts         ← Referencias a sector
 ```
 
 ### Frontend
 ```
 frontend/src/
-├── hooks/
-│   └── usePurchaseRequestChat.ts     ← Hooks del chat
-├── components/chat/
-│   ├── PurchaseRequestChatDrawer.tsx ← Drawer del chat
-│   ├── PurchaseRequestChatButton.tsx ← Botón con badge
-│   └── index.ts                      ← Exports
-└── app/compras/
-    ├── aprobaciones/page.tsx         ← Lista aprobaciones con chat
-    ├── requerimientos/page.tsx       ← Lista requerimientos con chat
-    └── requerimientos/[id]/page.tsx  ← Detalle con chat
+├── hooks/compras/useParametros.ts        ← useSectores() hook
+├── app/
+│   ├── admin/approval-rules/page.tsx     ← UI reglas con sector
+│   └── compras/requerimientos/page.tsx   ← Solicitante bajo título
 ```
 
 ---
 
 ## ESTADO DE LA BASE DE DATOS
 
-**Migración aplicada**: `npx prisma db push` (no se usó migrate dev por drift)
-
-**Nuevas tablas**:
-- `purchase_request_chats`
-- `purchase_request_chat_messages`
-- `purchase_request_chat_read_status`
+**Migración aplicada**: `npx prisma db push`
+- Campo `category` renombrado a `sector` en tabla `approval_rules`
 
 ---
 
-## NOTAS IMPORTANTES
+## ENDPOINTS NUEVOS/MODIFICADOS
 
-1. **Lógica de participantes**:
-   - Primero busca aprobadores del ApprovalWorkflow activo
-   - Si no hay workflow, usa usuarios con rol PURCHASE_APPROVER en el tenant
-   - Siempre incluye al solicitante
-
-2. **Diferencias con chat de documentos (DocumentChat)**:
-   - DocumentChat: cliente/proveedor (2 lados)
-   - PurchaseRequestChat: grupo interno (múltiples usuarios)
-   - DocumentChat: contador por "lado" del tenant
-   - PurchaseRequestChat: contador por usuario individual
-
-3. **UI del drawer**:
-   - Posición: `fixed right-4 top-4`
-   - Altura: `600px` (max `calc(100vh-120px)`)
-   - Z-index: `40` (drawer), `30` (overlay)
-   - Deja espacio para botón de Axio (z-50, bottom-6 right-6)
-
-4. **Permisos de vista**:
-   - Admin de compras (rol ADMIN) ve todos los requerimientos
-   - Usuario normal solo ve sus propios requerimientos
-   - Columna "Solicitante" solo visible para admins
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/parametros/sectores` | Obtiene sectores desde Parse API |
 
 ---
 
 ## PARA RETOMAR
 
-Al iniciar nueva sesión, leer:
+Al iniciar nueva sesión, revisar:
+
 1. Este archivo (`docs/SESSION_STATE.md`)
-2. `docs/TODO_DESARROLLO.md` - Sección "10. CHAT INTERNO DE REQUERIMIENTOS"
-3. `frontend/src/hooks/usePurchaseRequestChat.ts` - Estructura del hook
-4. `backend/src/routes/purchaseRequestChat.ts` - API del chat
+2. `docs/TODO_DESARROLLO.md` - Estado general del proyecto
+3. `backend/src/services/parseIntegration.ts` - Integración con Parse
+4. `backend/src/services/approvalWorkflowService.ts` - Lógica de matching por sector
+
+---
+
+## PLANES PENDIENTES
+
+### 1. Unificar Aprobaciones
+Existe un plan en `C:\Users\marti\.claude\plans\zazzy-chasing-scott.md` para:
+- Unificar aprobaciones de Requerimientos y OCs en una sola página
+- Agregar campo `autoApprove` a ApprovalRule
+- Iniciar workflow automático al crear OC
+
+**Estado**: Planificado, no implementado
+
+### 2. Sincronización Hub - Parse - ERP
+
+**Estado**: FASE 1 COMPLETADA
+
+**Documentación**:
+- Arquitectura: [`docs/SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md)
+- Plan de implementación: [`docs/SYNC_IMPLEMENTATION_PLAN.md`](./SYNC_IMPLEMENTATION_PLAN.md)
+- Implementación Parse: [`docs/SYNC_PARSE_IMPLEMENTATION.md`](./SYNC_PARSE_IMPLEMENTATION.md)
+
+**Resumen**:
+- Parse actúa como broker/intermediario
+- ERP es dueño de: Proveedores, Productos, Sectores, Pagos
+- Hub es dueño de: Requerimientos, OCs, Recepciones
+- Parse es dueño de: Documentos (PDFs)
+
+**Implementado en Parse** (29 Dic 2025):
+
+| Archivo | Descripción |
+|---------|-------------|
+| `parse/backend/prisma/schema.prisma` | Modelos `sync_entity_config` y `sync_data` |
+| `parse/backend/src/services/syncDataService.js` | Servicio de sincronización |
+| `parse/backend/src/services/erpSyncProcessor.js` | Procesador que envía a SQL Server |
+| `parse/backend/src/routes/syncData.js` | API endpoints |
+| `parse/backend/src/routes/syncEntityConfig.js` | Admin de configuraciones |
+| `parse/backend/src/index.js` | Registro de rutas |
+
+**Implementado en Hub** (29 Dic 2025):
+
+| Archivo | Descripción |
+|---------|-------------|
+| `backend/src/services/parseIntegration.ts` | Funciones `syncPurchaseOrderToERP()`, `pullFromParse()` |
+| `backend/src/services/approvalWorkflowService.ts` | Integración al aprobar OC |
+
+**Endpoints Parse (sync-data)**:
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/sync-data` | Hub envía datos (OC, Recepción) |
+| POST | `/api/sync-data/batch` | Batch de registros |
+| POST | `/api/sync-data/from-erp` | Parse recibe datos del ERP |
+| POST | `/api/sync-data/process` | Procesar pendientes → ERP |
+| GET | `/api/sync-data/pull/:entityType` | Hub consulta datos del ERP |
+| GET | `/api/sync-data/pending` | Listar pendientes |
+| GET | `/api/sync-data/stats` | Estadísticas |
+| GET | `/api/sync-data/:entityType/:entityId/status` | Estado de sync |
+
+**Endpoints Parse (sync-entity-config)**:
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/sync-entity-config` | Listar configs |
+| POST | `/api/sync-entity-config` | Crear config |
+| POST | `/api/sync-entity-config/seed-axioma` | Crear configs AXIOMA |
+
+**Flujo Completo**:
+
+```
+HUB                         PARSE                        ERP
+ │                            │                           │
+ │ aprobar OC                 │                           │
+ ├──► POST /sync-data ───────►│                           │
+ │    {entityType,payload}    │                           │
+ │                            │ POST /process             │
+ │                            ├──► INSERT SQL ───────────►│
+ │                            │                           │
+ │                            │◄── SELECT SQL ────────────┤
+ │                            │    (pagos, proveedores)   │
+ │ GET /pull/PAYMENT          │                           │
+ │◄───────────────────────────┤                           │
+```
+
+**Estado**: FASE 1 y 2 COMPLETADAS
 
 ---
 
 **Documento actualizado por**: Claude Code
-**Fecha**: 16 Diciembre 2025
+**Fecha**: 28 Diciembre 2025

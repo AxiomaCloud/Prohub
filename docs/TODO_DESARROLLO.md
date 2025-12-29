@@ -1,6 +1,6 @@
 # TODO - Plan de Desarrollo Hub
 
-**Última actualización:** 2025-12-16 (Sesión Chat Requerimientos)
+**Última actualización:** 2025-12-28 (Sesión Integración Parse + Sector)
 
 ---
 
@@ -18,6 +18,8 @@
 | **Cotizaciones y Licitaciones** | **Completado** | **95%** |
 | **Portal Proveedor** | **Completado** | **98%** |
 | **Chat Interno Requerimientos** | **Completado** | **100%** |
+| **Integración Parse API** | **Completado** | **100%** |
+| **Sistema Aprobaciones por Sector** | **Completado** | **100%** |
 
 ---
 
@@ -548,6 +550,129 @@ En lugar de duplicar código, las siguientes páginas detectan si el usuario es 
 
 ---
 
+### 11. INTEGRACIÓN PARSE API (COMPLETADO - Sesión 28-Dic-2025)
+
+**Descripción:** Uso de Parse como fuente de parámetros maestros (sectores, categorías, proveedores).
+
+#### 11.1 Configuración
+- [x] Endpoint Parse: `GET /api/v1/parse/parametros/:tipoCampo`
+- [x] API Key configurada en `.env`
+- [x] Servicio `parseIntegration.ts` actualizado
+
+**Variables de entorno**:
+```env
+PARSE_API_URL="https://parsedemo.axiomacloud.com/api/v1"
+PARSE_API_KEY="sk_9b19c89be84653ebbd679c705dc7c7b33ceabd2f23350f6d948e702812bc43fe"
+PARSE_TENANT_ID="grupolb"
+```
+
+#### 11.2 Funciones Disponibles
+- [x] `getSectores()` - Obtiene sectores (tipo_campo = "sector")
+- [x] `getCategorias()` - Obtiene categorías
+- [x] `getProveedores()` - Obtiene proveedores
+- [x] `getTiposProducto()` - Obtiene tipos de producto
+
+#### 11.3 Endpoints Hub
+- [x] `GET /api/parametros/sectores` - Proxy a Parse para sectores
+
+#### 11.4 Hooks Frontend
+- [x] `useSectores()` - Hook para consumir sectores desde API
+
+---
+
+### 12. SISTEMA DE APROBACIONES POR SECTOR (COMPLETADO - Sesión 28-Dic-2025)
+
+**Descripción:** Las reglas de aprobación ahora filtran por "sector" (departamento que compra) en vez de categoría.
+
+#### 12.1 Cambio de Schema
+- [x] Campo `category` renombrado a `sector` en modelo `ApprovalRule`
+- [x] Migración aplicada con `prisma db push`
+
+#### 12.2 Lógica de Matching
+El sector de la regla matchea con `centroCostos` del PurchaseRequest:
+- Si la regla tiene `sector = "COM"`, solo aplica a requerimientos con `centroCostos = "COM"`
+- Si la regla no tiene sector (null), aplica a todos los sectores
+
+#### 12.3 Archivos Modificados
+| Archivo | Cambio |
+|---------|--------|
+| `backend/prisma/schema.prisma` | `category` → `sector` |
+| `backend/src/services/approvalWorkflowService.ts` | Matching por sector |
+| `backend/src/routes/approvalRules.ts` | CRUD con sector |
+| `backend/src/services/ruleActionExecutor.ts` | Referencias a sector |
+| `frontend/src/app/admin/approval-rules/page.tsx` | UI con selector de sectores |
+
+#### 12.4 Datos de Sectores (desde Parse)
+- COM - Compras
+- PRO - Producción
+
+---
+
+### 13. MEJORAS UI (Sesión 28-Dic-2025)
+
+#### 13.1 Grilla de Requerimientos
+- [x] Solicitante ahora aparece debajo del título (texto pequeño)
+- [x] Eliminada columna separada de "Solicitante"
+- [x] Ahorra espacio horizontal en la tabla
+
+---
+
+### 14. SINCRONIZACIÓN HUB - PARSE - ERP (PLANIFICADO - Sesión 28-Dic-2025)
+
+**Documentación completa:**
+- Arquitectura: [`docs/SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md)
+- Plan de implementación: [`docs/SYNC_IMPLEMENTATION_PLAN.md`](./SYNC_IMPLEMENTATION_PLAN.md)
+
+**Descripción:** Sistema de sincronización bidireccional entre Hub, Parse (como broker) y ERPs externos.
+
+#### 14.1 Ownership de Datos
+| Entidad | Dueño | Dirección |
+|---------|-------|-----------|
+| Proveedores | ERP | ERP → Parse → Hub |
+| Sectores/Categorías | ERP | ERP → Parse → Hub |
+| Requerimientos | Hub | Solo Hub |
+| OCs | Hub | Hub → Parse → ERP |
+| Recepciones | Hub | Hub → Parse → ERP |
+| Facturas (PDF) | Parse | Parse → Hub (datos) |
+| Pagos | ERP | ERP → Parse → Hub |
+
+#### 14.2 Fases de Implementación
+
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| 1 | Schema y modelos en Parse | Pendiente |
+| 2 | APIs de sincronización en Parse | Pendiente |
+| 3 | Hub como consumidor (inbound) | Pendiente |
+| 4 | Hub como productor (outbound) | Pendiente |
+| 5 | Conectores ERP en Parse | Pendiente |
+| 6 | Testing y documentación | Pendiente |
+
+#### 14.3 Tablas a crear en Parse
+- [ ] `sync_queue` - Cola de mensajes pendientes
+- [ ] `sync_config` - Configuración por entidad/tenant
+- [ ] `sync_log` - Auditoría de operaciones
+- [ ] `sync_state` - Estado de última sincronización
+
+#### 14.4 Endpoints a crear en Parse
+- [ ] `GET /api/v1/sync/inbound/:entity` - Datos pendientes para Hub
+- [ ] `POST /api/v1/sync/inbound/:entity/ack` - Confirmar recepción
+- [ ] `POST /api/v1/sync/outbound/:entity` - Enviar dato al ERP
+- [ ] `GET /api/v1/sync/outbound/:entity/:id/status` - Estado de envío
+
+#### 14.5 Servicios a crear en Hub
+- [ ] `syncService.ts` - Cliente de sync
+- [ ] Job de sincronización programado
+- [ ] Webhook receiver para notificaciones
+- [ ] UI de estado de sincronización
+
+#### 14.6 Dependencias
+- [ ] Definir ERP objetivo
+- [ ] Obtener documentación del ERP
+- [ ] Obtener credenciales de prueba
+- [ ] Ambiente de test del ERP
+
+---
+
 ## ARCHIVOS CLAVE
 
 ### Backend
@@ -619,6 +744,14 @@ frontend/src/
 ---
 
 ## PRÓXIMOS PASOS INMEDIATOS
+
+0. **Unificar Aprobaciones (PLANIFICADO):**
+   - [ ] Agregar campo `autoApprove` a ApprovalRule (aprobación automática sin intervención)
+   - [ ] Completar `getPendingApprovals()` para OCs en ApprovalWorkflowService
+   - [ ] Iniciar workflow automáticamente al crear OC
+   - [ ] Unificar página de aprobaciones (tabs: Requerimientos / Órdenes de Compra)
+   - [ ] Eliminar página obsoleta `/compras/aprobaciones-oc`
+   - **Plan detallado en**: `C:\Users\marti\.claude\plans\zazzy-chasing-scott.md`
 
 1. **Cotizaciones y Licitaciones (85% COMPLETADO):**
    - [x] Schema Prisma (modelos RFQ) - COMPLETADO

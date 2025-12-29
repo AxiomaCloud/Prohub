@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { NotificationService } from './notificationService';
 import { Decimal } from '@prisma/client/runtime/library';
+import { syncPurchaseOrderToERP } from './parseIntegration';
 
 const prisma = new PrismaClient();
 
@@ -101,13 +102,31 @@ export class ApprovalWorkflowService {
           data: { estado: 'APROBADO' },
         });
       } else if (documentType === 'PURCHASE_ORDER') {
-        await prisma.purchaseOrderCircuit.update({
+        const updatedOC = await prisma.purchaseOrderCircuit.update({
           where: { id: documentId },
           data: {
             estado: 'APROBADA',
             fechaAprobacionOC: new Date()
           },
+          include: {
+            proveedor: true,
+            items: true,
+            purchaseRequest: true,
+            creadoPor: true,
+          },
         });
+
+        // Enviar a Parse para sincronización con ERP
+        try {
+          const syncResult = await syncPurchaseOrderToERP(updatedOC);
+          if (syncResult.success) {
+            console.log(`✅ [SYNC] OC auto-aprobada ${updatedOC.numero} enviada a Parse para sync con ERP`);
+          } else {
+            console.error(`⚠️ [SYNC] Error enviando OC auto-aprobada ${updatedOC.numero} a Parse:`, syncResult.error);
+          }
+        } catch (syncError) {
+          console.error(`⚠️ [SYNC] Error en sync de OC auto-aprobada ${updatedOC.numero}:`, syncError);
+        }
       }
 
       return { autoApproved: true, ruleId: rule.id, ruleName: rule.name };
@@ -398,14 +417,35 @@ export class ApprovalWorkflowService {
       });
     } else if (workflow.documentType === 'PURCHASE_ORDER') {
       const newStatus = status === 'APPROVED' ? 'APROBADA' : 'RECHAZADA';
-      await prisma.purchaseOrderCircuit.update({
+      const updatedOC = await prisma.purchaseOrderCircuit.update({
         where: { id: workflow.documentId },
         data: {
           estado: newStatus,
           fechaAprobacionOC: new Date(),
           comentarioAprobacionOC: finalComment || undefined,
         },
+        include: {
+          proveedor: true,
+          items: true,
+          purchaseRequest: true,
+          creadoPor: true,
+        },
       });
+
+      // Si fue aprobada, enviar a Parse para sincronización con ERP
+      if (status === 'APPROVED') {
+        try {
+          const syncResult = await syncPurchaseOrderToERP(updatedOC);
+          if (syncResult.success) {
+            console.log(`✅ [SYNC] OC ${updatedOC.numero} enviada a Parse para sync con ERP`);
+          } else {
+            console.error(`⚠️ [SYNC] Error enviando OC ${updatedOC.numero} a Parse:`, syncResult.error);
+          }
+        } catch (syncError) {
+          // No fallar la aprobación si falla el sync
+          console.error(`⚠️ [SYNC] Error en sync de OC ${updatedOC.numero}:`, syncError);
+        }
+      }
     }
   }
 

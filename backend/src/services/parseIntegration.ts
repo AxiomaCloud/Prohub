@@ -174,6 +174,363 @@ export async function getProveedoresForHub(options: { search?: string } = {}): P
   };
 }
 
+// ============================================
+// SYNC DATA - Envío de datos a Parse para ERP
+// ============================================
+
+export interface SyncDataRequest {
+  entityType: string;
+  entityId: string;
+  erpType: string;
+  payload: any;
+  userId?: string;
+}
+
+export interface SyncDataResponse {
+  success: boolean;
+  action?: 'CREATE' | 'UPDATE' | 'SKIP' | 'ERROR';
+  id?: string;
+  version?: number;
+  reason?: string;
+  error?: string;
+}
+
+export interface SyncStatusResponse {
+  success: boolean;
+  data?: {
+    id: string;
+    erpType: string;
+    status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+    externalId: string | null;
+    syncedAt: string | null;
+    errorMessage: string | null;
+    retryCount: number;
+    version: number;
+    updatedAt: string;
+  } | Array<{
+    id: string;
+    erpType: string;
+    status: string;
+    externalId: string | null;
+    syncedAt: string | null;
+    errorMessage: string | null;
+    retryCount: number;
+    version: number;
+    updatedAt: string;
+  }>;
+  error?: string;
+}
+
+/**
+ * Envía datos a Parse para sincronización con ERP
+ */
+export async function sendToParseSync(data: SyncDataRequest): Promise<SyncDataResponse> {
+  if (!PARSE_API_KEY) {
+    console.warn('[SYNC] PARSE_API_KEY no configurada');
+    return { success: false, error: 'API key not configured' };
+  }
+
+  // El endpoint de sync-data está en la raíz de la API (no en /api/v1)
+  const baseUrl = PARSE_API_URL_RAW.replace(/\/api\/v1\/?$/, '');
+  const url = `${baseUrl}/api/sync-data`;
+
+  console.log(`[SYNC] Enviando ${data.entityType}:${data.entityId} a Parse (${data.erpType})`);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': PARSE_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[SYNC] Error ${response.status}: ${errorText}`);
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+    }
+
+    const result = await response.json() as SyncDataResponse;
+    console.log(`[SYNC] Resultado: ${result.action} - ID: ${result.id}`);
+    return result;
+  } catch (error: any) {
+    console.error(`[SYNC] Error enviando a Parse:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Consulta el estado de sincronización de una entidad
+ */
+export async function getSyncStatus(
+  entityType: string,
+  entityId: string,
+  erpType?: string
+): Promise<SyncStatusResponse> {
+  if (!PARSE_API_KEY) {
+    return { success: false, error: 'API key not configured' };
+  }
+
+  const baseUrl = PARSE_API_URL_RAW.replace(/\/api\/v1\/?$/, '');
+  let url = `${baseUrl}/api/sync-data/${entityType}/${entityId}/status`;
+  if (erpType) {
+    url += `?erpType=${erpType}`;
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'X-API-Key': PARSE_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+    }
+
+    return await response.json() as SyncStatusResponse;
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Envía una Orden de Compra aprobada a Parse para sincronizar con ERP
+ */
+export async function syncPurchaseOrderToERP(
+  purchaseOrder: any,
+  erpType: string = 'AXIOMA'
+): Promise<SyncDataResponse> {
+  // Construir payload con todos los datos necesarios para el ERP
+  const payload = {
+    // Identificación
+    numero: purchaseOrder.numero,
+    id: purchaseOrder.id,
+
+    // Fechas
+    fecha: purchaseOrder.fechaEmision,
+    fechaAprobacion: purchaseOrder.fechaAprobacionOC,
+    fechaEntregaEsperada: purchaseOrder.fechaEntregaEsperada,
+
+    // Proveedor
+    proveedor: purchaseOrder.proveedor ? {
+      id: purchaseOrder.proveedor.id,
+      cuit: purchaseOrder.proveedor.cuit,
+      razonSocial: purchaseOrder.proveedor.nombre,
+      email: purchaseOrder.proveedor.email,
+    } : null,
+    proveedorId: purchaseOrder.proveedorId,
+
+    // Montos
+    subtotal: purchaseOrder.subtotal,
+    impuestos: purchaseOrder.impuestos,
+    total: purchaseOrder.total,
+    moneda: purchaseOrder.moneda || 'ARS',
+
+    // Items
+    items: purchaseOrder.items?.map((item: any) => ({
+      numero: item.numero,
+      descripcion: item.descripcion,
+      codigoProducto: item.codigoProducto,
+      cantidad: item.cantidad,
+      unidad: item.unidad,
+      precioUnitario: item.precioUnitario,
+      subtotal: item.subtotal,
+      impuestos: item.impuestos,
+      total: item.total,
+    })) || [],
+
+    // Referencias
+    purchaseRequestId: purchaseOrder.purchaseRequestId,
+    purchaseRequestNumero: purchaseOrder.purchaseRequest?.numero,
+
+    // Metadata
+    estado: purchaseOrder.estado,
+    tipoCompra: purchaseOrder.tipoCompra,
+    centroCostos: purchaseOrder.centroCostos,
+    observaciones: purchaseOrder.observaciones,
+
+    // Usuario
+    creadoPorId: purchaseOrder.creadoPorId,
+    creadoPorNombre: purchaseOrder.creadoPor?.name,
+  };
+
+  return sendToParseSync({
+    entityType: 'PURCHASE_ORDER',
+    entityId: purchaseOrder.numero || purchaseOrder.id,
+    erpType,
+    payload,
+    userId: purchaseOrder.creadoPorId,
+  });
+}
+
+// ============================================
+// PULL DATA - Consulta de datos desde Parse (ERP → Parse → Hub)
+// ============================================
+
+export interface SyncRecord {
+  id: string;
+  entityType: string;
+  entityId: string;
+  erpType: string;
+  payload: any;
+  status: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PullDataResponse {
+  success: boolean;
+  data?: SyncRecord[];
+  pagination?: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+  error?: string;
+}
+
+/**
+ * Consulta datos de sincronización desde Parse (datos que vinieron del ERP)
+ */
+export async function pullFromParse(
+  entityType: string,
+  options: {
+    status?: string;
+    since?: string;
+    limit?: number;
+    offset?: number;
+  } = {}
+): Promise<PullDataResponse> {
+  if (!PARSE_API_KEY) {
+    return { success: false, error: 'API key not configured' };
+  }
+
+  const baseUrl = PARSE_API_URL_RAW.replace(/\/api\/v1\/?$/, '');
+  let url = `${baseUrl}/api/sync-data/pull/${entityType}`;
+
+  const params = new URLSearchParams();
+  if (options.status) params.append('status', options.status);
+  if (options.since) params.append('since', options.since);
+  if (options.limit) params.append('limit', String(options.limit));
+  if (options.offset) params.append('offset', String(options.offset));
+
+  if (params.toString()) {
+    url += `?${params.toString()}`;
+  }
+
+  console.log(`[SYNC] Consultando ${entityType} desde Parse: ${url}`);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'X-API-Key': PARSE_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+    }
+
+    return await response.json() as PullDataResponse;
+  } catch (error: any) {
+    console.error(`[SYNC] Error consultando ${entityType}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Obtiene pagos desde Parse (datos del ERP)
+ */
+export async function getPagosFromERP(options: { since?: string; limit?: number } = {}): Promise<{
+  pagos: any[];
+  total: number;
+}> {
+  const result = await pullFromParse('PAYMENT', {
+    status: 'COMPLETED',
+    ...options,
+  });
+
+  if (!result.success || !result.data) {
+    console.error('[SYNC] Error obteniendo pagos:', result.error);
+    return { pagos: [], total: 0 };
+  }
+
+  // Extraer payload de cada registro
+  const pagos = result.data.map(record => ({
+    ...record.payload,
+    _syncId: record.id,
+    _syncVersion: record.version,
+    _syncUpdatedAt: record.updatedAt,
+  }));
+
+  return {
+    pagos,
+    total: result.pagination?.total || pagos.length,
+  };
+}
+
+/**
+ * Obtiene actualizaciones de proveedores desde Parse (datos del ERP)
+ */
+export async function getProveedorUpdatesFromERP(options: { since?: string; limit?: number } = {}): Promise<{
+  proveedores: any[];
+  total: number;
+}> {
+  const result = await pullFromParse('SUPPLIER', {
+    status: 'COMPLETED',
+    ...options,
+  });
+
+  if (!result.success || !result.data) {
+    return { proveedores: [], total: 0 };
+  }
+
+  const proveedores = result.data.map(record => ({
+    ...record.payload,
+    _syncId: record.id,
+    _syncVersion: record.version,
+  }));
+
+  return {
+    proveedores,
+    total: result.pagination?.total || proveedores.length,
+  };
+}
+
+/**
+ * Obtiene confirmaciones de OC desde el ERP
+ */
+export async function getOCConfirmationsFromERP(options: { since?: string; limit?: number } = {}): Promise<{
+  confirmaciones: any[];
+  total: number;
+}> {
+  const result = await pullFromParse('PURCHASE_ORDER_CONFIRMATION', {
+    status: 'COMPLETED',
+    ...options,
+  });
+
+  if (!result.success || !result.data) {
+    return { confirmaciones: [], total: 0 };
+  }
+
+  const confirmaciones = result.data.map(record => ({
+    ...record.payload,
+    _syncId: record.id,
+  }));
+
+  return {
+    confirmaciones,
+    total: result.pagination?.total || confirmaciones.length,
+  };
+}
+
 /**
  * Sincroniza proveedores desde Parse a la tabla Supplier local
  * Usa upsert para crear o actualizar según el codigo (ID)
